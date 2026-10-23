@@ -83,8 +83,12 @@ def _find_node_path(node_bin):
 NODE = _find_node()
 NODE_PATH = _find_node_path(NODE)
 
-PARTS = ['p1.html', 'p2.html', 'p_open.txt', 'p_art.js', 'lib.js', 'p4.js',
-         'p_voice.js', 'p8.js', 'p5.js', 'p6.js', 'p7.js', 'p_close.txt']
+PARTS = ['p1.html', 'p2.html', 'p_open.txt', 'p_sfx.js', 'p_art.js', 'lib.js',
+         'p4.js', 'p8.js', 'p5.js', 'p6.js', 'p7.js', 'p_close.txt']
+# 语音是 JSON 分片（v8 起惰性解析），不算在 12 段里，但构建同样必需。
+# 2026-10-23 修正：这里原来写着 p_voice.js（旧格式），本机因为那文件还在所以一直"通过"，
+# 直到在全新 clone 上跑门禁才暴露——旧文件不入库，检查就红了。
+VOICE_PART = 'p_voice.json'
 
 results = []   # [{gate, name, ok, detail}]
 
@@ -115,6 +119,8 @@ def gate_build(do_build=True):
         print('       耗时 %.1f s' % (time.time() - t0))
 
     missing = [p for p in PARTS if not (BUILD / p).exists()]
+    if not (BUILD / VOICE_PART).exists():
+        missing.append(VOICE_PART)
     rec('G0', '12 个分片齐全', not missing, '缺：' + ','.join(missing) if missing else '12/12')
 
     prod = ROOT / MANIFEST['product']
