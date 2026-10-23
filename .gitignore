@@ -51,3 +51,4 @@ build/preview.html
 build/_*.png
 build/_verify*
 build/_g4_check_out*
+build/_tts_test/
