@@ -1,0 +1,22 @@
+const fs=require('fs'); const {JSDOM}=require('jsdom');
+const HTML=fs.readFileSync('生活语文练习台.html','utf8');
+const dom=new JSDOM(HTML,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://example.com/p/x'});
+setTimeout(async()=>{
+  const w=dom.window,d=w.document;
+  w.openTeacher(); d.querySelector('[data-tp="lib"]').click();
+  await new Promise(r=>setTimeout(r,150));
+  console.log('全部行', d.getElementById('libTbody').querySelectorAll('tr').length, '|', d.getElementById('libCount').textContent);
+  const s=d.getElementById('libSearch'); s.value='虎';
+  s.dispatchEvent(new w.Event('input'));
+  await new Promise(r=>setTimeout(r,300));
+  const rows=[...d.getElementById('libTbody').querySelectorAll('tr')].map(t=>t.children[0].textContent);
+  console.log('搜虎 →', rows.length, rows.join(','), '|', d.getElementById('libCount').textContent);
+  s.value='hǔ'; s.dispatchEvent(new w.Event('input'));
+  await new Promise(r=>setTimeout(r,300));
+  console.log('搜hǔ →', d.getElementById('libTbody').querySelectorAll('tr').length, '|', d.getElementById('libCount').textContent);
+  s.value=''; s.dispatchEvent(new w.Event('input'));
+  await new Promise(r=>setTimeout(r,300));
+  const f=d.getElementById('libFilter'); f.value='六年级上册-认'; f.dispatchEvent(new w.Event('change'));
+  await new Promise(r=>setTimeout(r,150));
+  console.log('筛六年级上册-认 →', d.getElementById('libTbody').querySelectorAll('tr').length);
+},500);

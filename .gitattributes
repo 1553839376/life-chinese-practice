@@ -1,0 +1,16 @@
+# 换行一律 LF。
+# 原因：产物是「13 个分片按字节拼接」，源码若被换成 CRLF，构建出来的 html 会多出
+# 每个换行 1 字节（整份约 +7000 B），md5 与线上不一致，会被误判成「代码坏了」。
+# 这个问题在 2026-10-22 踩过一次（build_html.py 用文本模式写文件），别再犯。
+* text=auto eol=lf
+
+# 二进制文件不要做任何换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.mp3 binary
+*.pdf binary
+*.ico binary
+
+# 产物虽然是大文本，但必须按字节稳定
+*.html text eol=lf

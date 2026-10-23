@@ -1,0 +1,398 @@
+<main id="app">
+
+<nav id="mainNav" class="main-nav">
+  <div class="nav-in">
+    <span class="nav-logo">认字乐园</span>
+    <button type="button" class="nav-btn on" data-nav="learn">认字</button>
+    <button type="button" class="nav-btn" data-nav="pick">练习</button>
+    <button id="btnAV" class="nav-av" type="button" aria-label="声音设置" title="声音设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4z"></path>
+        <path d="M15.5 8.5a4.5 4.5 0 0 1 0 7"></path>
+        <path d="M18.5 6a8 8 0 0 1 0 12"></path>
+      </svg>
+    </button>
+    <button id="btnTeacherTop" class="nav-teach" type="button" title="长按 1 秒进入老师端">老师</button>
+  </div>
+</nav>
+
+<section id="scrLearn" class="screen" hidden>
+  <div class="learn-hero">
+    <h1>一起认字</h1>
+    <p>搜一个字，或者选一个册次，挑一个字来玩</p>
+  </div>
+
+  <div class="learn-search">
+    <svg class="ls-ico" viewBox="0 0 24 24" fill="none" stroke="#8A8578" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path>
+    </svg>
+    <input id="learnSearch" type="search" placeholder="搜字、拼音或词语，例如 虎 / hu / 老虎" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="learnClear" class="ls-clear" type="button" hidden>清空</button>
+  </div>
+
+  <div id="stageStrip" class="stage-strip"></div>
+
+  <div class="learn-bar">
+    <span id="learnCount" class="learn-count">—</span>
+    <button id="btnPlayAll" class="play-all" type="button">全班一起玩</button>
+  </div>
+
+  <div id="charGrid"></div>
+  <p id="learnEmpty" class="empty-tip" hidden>没有找到这个字。换个字或者换个说法再试一次。</p>
+</section>
+
+<section id="scrGame" class="screen game-screen" hidden>
+  <div class="game-top">
+    <button id="gameQuit" class="ghost-btn" type="button">退出</button>
+    <div class="game-name" id="gameName">戳泡泡</div>
+    <div class="game-score-box">得分 <b id="gameScore">0</b></div>
+    <button id="gameMute" class="ghost-btn" type="button">音效开</button>
+  </div>
+
+  <div class="game-ask">
+    <button id="gameSpk" class="game-spk" type="button" aria-label="再听一次">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4z"></path>
+        <path d="M15.5 8.5a4.5 4.5 0 0 1 0 7"></path>
+        <path d="M18.5 6a8 8 0 0 1 0 12"></path>
+      </svg><span>读题</span>
+    </button>
+    <div class="game-ask-txt">
+      <div class="ga-label">找到这个字</div>
+      <div class="ga-word"><b id="gameAskWord">—</b><i id="gameAskPy"></i></div>
+    </div>
+    <button id="gameHint" class="ghost-btn" type="button">提示</button>
+  </div>
+
+  <div id="gameField" class="game-field"></div>
+
+  <div class="game-foot">
+    <span class="game-tip">点一下就能选，不用拖</span>
+    <span id="gameProg">1 / 6</span>
+  </div>
+</section>
+
+<section id="scrPick" class="screen">
+  <div class="pick-top">
+    <h1>班级练习</h1>
+  </div>
+  <p class="pick-hint">点一下自己的照片，开始今天的练习</p>
+  <div id="stuGrid" class="stu-grid"></div>
+  <p id="pickEmpty" class="empty-tip" hidden>还没有学生。请长按右上角「老师」约 1 秒进去添加学生、上传照片。</p>
+  <button id="btnGoLearn" class="go-learn" type="button" data-nav="learn" hidden>没有学生也能玩：去认字乐园</button>
+</section>
+
+<section id="scrPlay" class="screen" hidden>
+  <div class="play-top">
+    <button id="btnBackPick" class="ghost-btn" type="button">换人</button>
+    <div class="who">
+      <span id="playAvatar" class="who-av"></span>
+      <span id="playName" class="who-name"></span>
+    </div>
+    <div class="qcount"><span id="qNow">1</span> / <span id="qTotal">8</span></div>
+  </div>
+  <nav id="typeTabs" class="type-tabs"></nav>
+  <div id="drillBar" class="drill-bar" hidden></div>
+  <div id="stage" class="stage"></div>
+  <div class="help-bar">
+    <span class="help-label">老师辅助</span>
+    <button id="btnHint" class="help-btn" type="button">提示一下</button>
+    <button id="btnRight" class="help-btn ok" type="button">读对了</button>
+    <button id="btnSkip" class="help-btn" type="button">跳过这题</button>
+    <button id="btnNextStu" class="help-btn next" type="button">换下一个同学</button>
+  </div>
+</section>
+
+<section id="scrTeacher" class="screen" hidden>
+  <div class="tea-top">
+    <h2>老师端</h2>
+    <span id="teaSync" class="sync">已同步</span>
+    <span id="appVer" class="app-ver">v20</span>
+    <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
+  </div>
+  <div class="tea-tabs">
+    <button class="tea-tab on" data-tp="stu" type="button">学生管理</button>
+    <button class="tea-tab" data-tp="lib" type="button">字库</button>
+    <button class="tea-tab" data-tp="word" type="button">词库</button>
+    <button class="tea-tab" data-tp="prog" type="button">进度总览</button>
+  </div>
+
+  <div id="teaOffline" class="offline-note" hidden></div>
+
+  <div class="backup-bar">
+    <span class="bk-tip">数据存在这台电脑上，建议每周导出一次备份</span>
+    <button id="btnExport" class="secondary" type="button">导出备份</button>
+    <button id="btnImport" class="secondary" type="button">导入备份</button>
+    <input type="file" id="fImport" accept=".json,application/json" hidden>
+  </div>
+
+  <div id="tpStu" class="panel">
+    <div id="stuListView">
+      <h3>学生名单</h3>
+      <div id="stuForm" hidden>
+      <h3 id="stuFormTitle">新增学生</h3>
+      <div class="row">
+        <div class="fld"><label>姓名</label><input type="text" name="stu_name" id="fStuName" maxlength="12" placeholder="如：小明"></div>
+        <div class="fld"><label>真实照片</label><input type="file" accept="image/*" id="fStuPhoto"></div>
+        <div class="fld"><label>在学字数（同时在手上练几个）</label><input type="number" id="fStuCount" min="3" max="10" value="6"><span class="fld-hint">一次练习正好把这几个字过一遍，练会一个自动补下一个</span></div>
+        <div class="fld"><label>状态</label><select id="fStuStatus"></select></div>
+      </div>
+      <div class="row">
+        <div class="fld" style="flex:1">
+          <label>练哪些题型</label>
+          <div class="chk-row" id="fStuTypes"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="fld" style="flex:1">
+          <label>学哪些字（字表）</label>
+          <div class="char-tools">
+            <span id="fStuCharStat" class="char-stat">还没选字</span>
+            <input type="text" id="fStuCharSearch" class="char-search" placeholder="搜汉字或拼音，如 男、nán">
+          </div>
+          <div id="fStuCharList" class="char-list"></div>
+        </div>
+      </div>
+      <p id="stuPhotoName" class="tips"></p>
+      <div class="row">
+        <button id="btnStuSave" class="primary" type="button">保存</button>
+        <button id="btnStuCancel" class="secondary" type="button">取消</button>
+      </div>
+    </div>
+    <div class="list-wrap">
+        <table class="grid">
+          <thead><tr><th>学生</th><th>练习题型</th><th>字表进度</th><th>题量</th><th>状态</th><th>最近练习</th><th>操作</th></tr></thead>
+          <tbody id="stuTbody"></tbody>
+        </table>
+      </div>
+      <p class="tips">进度条按「这位同学自己字表」算：<b class="lg-m">已掌握</b>／<b class="lg-d">练习中</b>／<b class="lg-t">需巩固</b>／<b class="lg-o">待学</b>。点「档案」看每个字的掌握情况，也能只挑几个字单独练。</p>
+      <div class="row" style="margin-top:14px">
+        <button id="btnStuNew" class="primary" type="button">新增学生</button>
+      </div>
+    </div>
+
+    <div id="stuProfile" hidden>
+      <div class="prof-top">
+        <button id="btnProfBack" class="ghost-btn" type="button">返回名单</button>
+        <div class="prof-who">
+          <span id="profAv" class="prof-av"></span>
+          <div class="prof-who-t">
+            <b id="profName">—</b>
+            <span id="profMeta" class="prof-meta"></span>
+          </div>
+        </div>
+        <button id="btnProfEdit" class="secondary" type="button">编辑资料与字表</button>
+      </div>
+
+      <div id="profStats" class="prof-stats"></div>
+
+      <div class="prof-band">
+        <div id="profBar" class="prog-bar big"></div>
+        <div id="profLegend" class="prof-legend"></div>
+      </div>
+
+      <h4 class="prof-h">逐字掌握<span class="prof-hint">点一个字，看它练过几次</span></h4>
+      <div id="profGrid" class="prof-grid"></div>
+      <div id="profDetail" class="prof-detail" hidden></div>
+
+      <h4 class="prof-h">建议先练这几个<span class="prof-hint">按需巩固 → 靠提示 → 练习中 → 待学排序</span></h4>
+      <div id="profFocus" class="prof-focus"></div>
+      <div class="row prof-acts">
+        <button id="btnProfDrill" class="primary" type="button">只练这几个字</button>
+        <button id="btnProfStart" class="secondary" type="button">按整张字表练</button>
+        <button id="btnProfPause" class="secondary" type="button">设为暂停</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="tpLib" class="panel" hidden>
+    <h3>字库</h3>
+    <div class="row">
+      <div class="fld"><label>筛选分组</label><select id="libFilter"></select></div>
+      <div class="fld"><label>搜索（字 / 拼音 / 组词）</label><input type="text" id="libSearch" placeholder="例如 虎、hǔ、老虎"></div>
+      <button id="btnLibSeed" class="secondary" type="button">导入内置字库</button>
+      <button id="btnLibNew" class="primary" type="button">新增汉字</button>
+      <span id="libCount" class="tips" style="margin:0;align-self:center">—</span>
+    </div>
+    <div id="libForm" hidden>
+      <h3 id="libFormTitle">新增汉字</h3>
+      <div class="row">
+        <div class="fld"><label>汉字</label><input type="text" name="lib_word" id="fLibWord" maxlength="4"></div>
+        <div class="fld"><label>拼音</label><input type="text" id="fLibPinyin" maxlength="24"></div>
+        <div class="fld"><label>分组</label><select id="fLibGroup"></select></div>
+        <div class="fld"><label>图示图片</label><input type="file" accept="image/*" id="fLibPic"></div>
+      </div>
+      <div class="row">
+        <div class="fld" style="flex:1"><label>组词（用顿号分隔）</label><input type="text" id="fLibWords" maxlength="60"></div>
+        <div class="fld" style="flex:2"><label>例句</label><input type="text" id="fLibSent" maxlength="60"></div>
+        <div class="fld"><label>启用</label><div class="chk"><input type="checkbox" id="fLibOn" checked><span>参与练习</span></div></div>
+      </div>
+      <p id="libPicName" class="tips"></p>
+      <div class="row">
+        <button id="btnLibSave" class="primary" type="button">保存</button>
+        <button id="btnLibCancel" class="secondary" type="button">取消</button>
+      </div>
+    </div>
+    <div class="list-wrap">
+      <table class="grid">
+        <thead><tr><th>汉字</th><th>拼音</th><th>分组</th><th>组词</th><th>图示</th><th>启用</th><th>操作</th></tr></thead>
+        <tbody id="libTbody"></tbody>
+      </table>
+    </div>
+    <p class="tips">「导入内置字库」会把预置的常见汉字批量写进数据表，之后你可以随意增删改。图示传图片后，「图字配对」题才会用到这个字。</p>
+    <div id="tplLibCell" hidden><span class="lib-cell"></span></div>
+  </div>
+
+  <div id="tpWord" class="panel" hidden>
+    <h3>词库</h3>
+    <div class="row">
+      <div class="fld"><label>来源</label><select id="wdFilter"></select></div>
+      <div class="fld"><label>搜索</label><input type="text" id="wdSearch" placeholder="词语 / 拼音"></div>
+      <button id="btnWdNew" class="primary" type="button">新增词语</button>
+      <span id="wdCount" class="tips" style="margin:0;align-self:center">—</span>
+    </div>
+    <div id="wdForm" hidden>
+      <h3 id="wdFormTitle">新增词语</h3>
+      <div class="row">
+        <div class="fld"><label>词语</label><input type="text" name="word_word" id="fWdWord" maxlength="8"></div>
+        <div class="fld"><label>拼音</label><input type="text" id="fWdPinyin" maxlength="24"></div>
+        <div class="fld"><label>分组</label><select id="fWdGroup"></select></div>
+        <div class="fld"><label>图示图片</label><input type="file" accept="image/*" id="fWdPic"></div>
+      </div>
+      <div class="row">
+        <div class="fld" style="flex:3"><label>释义 / 例句</label><input type="text" id="fWdSent" maxlength="60"></div>
+        <div class="fld"><label>启用</label><div class="chk"><input type="checkbox" id="fWdOn" checked><span>参与练习</span></div></div>
+      </div>
+      <p id="wdPicName" class="tips"></p>
+      <div class="row">
+        <button id="btnWdSave" class="primary" type="button">保存</button>
+        <button id="btnWdCancel" class="secondary" type="button">取消</button>
+      </div>
+    </div>
+    <div class="list-wrap">
+      <table class="grid">
+        <thead><tr><th>词语</th><th>拼音</th><th>分组</th><th>释义/例句</th><th>图示</th><th>启用</th><th>操作</th></tr></thead>
+        <tbody id="wdTbody"></tbody>
+      </table>
+    </div>
+    <p class="tips">这张表默认就有词：标「内置」的那些是从 700 个字的「组词」栏自动抽出来的双字词，不用你一个个录，改了字库它跟着变。点「收进词库」会复制成你自己的词，之后可改拼音、写例句或停用。出题时只收双字词，且词里至少有一个字在学生字表里才会出。</p>
+  </div>
+
+  <div id="tpProg" class="panel" hidden>
+    <div class="prog-head">
+      <h3>全班进度</h3>
+      <span id="progMeta" class="prog-meta"></span>
+    </div>
+
+    <div id="progStats" class="prog-hero"></div>
+
+    <div class="prog-block">
+      <div class="prog-h">
+        <h4>每个人</h4>
+        <span class="prog-note">分母＝各自的字表</span>
+      </div>
+      <div id="progMatrix"></div>
+      <div class="legend">
+        <span><i class="mx-c3"></i>已掌握</span>
+        <span><i class="mx-c2"></i>练习中</span>
+        <span><i class="mx-c4"></i>需巩固</span>
+        <span><i class="mx-c0"></i>待学</span>
+      </div>
+    </div>
+
+    <div class="prog-block">
+      <div class="prog-h">
+        <h4>全班卡住的字</h4>
+        <span class="prog-note">两人以上同时卡住</span>
+      </div>
+      <div id="progHard"></div>
+    </div>
+
+    <div class="prog-block">
+      <div class="prog-h">
+        <h4>今天先抽谁</h4>
+        <span class="prog-note">需巩固 + 靠提示的字</span>
+      </div>
+      <div id="progFocus"></div>
+    </div>
+  </div>
+</section>
+
+<div id="cardMask" class="sheet-mask" hidden>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-head">
+      <span class="sheet-eyebrow">学这个字</span>
+      <button id="sheetClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-left" id="sheetLeft">
+        <div id="sheetArt" class="sheet-art"></div>
+      </div>
+      <div class="sheet-right">
+        <div id="sheetChar" class="sheet-char">—</div>
+        <div id="sheetPy" class="sheet-py"></div>
+        <div id="sheetWord" class="sheet-word"></div>
+        <div class="sheet-actions">
+          <button id="sheetSpeak" class="secondary" type="button">听一听</button>
+          <button id="sheetRead" class="secondary" type="button">只看拼音</button>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-games">
+      <div class="sg-title">选一个玩法</div>
+      <div class="sg-grid">
+        <button class="sg-btn gb" data-gk="bubble" type="button">
+          <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
+        </button>
+        <button class="sg-btn gf" data-gk="fish" type="button">
+          <span class="sg-ico fis"></span><span class="sg-nm">钓鱼</span><span class="sg-d">小鱼游过去，钓起这个字</span>
+        </button>
+        <button class="sg-btn gr" data-gk="fruit" type="button">
+          <span class="sg-ico fru"></span><span class="sg-nm">摘果子</span><span class="sg-d">果树上挂着字，摘下它</span>
+        </button>
+        <button class="sg-btn ga" data-gk="feed" type="button">
+          <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- 声音设置：读题朗读 / 对错音效 / 语速 -->
+<div id="avMask" class="av-mask" hidden>
+  <div class="av-panel" role="dialog" aria-label="声音设置">
+    <div class="av-head">
+      <b>声音设置</b>
+      <button id="avClose" class="ghost-btn" type="button">关闭</button>
+    </div>
+    <div class="av-row">
+      <span class="av-name">读题朗读<em>把题目念出来，不认字也能听懂</em></span>
+      <button id="avVoice" class="av-sw on" type="button" role="switch" aria-checked="true">开</button>
+    </div>
+    <div class="av-row">
+      <span class="av-name">对错音效<em>选对了响一下，选错了也有提示</em></span>
+      <button id="avSfx" class="av-sw on" type="button" role="switch" aria-checked="true">开</button>
+    </div>
+    <div class="av-row">
+      <span class="av-name">语速</span>
+      <div class="av-seg" id="avRate">
+        <button type="button">慢</button><button type="button" class="on">正常</button><button type="button">快</button>
+      </div>
+    </div>
+    <button id="avTry" class="secondary av-try" type="button">试听一句</button>
+    <p id="avTip" class="av-tip">点「读题」可以再听一遍；读不出来时会提示老师来读。</p>
+  </div>
+</div>
+
+<!-- 首屏加载提示：脚本跑完立刻移除；CSS 里还有 2.4 秒自动淡出兜底，
+     万一脚本出错也不会把页面永久挡死 -->
+<div id="bootMask" class="boot-mask">
+  <div class="bm-card">
+    <span class="bm-dot"></span>
+    <b>认字乐园</b>
+    <span>正在准备字卡和声音…</span>
+  </div>
+</div>

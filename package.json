@@ -1,0 +1,21 @@
+{
+  "name": "life-chinese-practice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "生活语文练习台 —— 单文件 HTML 构建 + jsdom 自动化测试。Python 只用标准库，Node 只依赖 jsdom。",
+  "scripts": {
+    "build": "python build/build_html.py",
+    "gate": "python harness/run_gate.py",
+    "gate:quick": "python harness/run_gate.py --quick",
+    "test": "node build/smoke2.js build/生活语文练习台.html",
+    "docs": "python build/check_docs.py",
+    "buttons": "python build/check_buttons.py",
+    "setup": "npm install"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

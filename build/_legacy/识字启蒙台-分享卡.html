@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>识字启蒙台 · 扫码使用</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 28px 16px 48px;
+    background: #F7F3E8;
+    color: #23303B;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh;
+  }
+  .card {
+    width: 100%; max-width: 520px;
+    background: #FFFDF7;
+    border: 2px solid #E6DCC6;
+    border-radius: 24px;
+    padding: 32px 28px 28px;
+    box-shadow: 0 10px 30px rgba(80, 64, 32, .10);
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-block;
+    background: #FFF1D0; color: #8A6A18;
+    border-radius: 999px; padding: 6px 16px;
+    font-size: 15px; font-weight: 700; letter-spacing: .04em;
+  }
+  h1 {
+    margin: 16px 0 6px;
+    font-size: 40px; line-height: 1.2; letter-spacing: .04em;
+    font-weight: 800; color: #1B242C;
+  }
+  .sub { margin: 0 0 22px; font-size: 17px; line-height: 1.7; color: #5C6B77; }
+  .qr-wrap {
+    display: inline-block;
+    background: #FFFFFF;
+    border: 2px solid #E6DCC6;
+    border-radius: 20px;
+    padding: 16px;
+    line-height: 0;
+  }
+  .qr-wrap img { width: 232px; height: 232px; display: block; }
+  .tip { margin: 16px 0 0; font-size: 16px; font-weight: 700; color: #2F6B4F; }
+  .link {
+    margin: 14px 0 0; padding: 12px 14px;
+    background: #F2F6FA; border: 1px dashed #C3D2DE; border-radius: 12px;
+    font-size: 14px; line-height: 1.6; color: #3A4A57;
+    word-break: break-all; font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  ol { margin: 24px 0 0; padding: 0 0 0 2px; text-align: left; list-style: none; counter-reset: s; }
+  ol li {
+    counter-increment: s;
+    position: relative;
+    padding: 0 0 14px 40px;
+    font-size: 16.5px; line-height: 1.65; color: #364652;
+  }
+  ol li::before {
+    content: counter(s);
+    position: absolute; left: 0; top: 1px;
+    width: 27px; height: 27px; border-radius: 50%;
+    background: #2F6B4F; color: #fff;
+    font-size: 15px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol li:last-child { padding-bottom: 0; }
+  .foot {
+    margin: 26px auto 0; padding-top: 18px;
+    border-top: 1px solid #EAE2D0;
+    font-size: 13.5px; line-height: 1.7; color: #8A8578;
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .card { box-shadow: none; border-color: #D8D0BC; }
+    @page { size: A5; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="eyebrow">特教识字 · 每日 5–10 字</span>
+    <h1>识字启蒙台</h1>
+    <p class="sub">手机扫码就能用，不用下载、不用注册</p>
+
+    <div class="qr-wrap">
+      <img alt="识字启蒙台 访问二维码" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkwAAAJMAQMAAAAyqmuAAAAABlBMVEUfKTP///95FjWpAAADKklEQVR42u2dW4rjMBBFi9mA9r9L7cDDtN2qe0seGFDlo5ljQkgc+XwELvVUKa6uawYoUKBAgQIFChQoUKBAgfpxqFjXyK/PT+NZed95Foz6yDV/RdsFCtT/g3KhqcS+XrdIb8X9kaF+8EfQIChQhxq8LdqS3iPAJbf5mLz1lD6CBkGB6tTg983HUxXXNz1PNAgK1Mc0mKFfpAZvF1RDRTQICtTn4sFl8iz3IoojHgQFqlmDrrJ/eskjaBAUqEMNliszoveaGflh/K3Mwd8OCtSZBqX0oK8U3YyMCkc+ggZBgWrQ4IyVBdVKhN0Zlp9ZC/BFQYHqycm4gVtx4mMNQ96HJW2wg6BAdWkwpOhQgsF0TSUPYxEiGgQF6tAXVdF9N8kUB9W61EoFHw2CAnWck7F+mIgqOq/m15/QIChQZ75oyiq8H0ZyL6UsGBHkZECBaosHr+wUXRLLNTO717SEsRSKBkGBOvVF95ZsNXzDA8D1TjwIClSLHVxf32JAU+gMdVPpkwEFqs0Xnb5LtzTMaGn+W62Py4ovCgpUhy9qjWparfA9vOqCkhcFBarZDl62M8KGWniClP2DoEA128EZ1hd6+WiLYiVn7LsI0SAoUOe+qIaBtkVXQkUds5Zf0SAoUIe+aFg3mg4zfCkXrga2oDYBClRnPKi9oOaXSgtNdU2pTYAC1aTBYgrrYJmoA53WMnIyoED12MErW2L2uTEaGGadYtIvCgpUdzy4RYJWi/dNTLoSDYICdR4ParlB8zC1KD/tJhoEBarHDkbYmCaZXJFeqO5gqkO5+dtBgWrwRWMfdD83nerYbXIyoEA1afB9spNPFrVetWD/IChQrRqUTUm2QWmYQi2DGuRkQIHq0eA+ZHs7TiLzMHsXNxoEBaolJ/NkWqKe9lI9z7klZNAgKFCHGnw7h7fuIoyom5iYLwoKVJ8GzfzJQdivp1Eso0mfDChQn9CgTbkvh00MPxuU2gQoUN0arPWIiP0kUDuEAg2CAtUbD07rDq2bmN4GX6BBUKBONRgW4tn5g2oHdRP9YJYFKFBtGmy4JihQoECBAgUKFChQoECB+kGo33sjR5kmMqJsAAAAAElFTkSuQmCC">
+    </div>
+    <p class="tip">微信 / 相机扫一扫，或长按识别</p>
+    <p class="link">https://workbuddy.link/p/lSvkqDgzdZFlp2NEhK7iAd</p>
+
+    <ol>
+      <li>用手机扫上面的码，打开识字启蒙台</li>
+      <li>点浏览器菜单「添加到主屏幕」，桌面就多一个图标</li>
+      <li>每天打开学 8 个字，点喇叭听读音、选对汉字</li>
+    </ol>
+
+    <p class="foot">
+      数据自动云端保存，换手机、换设备都能接着学<br>
+      建议家长与老师使用同一链接，学习进度互通
+    </p>
+  </div>
+</body>
+</html>

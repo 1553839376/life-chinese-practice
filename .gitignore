@@ -1,0 +1,53 @@
+# 生活语文练习台 · 仓库忽略规则
+# 原则：只提交「换台电脑能重建出来」的东西；能从别处生成的一律不进仓库。
+#
+# 2026-10-23 建立（用户要回家继续做）：仓库要小、clone 要快、克隆下来能立刻构建。
+
+# ---------- 语音原始文件（41 MB，4834 个 mp3）----------
+# 不进仓库的原因：能从 gen_tts.py 重新生成（需要网络 + edge-tts）。
+# 最终语音已经在 build/p_voice.json 里（base64，3.9 MB），构建不依赖本目录。
+build/_tts/
+
+# ---------- 线上产物下载（每次发布校验产生，5 MB × 若干）----------
+build/_pubcheck*/
+build/_verify/
+
+# ---------- 截图归档（3 MB）----------
+# 截图是给人看的中间产物，需要时重新跑 shot_*.py 即可。
+build/_shots/
+
+# ---------- 素材原图（34 MB）----------
+generated-images/
+*.pdf
+
+# ---------- Python / Node ----------
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+npm-debug.log*
+
+# ---------- 系统与编辑器 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# ---------- 临时 ----------
+*.tmp
+*.bak
+~$*
+
+# ---------- 构建中间产物（2026-10-23 清查后加）----------
+# 构建实际只用 p_voice.json；p_voice.js 是旧格式遗留（4 MB，已不再被 build_html.py 引用）
+build/p_voice.js
+build/.bak-*/
+# 图示/预览的中间 JSON，成品已经是 p_art.js
+build/art_pack1.json
+build/art_img.json
+build/preview.html
+# 临时截图与验证产物（不是给用户看的归档）
+build/_*.png
+build/_verify*
+build/_g4_check_out*

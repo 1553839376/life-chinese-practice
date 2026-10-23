@@ -1,0 +1,232 @@
+{
+  "_comment": "回归护栏：新增功能时必须把关键符号登记到这里，否则门禁保护不到。assets 为资产条数下限，脚本改动导致数量下降会被拦下。",
+  "version": 1,
+  "product": "build/生活语文练习台.html",
+  "max_bytes": 6000000,
+  "symbols": {
+    "数据层": [
+      "LS_DATA",
+      "wordOf",
+      "wordCardHTML",
+      "wordSmallHTML",
+      "artOf",
+      "levelOf",
+      "seedLocalChars",
+      "migrateCharset",
+      "imgStore",
+      "newLocalId",
+      "stuProfile",
+      "classProfile",
+      "sinceText",
+      "lvOf",
+      "wordBank",
+      "WORD_BANK",
+      "builtinWords",
+      "BUILTIN_WORDS",
+      "repairCharWords",
+      "APP_VER",
+      "stuCap",
+      "STU_CAP_MIN",
+      "STU_CAP_MAX",
+      "STU_CAP_DEF",
+      "actList",
+      "lockList",
+      "stageOf",
+      "syncActive",
+      "stuActive",
+      "actAdd",
+      "actDel",
+      "actLock",
+      "migrateCap",
+      "LS_DATA_BAK_T009",
+      "LS_MIG_T009"
+    ],
+    "语音音效": [
+      "VOICE_PACK",
+      "charKey",
+      "wordKey",
+      "textParts",
+      "sayParts",
+      "saySeq",
+      "vaPlay",
+      "vaStop",
+      "vaWarm",
+      "PACE",
+      "PACE_GAP",
+      "sfxOk",
+      "sfxNo",
+      "sfxTap",
+      "sfxPop",
+      "sfxWin",
+      "spkPick",
+      "readHint",
+      "avSave",
+      "avLoad"
+    ],
+    "认字乐园": [
+      "renderLearn",
+      "learnList",
+      "renderStageChips",
+      "openCard",
+      "cardHTML",
+      "playAll",
+      "togglePinyinOnly",
+      "ART_PACK",
+      "CHARS",
+      "STAGES"
+    ],
+    "趣味游戏": [
+      "startGame",
+      "bubbleScene",
+      "fishScene",
+      "fruitScene",
+      "feedScene",
+      "gameSay",
+      "gameOpts",
+      "gameRight",
+      "gameWrong",
+      "gameHint",
+      "gameOver",
+      "GAME_KEYS",
+      "quitGame",
+      "fishSVG",
+      "fruitSVG",
+      "treeSVG",
+      "lootHTML",
+      "basketSVG",
+      "gameFx",
+      "treeCrown",
+      "feedAnimal"
+    ],
+    "班级练习": [
+      "buildQuestions",
+      "renderTypeTabs",
+      "readQuestion",
+      "gradeAnswer",
+      "renderSummary",
+      "TYPE_ORDER",
+      "enterStudent",
+      "useHint",
+      "skipQuestion",
+      "buildWordGroups",
+      "wbCrossHit",
+      "WB_PER_GROUP",
+      "renderWordBuild",
+      "wbPick",
+      "wbCheck",
+      "wbLogWord",
+      "wbHint",
+      "renderPreStudy",
+      "todayChars",
+      "preSay",
+      "preStart",
+      "preReset",
+      "preFootRefresh",
+      "firstWordOf",
+      "PRE",
+      "preMode"
+    ],
+    "老师端": [
+      "openTeacher",
+      "renderProgress",
+      "renderStuList",
+      "seedLibrary",
+      "exportBackup",
+      "importBackup",
+      "saveWordForm",
+      "deleteWord",
+      "openStuForm",
+      "renderStuProfile",
+      "drillStudent",
+      "pauseStudent",
+      "progBarHTML",
+      "revealForm",
+      "markField",
+      "wordRowsHTML",
+      "fillWordFilter",
+      "copyBuiltinWord",
+      "paintAppVer",
+      "ringHTML",
+      "stackHTML"
+    ],
+    "页面结构": [
+      "scrLearn",
+      "scrGame",
+      "scrPick",
+      "scrPlay",
+      "scrTeacher",
+      "cardMask",
+      "avMask",
+      "stageStrip",
+      "charGrid",
+      "stuGrid",
+      "gameField",
+      "progMatrix",
+      "stuProfile",
+      "profGrid",
+      "progHard",
+      "progFocus",
+      "drillBar",
+      "btnProfDrill",
+      "wbTip"
+    ]
+  },
+  "assets": {
+    "voice_keys": {
+      "file": "build/p_voice.json",
+      "min": 1690
+    },
+    "sfx_keys": {
+      "file": "build/p_sfx.js",
+      "min": 6
+    },
+    "art_keys": {
+      "file": "build/p_art.js",
+      "min": 111
+    },
+    "chars": {
+      "file": "build/lib.js",
+      "min": 700
+    },
+    "stages": {
+      "file": "build/lib.js",
+      "min": 22
+    }
+  },
+  "tests": [
+    {
+      "name": "e2e_learn",
+      "script": "e2e_learn.js",
+      "args": [],
+      "min_cases": 36
+    },
+    {
+      "name": "e2e_av",
+      "script": "e2e_av.js",
+      "args": [],
+      "min_cases": 87
+    },
+    {
+      "name": "smoke2",
+      "script": "smoke2.js",
+      "args": [
+        "生活语文练习台.html"
+      ],
+      "min_cases": 254
+    },
+    {
+      "name": "check_pair",
+      "script": "check_pair.js",
+      "args": [],
+      "min_cases": 16
+    },
+    {
+      "name": "check_lib",
+      "script": "check_lib.js",
+      "args": [
+        "生活语文练习台.html"
+      ],
+      "min_cases": 19
+    }
+  ]
+}
