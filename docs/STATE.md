@@ -22,6 +22,7 @@
 | 源码分片 | `build/p1.html`(样式) `p2.html`(结构) `p_open.txt` `p_voice.json`(语音 1691) `p_sfx.js`(音效 6) `p_art.js`(图示) `lib.js`(字库) `p4.js`(数据层) `p8.js`(语音内核) `p5.js`(练习) `p6.js`(老师端/boot) `p7.js`(认字+游戏) `p_close.txt` |
 | 构建 | `cd build && python build_html.py` |
 | 门禁 | `python harness/run_gate.py` |
+| 代码仓库 | https://github.com/1553839376/life-chinese-practice （私有，main 分支）｜交接看 `docs/交接-回家继续.md` |
 | 测试 | 5 套 / 412 项（36 + 87 + 254 + 16 + 19）|
 | 本地数据 | `localStorage['wb2_data_v1']`（学生 / 照片 / 练习记录） |
 
