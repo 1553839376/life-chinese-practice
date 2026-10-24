@@ -186,7 +186,12 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   w.enterStudent('小明');
   await wait(300);
   ok(d.getElementById('scrPlay').hidden === false, '进入练习台');
-  ok(!!d.querySelector('#stage .pre-wrap'), 'v18 进来先出今日字卡，不直接甩一道题');
+  /* v24：先进「我的主页」，再进字卡，点「开始练习」才进题 */
+  ok(!!d.querySelector('#stage .home-wrap'), 'v24 进来先出我的主页，不直接甩一道题');
+  ok(played.length === 0, '主页阶段不自动开口');
+  d.getElementById('homeGo').click();
+  await wait(150);
+  ok(!!d.querySelector('#stage .pre-wrap'), 'v18 点大按钮后出今日字卡，仍不甩题目');
   ok(played.length === 0, '预习阶段不自动开口（字卡由人点着读）');
   /* v18：点「开始练习」才进题，读题的停顿从这一刻算起 */
   d.getElementById('preGo').click();
@@ -370,6 +375,9 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   flush();
   w.enterStudent('拼词生');
   await wait(300);
+  ok(played.length === 0, '主页阶段不开口');
+  d.getElementById('homeGo').click();
+  await wait(150);
   ok(played.length === 0, '预习阶段不开口');
   d.getElementById('preGo').click();
   await wait(60);

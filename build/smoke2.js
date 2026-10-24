@@ -86,9 +86,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   });
   const w = dom.window, d = w.document;
   const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-  /* v18 起点学生先进「今日字卡」，要再点「开始练习」才出题。
-     原来点完学生就能数选项，现在多这一步——测试统一走这个口子。 */
+  /* v18 起点学生先进「今日字卡」，v24 起前面又多一屏「我的主页」。
+     测试统一走这个口子：主页 → 字卡 → 出题，缺哪一屏就跳过那一屏。 */
   const beginQuiz = async (ms) => {
+    const home = d.getElementById('homeGo');
+    if (home) { click(home); await wait(120); }
     const go = d.getElementById('preGo');
     if (go) { click(go); await wait(ms || 200); }
   };
@@ -110,14 +112,29 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('playName').textContent === '小明', '顶部显示学生姓名：' + d.getElementById('playName').textContent);
   const tabs = d.querySelectorAll('#typeTabs .type-tab');
   ok(tabs.length === 3, '只显示分给该生的 3 个题型：实际 ' + tabs.length);
-  /* v18：进来先出今日字卡，不再一进门就甩一道题 */
-  ok(!!d.querySelector('#stage .pre-wrap'), '进来先出今日字卡');
+  /* v24（T-014 第 2 期）：进来先出「我的主页」，看清楚学到哪了再开始 */
+  ok(!!d.querySelector('#stage .home-wrap'), '进来先出「我的主页」而不是直接甩一张字卡');
+  ok(!!d.querySelector('#stage .home-hero .ring'), '主页有掌握率圆环（和进度页同一套 ringHTML）');
+  ok(d.querySelectorAll('#stage .home-chip').length > 0,
+    '主页列出了今天要练的字：' + d.querySelectorAll('#stage .home-chip').length + ' 个');
+  ok(!!d.getElementById('homeGo'), '主页有一个「开始今天的学习」大按钮');
+  ok(d.querySelectorAll('#stage .opt').length === 0, '主页不出选项');
+  ok(d.querySelectorAll('#stage .pre-card').length === 0, '主页还不是字卡页（要再点一次才进）');
+  ok(d.getElementById('qNow').textContent === '主页', '题数区显示「主页」');
+  click(d.getElementById('homeGo'));
+  await wait(150);
+  ok(!!d.querySelector('#stage .pre-wrap'), '点大按钮才进今日字卡');
   ok(d.querySelectorAll('#stage .pre-card').length > 0,
     '字卡有内容：' + d.querySelectorAll('#stage .pre-card').length + ' 张');
-  ok(d.querySelectorAll('#stage .opt').length === 0, '预习时不出选项');
-  ok(d.getElementById('qNow').textContent === '预习', '题数区显示「预习」');
+  ok(!!d.getElementById('preBack'), '字卡页有「返回主页」，能一层层退');
+  click(d.getElementById('preBack'));
+  await wait(120);
+  ok(!!d.querySelector('#stage .home-wrap'), '返回主页能退回去，不是一下跳回选人页');
+  click(d.getElementById('homeGo'));
+  await wait(150);
+  ok(d.querySelectorAll('#stage .opt').length === 0, '回到字卡时还没出选项');
   ok(d.getElementById('scrPlay').className.indexOf('is-pre') >= 0,
-    '预习态给练习页打上 .is-pre（老师辅助按钮先藏起来，按了也没反应）');
+    '预习/主页态给练习页打上 .is-pre（老师辅助按钮先藏起来，按了也没反应）');
   ok(d.getElementById('drillBar').hidden === true, '预习态不挂抽练条');
   await beginQuiz();
   ok(d.querySelectorAll('#stage .opt').length === 4, '开始练习后当前题有 4 个选项');
@@ -203,7 +220,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(150);
   ok(d.querySelectorAll('#typeTabs .type-tab').length === 1, '小华只有 1 个题型');
   ok(d.querySelector('#typeTabs .type-tab').textContent === '看拼音写字', '题型名正确：' + d.querySelector('#typeTabs .type-tab').textContent);
-  ok(!!d.querySelector('#stage .pre-wrap'), '换学生也先出字卡');
+  ok(!!d.querySelector('#stage .home-wrap'), '换学生也先出我的主页（v24）');
   await beginQuiz();
   ok(!!d.querySelector('#stage .big-pinyin'), '显示拼音大字');
   click(d.getElementById('btnBackPick'));
@@ -498,6 +515,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click(d.getElementById('btnProfDrill'));
   await wait(500);
   ok(d.getElementById('scrPlay').hidden === false, '点「只练这几个字」直接进练习页');
+  ok(!!d.querySelector('#stage .home-wrap'), '抽练也先进我的主页（v24）');
+  d.getElementById('homeGo').click();
+  await wait(150);
   /* v18：抽练也先出字卡，但只有抽到的那几个字；抽练条等开题后才亮 */
   ok(d.querySelectorAll('#stage .pre-card').length === 4,
     '抽练 4 个字 → 4 张字卡：' + d.querySelectorAll('#stage .pre-card').length);
@@ -861,7 +881,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   w.enterStudent('字卡生');
   await wait(180);
-  ok(!!d.querySelector('#stage .pre-wrap'), '进学生先出今日字卡');
+  ok(!!d.querySelector('#stage .home-wrap'), 'v24 进学生先出我的主页');
+  ok(d.querySelectorAll('#stage .home-chip').length === 8, '主页列出今天要练的 8 个字');
+  ok(!!d.getElementById('homeGo'), '主页有「开始今天的学习」大按钮');
+  d.getElementById('homeGo').click();
+  await wait(150);
+  ok(!!d.querySelector('#stage .pre-wrap'), '点大按钮才进今日字卡');
   ok(d.querySelectorAll('#stage .opt').length === 0, '预习阶段不出题目（不越过这一步）');
   const v18_cards = Array.from(d.querySelectorAll('#stage .pre-card'));
   ok(v18_cards.length === 8, '字卡张数 = 每日题量：' + v18_cards.length);
@@ -900,6 +925,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   /* 全读过 → 按钮文案变，给个「可以走了」的信号 */
   w.enterStudent('字卡生');
   await wait(150);
+  d.getElementById('homeGo').click();
+  await wait(150);
   Array.from(d.querySelectorAll('#stage .pre-card')).forEach(c =>
     c.dispatchEvent(new w.MouseEvent('click', { bubbles: true })));
   await wait(80);
@@ -913,6 +940,25 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(120);
   ok(d.getElementById('stage').textContent.indexOf('还没有字表') >= 0, '空字表给明确提示');
   ok(!d.getElementById('preGo'), '空字表不出开始按钮');
+
+  console.log('\n【23b】我的主页：星星与连续天数（v24）');
+  ok(w.starsOf(0) === 0 && w.starsOf(1) === 1 && w.starsOf(20) === 1 && w.starsOf(40) === 2 && w.starsOf(100) === 5,
+    '星星按掌握率每 20% 一颗、封顶 5 颗；学会第一个字就先给一颗：0/1/20/40/100 → ' +
+    [w.starsOf(0), w.starsOf(1), w.starsOf(20), w.starsOf(40), w.starsOf(100)].join('/'));
+  /* 连续天数：造「今天/昨天/前天」三天连着 + 大前天断档，看它会不会多算 */
+  const v24_stu = { id: 'local_v24', name: '连续生', types: ['听音找字'],
+                    chars: ['山', '水', '火', '木'], groups: [], count: 6, status: '在读', photo: '' };
+  w.STATE.students.push(v24_stu);
+  const v24_day = n => { const t = new Date(); t.setDate(t.getDate() - n); return t.toISOString(); };
+  const v24_log = (ch, n) => {
+    w.STATE.logs['连续生|' + ch] = { id: '', key: '连续生|' + ch, stu: '连续生', ch: ch,
+      n: 4, alone: 4, hinted: 0, wrong: 0, prompts: 0, last: v24_day(n), level: '', dirty: false };
+  };
+  v24_log('山', 0); v24_log('水', 1); v24_log('火', 2); v24_log('木', 4);
+  ok(w.streakOf(v24_stu) === 3, '连续 3 天（大前天断档不算进来）：' + w.streakOf(v24_stu));
+  /* 今天还没练不该把之前的天数清零——那对孩子是最伤的反馈 */
+  delete w.STATE.logs['连续生|山'];
+  ok(w.streakOf(v24_stu) === 2, '今天还没开始练，从昨天往回数、不清零：' + w.streakOf(v24_stu));
 
   console.log('\n【24】在学上限与字表状态机（T-009）');
   /* 字库 700 条只有 561 个不重复字，测试字表必须先按字去重，否则计数会虚高 */
@@ -982,9 +1028,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(!w.actAdd(v19_s, v19_pool[v19_pool.length - 1]), '满员时拒绝加入');
   ok(!w.actAdd(v19_s, v19_out), '已在名单里的不重复加');
 
-  /* 今日字卡 = 在学名单 */
+  /* 今日字卡 = 在学名单（v24 起先过一屏主页） */
   w.enterStudent('老生');
   await wait(180);
+  d.getElementById('homeGo').click();
+  await wait(150);
   const v19_cards = Array.from(d.querySelectorAll('#stage .pre-card')).map(c => c.getAttribute('data-pre'));
   const v19_now = w.stuActive(v19_s);
   ok(v19_cards.length === v19_now.length, '字卡张数 = 在学个数：' + v19_cards.length);

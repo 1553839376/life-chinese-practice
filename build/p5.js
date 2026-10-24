@@ -70,11 +70,10 @@ function enterStudent(name){
   renderPlayHeader();
   renderTypeTabs();
   showScreen('play');
-  /* v18：进来先看今天的字卡，一张一张读过再做题（用户要求放在所有个人练习之前）。
-     题型标签仍然可以点，点一下就跳过预习直接开题，老师赶时间时不必走这一步。 */
+  /* v24：先进「我的主页」——看清楚自己学到哪了、今天要练哪几个，再决定开始。
+     以前直接甩一张字卡，孩子不知道自己在整个字表里的位置。 */
   syncActive(found);          /* 在学名单先摆正：已达标的退出、从待学补位 */
-  preReset(found.name);
-  renderPreStudy();
+  renderStuHome();
 }
 function leaveStudent(clearScreen){
   STATE.cur = null; STATE.quiz = null; STATE.curType = '';
@@ -134,7 +133,12 @@ function preReset(name){
 function preMode(on){
   var play = $('scrPlay');
   if (!play || !play.classList) return;
-  if (on) play.classList.add('is-pre'); else play.classList.remove('is-pre');
+  if (on) play.classList.add('is-pre');
+  else {
+    play.classList.remove('is-pre');
+    /* 开题后就不在主页了，把主页的隐藏规则一起撤掉 */
+    play.classList.remove('is-home');
+  }
 }
 /* 组词栏可能是「大人、太阳」，取第一个当卡片上的示例词 */
 function firstWordOf(c){
@@ -162,6 +166,139 @@ function preReadN(){
   for (i = 0; i < PRE.list.length; i++){ if (PRE.read[PRE.list[i].w]) n++; }
   return n;
 }
+
+/* ------------------------- 我的主页（v24，T-014 第 2 期） -------------------------
+   用户 2026-10-23：「学生端应该有自己的界面，看到自己的进度…然后才是按钮开启今日学习」。
+   以前点照片直接甩一张字卡，孩子不知道「我学到哪了」，也没有「今天要做什么」的总览。
+   这里只做一屏：我是谁 / 学到哪了 / 今天练什么 / 一个大按钮。
+   数据全部来自 stuProfile 与 todayChars，不另算一套（另算必然和练习页分叉）。 */
+var STU_HOME = { name: '', list: [] };
+
+/* 本地日期键（YYYY-MM-DD）。记录里的 last 是 toISOString 的 UTC 串，
+   必须先 Date.parse 再按本地时区取日，否则早上 8 点前练的会算到前一天。 */
+function dayKey(d){
+  var m = d.getMonth() + 1, dd = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+}
+/* 连续天数：把学生所有字最近练习的日期去重，从今天往回数。
+   今天还没练也从昨天开始数——「今天还没开始」不该把昨天以前的连续记录清零，
+   那对孩子是最伤的一种反馈。 */
+function streakOf(stu){
+  var set = {}, i, w, r, chars, cur, n = 0, guard = 0, t;
+  if (!stu) return 0;
+  chars = isArr(stu.chars) ? stu.chars : expandGroups(stu.groups || []);
+  for (i = 0; i < chars.length; i++){
+    w = chars[i];
+    if (!w) continue;
+    r = STATE.logs[logKey(stu.name, w)];
+    if (!r || !r.last) continue;
+    t = Date.parse(r.last);
+    if (!t) continue;
+    set[dayKey(new Date(t))] = 1;
+  }
+  cur = new Date();
+  if (!set[dayKey(cur)]) cur.setDate(cur.getDate() - 1);
+  while (set[dayKey(cur)] && guard < 400){
+    n++; guard++;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return n;
+}
+/* 星星按掌握率分档，每 20% 一颗，最多 5 颗。
+   方案原稿写的是「每掌握 5 个字一颗」，但字表只有 12 个字的孩子永远拿不到 5 颗星
+   （要 25 个字才够）——在特需班里这等于挂了一个够不着的目标。改成按比例，
+   不管字表大小都看得见「再会几个就多一颗」。 */
+function starsOf(rate){
+  var n = Math.floor((rate || 0) / 20);
+  /* 学会第一个字就给一颗：0 变成 1 的这一刻，比 19% 到 20% 那一刻更重要。
+     一个刚认下 2 个字的孩子看到五颗全灰，只会觉得「我什么都没做到」。 */
+  if (rate > 0 && n < 1) n = 1;
+  return Math.max(0, Math.min(5, n));
+}
+function homeFootRefresh(){
+  var go = $('homeGo');
+  if (!go) return;
+  var hasType = !!STATE.curType, hasChars = !!(STU_HOME.list && STU_HOME.list.length);
+  go.disabled = !hasType || !hasChars;
+  go.className = 'home-go' + (go.disabled ? ' off' : '');
+  go.textContent = !hasChars ? '还没有要练的字'
+    : (!hasType ? '还没排练习题型' : '开始今天的学习');
+}
+function renderStuHome(){
+  var stu = STATE.cur, stage = $('stage');
+  if (!stu || !stage) return;
+  var p = stuProfile(stu), list = todayChars(stu), stars = starsOf(p.rate), dy = streakOf(stu);
+  var lv = {}, chips = '', i, c, m, cls, starHTML = '';
+  STU_HOME.name = stu.name;
+  STU_HOME.list = list;
+  /* 换人才重置字卡的勾选；同一个人从主页进出不该把「读过了」清掉 */
+  if (PRE.name !== stu.name) preReset(stu.name);
+  PRE.list = list;
+  preMode(true);
+  var play = $('scrPlay');
+  if (play && play.classList) play.classList.add('is-home');
+  renderDrillBar(null);
+  $('qNow').textContent = '主页';
+  $('qTotal').textContent = String(p.total);
+
+  for (i = 0; i < p.items.length; i++) lv[p.items[i].w] = p.items[i].lv;
+  for (i = 0; i < list.length; i++){
+    c = list[i];
+    m = lv[c.w] || '待学';
+    cls = m === '已掌握' ? 'm' : (m === '练习中' ? 'd' : (m === '需巩固' ? 't' : 'o'));
+    chips += '<span class="home-chip ' + cls + '">' + esc(c.w) +
+      (c.p ? '<i>' + esc(c.p) + '</i>' : '') + CLOSE('span');
+  }
+  for (i = 0; i < 5; i++){
+    starHTML += '<span class="home-star' + (i < stars ? ' on' : '') + '">★' + CLOSE('span');
+  }
+
+  if (!p.total){
+    setHTML(stage, '<div class="empty-tip">这位同学还没有字表，所以今天没有要练的字。' +
+      '请老师点右上角「老师」（长按约 1 秒）进去，在 ' + esc(stu.name) + ' 的「学哪些字」里选几个。</div>');
+    return;
+  }
+
+  setHTML(stage,
+    '<div class="home-wrap">' +
+      '<div class="home-hero">' +
+        '<div class="home-who">' +
+          avatarHTML(stu, 'home-av') +
+          '<div class="home-nm">' +
+            '<h2>' + esc(stu.name) + CLOSE('h2') +
+            '<p class="home-hi">' + (dy ? '今天也来练一会儿吧' : '先来认认今天这几个字') + CLOSE('p') +
+          CLOSE('div') +
+        CLOSE('div') +
+        ringHTML(p.rate) +
+      CLOSE('div') +
+      '<div class="home-stats">' +
+        '<div class="hs m"><b>' + p.mastered + '</b><span>已学会</span>' + CLOSE('div') +
+        '<div class="hs o"><b>' + p.standby + '</b><span>还在排队</span>' + CLOSE('div') +
+        '<div class="hs d"><b>' + p.act + '</b><span>正在学</span>' + CLOSE('div') +
+      CLOSE('div') +
+      '<div class="home-badges">' +
+        '<span class="home-stars">' + starHTML + CLOSE('span') +
+        (dy ? '<span class="home-streak">连着 ' + dy + ' 天' + CLOSE('span') : '') +
+      CLOSE('div') +
+      '<div class="home-today">' +
+        '<div class="home-today-hd">今天练这 ' + list.length + ' 个' + CLOSE('div') +
+        (chips ? '<div class="home-chips">' + chips + CLOSE('div')
+               : '<p class="home-note">这一刻没有排进「在学」的字，请老师看一下字表。</p>') +
+        '<p class="home-note">每学会 20% 多亮一颗星</p>' +
+      CLOSE('div') +
+      '<div class="home-foot">' +
+        '<button type="button" class="home-go" id="homeGo">开始今天的学习</button>' +
+      CLOSE('div') +
+    CLOSE('div'));
+  homeFootRefresh();
+}
+/* 主页 → 今日字卡。主页只负责「看清楚」，认字还是要在字卡上一张张过。 */
+function homeGo(){
+  if (!STATE.cur) return;
+  if (!STU_HOME.list || !STU_HOME.list.length){ toast('还没有要练的字，请老师先选字表'); return; }
+  if (!STATE.curType){ toast('请老师先给这位同学勾选练习题型'); return; }
+  renderPreStudy();
+}
 /* 底部按钮文案：没排题型就明说，别让学生点了没反应 */
 function preFootRefresh(){
   var go = $('preGo');
@@ -184,6 +321,8 @@ function renderPreStudy(){
   var list = todayChars(stu), i, c, m, cls, cards = '', prof, lv = {}, masters = 0;
   PRE.list = list;
   preMode(true);
+  var play = $('scrPlay');
+  if (play && play.classList) play.classList.remove('is-home');
   renderDrillBar(null);   /* 抽练条属于答题态，预习阶段先收起来 */
   $('qNow').textContent = '预习';
   $('qTotal').textContent = String(list.length);
@@ -222,6 +361,7 @@ function renderPreStudy(){
       '<div class="pre-grid">' + cards + CLOSE('div') +
       '<div class="pre-foot">' +
         '<p class="pre-tip" id="preTip"></p>' +
+        '<button type="button" class="pre-back" id="preBack">返回主页</button>' +
         '<button type="button" class="pre-go" id="preGo">开始练习</button>' +
       CLOSE('div') +
     CLOSE('div'));

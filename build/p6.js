@@ -1195,6 +1195,12 @@ function wireEvents(){
     var el = ev.target;
     /* 今日字卡：点卡片读这个字；点大按钮开始做题。
        必须排在 .opt 分支之前——预习态 STATE.quiz 是 null，走 .opt 分支会读 answered 报错 */
+    /* v24 我的主页：大按钮进字卡；字卡页的「返回主页」退回上一屏。
+       这两个也必须排在 .opt 之前——这两屏里 STATE.quiz 还是 null */
+    var hgo = el.closest ? el.closest('#homeGo') : null;
+    if (hgo){ homeGo(); return; }
+    var pbk = el.closest ? el.closest('#preBack') : null;
+    if (pbk){ renderStuHome(); return; }
     var pcard = el.closest ? el.closest('[data-pre]') : null;
     if (pcard){ preSay(pcard.getAttribute('data-pre')); return; }
     var pgo = el.closest ? el.closest('#preGo') : null;

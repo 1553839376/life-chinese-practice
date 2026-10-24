@@ -106,6 +106,65 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
    留下「换下一个同学」一个操作，标签也别孤零零挂着 */
 .is-pre #btnHint,.is-pre #btnSkip,.is-pre #btnRight,.is-pre .help-label{display:none}
 .is-pre .help-bar{justify-content:flex-end}
+
+/* ---------- 我的主页（v24，T-014 第 2 期） ----------
+   用户 2026-10-23：「学生端应该有自己的界面，看到自己的进度…然后才是按钮开启今日学习」。
+   一屏只讲四件事：我是谁 / 学到哪了 / 今天练什么 / 一个大按钮。
+   刻意不做：排行榜、虚拟货币、多页签——跨学生比较对这些孩子没好处，选项越多越分心。 */
+.home-wrap{display:flex;flex-direction:column;gap:18px}
+.home-hero{display:flex;align-items:center;gap:22px;
+  background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:20px 24px}
+.home-who{display:flex;align-items:center;gap:14px;min-width:0;flex:1}
+.home-av{width:64px;height:64px;border-radius:50%;flex:none;display:flex;
+  align-items:center;justify-content:center;background:var(--green-bg);
+  border:2px solid var(--green-line);color:var(--green);font-size:26px;font-weight:800;overflow:hidden}
+.home-av img{width:100%;height:100%;object-fit:cover}
+.home-nm{min-width:0}
+.home-nm h2{margin:0;font-size:24px;font-weight:800;line-height:1.2}
+.home-hi{margin:3px 0 0;font-size:13px;font-weight:700;color:var(--ink3)}
+/* 圆环沿用进度页那一套（ringHTML），主页面这里小一号，和头像同一行 */
+.home-hero .ring-wrap,.home-hero .ring{width:112px;height:112px}
+.home-hero .ring-txt b{font-size:28px}
+.home-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.home-stats .hs{background:var(--card);border:1.5px solid var(--line);border-radius:16px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.home-stats .hs b{font-size:26px;font-weight:800;line-height:1.1}
+.home-stats .hs span{font-size:11.5px;font-weight:800;color:var(--ink3)}
+.home-stats .hs.m b{color:var(--green)}
+.home-stats .hs.o b{color:var(--ink3)}
+.home-stats .hs.d b{color:var(--blue)}
+.home-badges{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.home-stars{display:inline-flex;gap:3px}
+.home-star{font-size:21px;line-height:1;color:#DCD5C4}
+.home-star.on{color:#E0A82E}
+.home-streak{font-size:12.5px;font-weight:800;color:var(--amber);
+  background:var(--amber-bg);border-radius:999px;padding:4px 12px}
+.home-today{background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:18px 20px}
+.home-today-hd{font-size:15px;font-weight:800;margin-bottom:12px}
+.home-chips{display:flex;flex-wrap:wrap;gap:9px}
+.home-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:60px;padding:8px 10px;border-radius:14px;border:2px solid var(--line);
+  background:#fff;font-size:30px;font-weight:700;line-height:1.1}
+.home-chip i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--blue);margin-top:1px}
+.home-chip.m{border-color:var(--green-line);background:var(--green-bg);color:var(--green)}
+.home-chip.d{border-color:var(--blue-line);background:var(--blue-bg);color:var(--blue)}
+.home-chip.t{border-color:var(--red-line);background:var(--red-bg);color:var(--red)}
+.home-chip.o{color:var(--ink2)}
+.home-note{margin:12px 0 0;font-size:11.5px;font-weight:700;color:var(--ink3)}
+.home-foot{display:flex}
+.home-go{width:100%;min-height:70px;border:none;border-radius:22px;background:var(--green);
+  color:#fff;font-family:inherit;font-size:23px;font-weight:800;letter-spacing:.02em;cursor:pointer}
+.home-go:active{transform:scale(.98)}
+.home-go.off{background:#CFC7B4}
+/* 右上角那个「1 / 8」是题号，主页上显示成「主页 / 24」只会被误读成页码，直接藏 */
+.is-home .qcount{display:none}
+/* 字卡页多一个「返回主页」：主页 ↔ 字卡要能一层层退，不能一下跳回选人页 */
+.pre-foot .pre-tip{flex:1 1 auto}
+.pre-foot .pre-go{margin-left:0}
+.pre-back{min-height:52px;padding:0 24px;border:1.5px solid var(--line2);
+  border-radius:16px;background:#fff;color:var(--ink2);font-family:inherit;
+  font-size:15px;font-weight:800;cursor:pointer}
+.pre-back:active{transform:scale(.97)}
 .q-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
 .q-ask{font-size:19px;font-weight:700;color:var(--ink2)}
 .q-progress{margin-left:auto;font-size:15px;color:var(--ink3)}
@@ -912,6 +971,17 @@ tr.tr-builtin td{background:#FBFAF3}
 
 @media (max-width:640px){
   .screen{padding:14px 12px 22px}
+  /* 我的主页窄屏：头像和圆环都要收，不然一行塞不下会挤成两行 */
+  .home-hero{gap:14px;padding:16px}
+  .home-hero .ring-wrap,.home-hero .ring{width:96px;height:96px}
+  .home-hero .ring-txt b{font-size:24px}
+  .home-av{width:54px;height:54px;font-size:22px}
+  .home-nm h2{font-size:21px}
+  .home-stats{gap:8px}
+  .home-stats .hs{padding:10px}
+  .home-stats .hs b{font-size:22px}
+  .home-go{min-height:62px;font-size:20px}
+  .pre-foot .pre-back{width:100%;margin-left:0}
   .opts,.opts.four{grid-template-columns:1fr}
   .stu-grid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr))}
   /* 今日字卡窄屏：两列、字略小，开始按钮整行（单手好按） */

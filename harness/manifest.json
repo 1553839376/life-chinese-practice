@@ -117,6 +117,10 @@
    "wbCheck",
    "wbLogWord",
    "wbHint",
+   "streakOf",
+   "starsOf",
+   "renderStuHome",
+   "homeGo",
    "renderPreStudy",
    "todayChars",
    "preSay",
@@ -208,7 +212,7 @@
    "name": "e2e_av",
    "script": "e2e_av.js",
    "args": [],
-   "min_cases": 95
+   "min_cases": 98
   },
   {
    "name": "smoke2",
@@ -216,7 +220,7 @@
    "args": [
     "生活语文练习台.html"
    ],
-   "min_cases": 266
+   "min_cases": 281
   },
   {
    "name": "check_pair",

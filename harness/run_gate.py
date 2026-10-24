@@ -325,11 +325,12 @@ def gate_static(html):
         '.prog-note' in html and 'progScope' not in html)
 
     # v18 今日字卡护栏：用户要求「点进学生先看今天的字卡，每个读一下，再去做练习」。
-    # 钉三件事：不许绕过预习、字单与出题必须同一批、预习不许污染学习记录。
+    # v24 起前面多了一屏「我的主页」（T-014 第 2 期），所以判的是 renderStuHome；
+    # 仍然钉住「不许绕过认字环节直接开题」这件事。
     entbody = html.split('function enterStudent')[1].split('function leaveStudent')[0] \
         if 'function enterStudent' in html else ''
-    rec('G1', '点学生先出今日字卡（enterStudent 体内调 renderPreStudy，不直接 startQuiz）',
-        'renderPreStudy(' in entbody and 'startQuiz(' not in entbody,
+    rec('G1', '点学生先出我的主页（enterStudent 体内调 renderStuHome，不直接 startQuiz）',
+        'renderStuHome(' in entbody and 'startQuiz(' not in entbody,
         '' if entbody else '找不到 enterStudent')
     tcbody = html.split('function todayChars')[1].split('function preReadN')[0] \
         if 'function todayChars' in html else ''
@@ -364,6 +365,35 @@ def gate_static(html):
         all(k in html for k in ['.pre-wrap', '.pre-card', '.pre-char', 'id="preGo"']))
     rec('G1', '预习态藏起老师辅助，开题后放回（.is-pre 规则 + preMode 两处调用）',
         '.is-pre #btnHint' in html and 'preMode(true)' in html and 'preMode(false)' in html)
+
+    # v24 我的主页（T-014 第 2 期）：用户原话「学生端应该有自己的界面，看到自己的进度…
+    # 然后才是按钮开启今日学习」。钉的是「先看清再开练」这条顺序，以及几个数字的口径。
+    hmbody = html.split('function renderStuHome')[1].split('function homeGo')[0] \
+        if 'function renderStuHome' in html else ''
+    rec('G1', '我的主页用掌握率圆环 + 今日字（renderStuHome 体内有 ringHTML( 与 todayChars(）',
+        'ringHTML(' in hmbody and 'todayChars(' in hmbody and 'stuProfile(' in hmbody,
+        '' if hmbody else '找不到 renderStuHome')
+    hgbody = html.split('function homeGo')[1].split('function preFootRefresh')[0] \
+        if 'function homeGo' in html else ''
+    rec('G1', '主页大按钮进字卡不走捷径（homeGo 体内调 renderPreStudy，不直接 startQuiz）',
+        'renderPreStudy(' in hgbody and 'startQuiz(' not in hgbody,
+        '' if hgbody else '找不到 homeGo')
+    stbody = html.split('function streakOf')[1].split('function starsOf')[0] \
+        if 'function streakOf' in html else ''
+    rec('G1', '连续天数从练习记录算，且按本地日取整（streakOf 读 STATE.logs + dayKey(）',
+        'STATE.logs' in stbody and 'Date.parse' in stbody and 'dayKey(' in stbody,
+        '' if stbody else '找不到 streakOf')
+    ssbody = html.split('function starsOf')[1].split('function homeFootRefresh')[0] \
+        if 'function starsOf' in html else ''
+    rec('G1', '星星按掌握率分档（starsOf 按 /20 折算，字表只有十几个字也够得着）',
+        '/ 20' in ssbody and 'Math.min(5' in ssbody,
+        '' if ssbody else '找不到 starsOf')
+    rec('G1', '主页面结构齐全（.home-wrap/.home-hero/.home-chips/#homeGo/星星）',
+        all(k in html for k in ['.home-wrap', '.home-hero', '.home-chips',
+                                'id="homeGo"', '.home-star']))
+    rec('G1', '字卡能退回主页（#preBack 在，且点击绑定 renderStuHome）',
+        'id="preBack"' in html and "closest('#preBack')" in html
+        and 'pbk){ renderStuHome();' in html)
 
     # v22 答错可重试（T-014 第 1 期）：用户原话「点错了就没办法再试，而是要点下一题」。
     # 钉四件事：点错不判死、一题最多记 1 次错、只灰一个不锁整题、错误音不再比正确音轻。
