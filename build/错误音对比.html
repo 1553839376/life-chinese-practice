@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>错误音试听对比 · 生活语文练习台</title>
+<style>
+  :root{
+    --ink:#1f2430; --ink2:#5b6472; --ink3:#8b93a1;
+    --line:#e3e0d8; --bg:#faf7f0; --card:#fff;
+    --ok:#2f855a; --no:#b5423a; --hi:#e8a33d;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 60px; background:var(--bg); color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 6px}
+  .sub{color:var(--ink2);font-size:14px;margin:0 0 22px}
+  .ref{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 18px;margin-bottom:22px;
+  }
+  .ref b{font-size:15px}
+  .ref span{color:var(--ink3);font-size:13px}
+  button{
+    font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);padding:12px 20px;min-height:48px;
+    transition:transform .12s,box-shadow .12s,border-color .12s;
+  }
+  button:active{transform:scale(.97)}
+  button:hover{border-color:#c9c3b4;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .btn-ok{border-color:#bfe0cc;background:#f2faf5;color:var(--ok);font-weight:600}
+  .btn-no{border-color:#efc9c5;background:#fdf4f3;color:var(--no);font-weight:600}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .card.rec{border-color:#e8c98d;box-shadow:0 0 0 3px #fdf6e7}
+  .hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .tag{
+    display:inline-block;min-width:26px;text-align:center;font-weight:700;font-size:14px;
+    background:#f0ede4;color:var(--ink2);border-radius:7px;padding:1px 7px;
+  }
+  .card.rec .tag{background:var(--hi);color:#fff}
+  .name{font-size:17px;font-weight:700}
+  .badge{font-size:11.5px;color:#8a6a1f;background:#fbf1da;border-radius:20px;padding:1px 9px}
+  .desc{color:var(--ink2);font-size:13.5px;margin:2px 0 12px}
+  .desc em{font-style:normal;color:var(--ink);font-weight:600}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .foot{color:var(--ink3);font-size:13px;line-height:1.9;margin-top:26px;
+        border-top:1px solid var(--line);padding-top:16px}
+  .foot b{color:var(--ink2)}
+  @media (max-width:520px){
+    body{padding:18px 14px 44px}
+    .row button{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>错误音试听对比</h1>
+  <p class="sub">先听一遍「答对音」记住位置，再逐个听错误音。每个都点两三次——第一次的耳朵最准。</p>
+
+  <div class="ref">
+    <b>先听答对音</b>
+    <span>明亮上行「叮 — 咚」，四个音往上走</span>
+    <button class="btn-ok" data-play="ok">▶ 播放答对音</button>
+  </div>
+
+  <div class="card rec">
+    <div class="hd"><span class="tag">A</span><span class="name">方波嗡嗡，两级下滑</span>
+      <span class="badge">已装进产品（v23）</span></div>
+    <p class="desc">两只方波差一点音高同时响，出「嗡嗡」的颗粒感，<em>233 → 175 → 131 Hz</em> 一路往下掉，最后补一口 147 Hz 闷响。总长 0.62 秒。<br>
+      和答对音在三个维度同时拉开：更响、更低、更粗糙——不用听旋律也能分出对错。</p>
+    <div class="row">
+      <button class="btn-no" data-play="A">▶ 播放</button>
+      <button data-play="A" data-twice="1">▶ 连拨两次（听重复时烦不烦）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="tag">B</span><span class="name">圆润两短一沉</span>
+      <span class="badge">v22 旧版，你说不明显的就是它</span></div>
+    <p class="desc">triangle 波 A♭4→F4、C♯4→B♭3 两短下行，末尾一记 <em>98 Hz</em> 的「咚」。
+      音色圆润、旋律只是往下走——听起来更像「叹气」。而 98 Hz 在平板外放上基本没有声压，这一层等于没响。</p>
+    <div class="row">
+      <button class="btn-no" data-play="B">▶ 播放</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="tag">C</span><span class="name">长鸣蜂鸣器</span>
+      <span class="badge">最冲的选项</span></div>
+    <p class="desc">204 Hz 双路方波持续 <em>0.7 秒</em>不衰减，末尾才滑下来。像答题节目的「错误」提示音，辨识度最高；
+      但也最「扎」，同一个孩子连错三次可能会嫌吵。</p>
+    <div class="row">
+      <button class="btn-no" data-play="C">▶ 播放</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="tag">D</span><span class="name">木琴三连下行</span>
+      <span class="badge">最柔和的选项</span></div>
+    <p class="desc">C5 → A4 → F4 三颗短促的 triangle 音，像敲三下木琴。<em>干净、不刺耳</em>，
+      走向明确向下所以不会和答对音混；但如果教室吵，可能又回到「听不清」的老问题。</p>
+    <div class="row">
+      <button class="btn-no" data-play="D">▶ 播放</button>
+    </div>
+  </div>
+
+  <p class="foot">
+    <b>怎么选</b>：直接回我一个字母就行（例：<b>「要 C」</b>）。A 已经在产品里了，不改也是 A。<br>
+    <b>这些音都是实时合成的</b>，不是录音文件——所以在这台电脑上听到的，和以后在平板上听到的是同一套算法。
+    但<b>外放的差别是真的</b>：如果你手边有上课用的那台平板，用它外放听一遍最准。
+  </p>
+</div>
+
+<script>
+(function(){
+  var ctx = null;
+  function ac(){
+    if (!ctx){
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ctx = new C();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  var MASTER = null;
+  function master(){
+    if (!MASTER){ MASTER = ctx.createGain(); MASTER.gain.value = 1; MASTER.connect(ctx.destination); }
+    return MASTER;
+  }
+
+  function tone(c, freq, at, dur, vol, type, bendTo){
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'triangle';
+    o.frequency.setValueAtTime(freq, at);
+    if (bendTo) o.frequency.exponentialRampToValueAtTime(bendTo, at + dur);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + Math.min(0.014, dur * 0.25));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g); g.connect(master());
+    o.start(at); o.stop(at + dur + 0.03);
+  }
+  function buzz(c, freq, at, dur, vol, beatHz, bendTo){
+    var o1 = c.createOscillator(), o2 = c.createOscillator();
+    var g1 = c.createGain(), g2 = c.createGain();
+    var ramp = Math.min(0.012, dur * 0.3);
+    o1.type = 'square'; o2.type = 'square';
+    o1.frequency.setValueAtTime(freq, at);
+    o2.frequency.setValueAtTime(freq + beatHz, at);
+    if (bendTo){
+      o1.frequency.exponentialRampToValueAtTime(bendTo, at + dur);
+      o2.frequency.exponentialRampToValueAtTime(bendTo + beatHz * 0.6, at + dur);
+    }
+    g1.gain.setValueAtTime(0.0001, at);
+    g1.gain.exponentialRampToValueAtTime(vol, at + ramp);
+    g1.gain.setValueAtTime(vol, at + dur * 0.72);
+    g1.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    g2.gain.setValueAtTime(0.0001, at);
+    g2.gain.exponentialRampToValueAtTime(vol * 0.38, at + ramp);
+    g2.gain.setValueAtTime(vol * 0.38, at + dur * 0.72);
+    g2.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o1.connect(g1); g1.connect(master());
+    o2.connect(g2); g2.connect(master());
+    o1.start(at); o1.stop(at + dur + 0.03);
+    o2.start(at); o2.stop(at + dur + 0.03);
+  }
+
+  var PLAY = {
+    /* 答对音：产品里的 sfxOk，一字不改 */
+    ok: function(c, t){
+      tone(c, 659.25, t, 0.20, 0.26, 'triangle');
+      tone(c, 830.61, t + 0.055, 0.20, 0.24, 'triangle');
+      tone(c, 987.77, t + 0.11, 0.24, 0.21, 'triangle');
+      tone(c, 1318.51, t + 0.17, 0.32, 0.18, 'sine');
+    },
+    /* A = v23 线上版本 */
+    A: function(c, t){
+      buzz(c, 233.08, t, 0.26, 0.32, 12, 174.61);
+      buzz(c, 174.61, t + 0.24, 0.26, 0.30, 10, 130.81);
+      tone(c, 146.83, t + 0.46, 0.16, 0.30, 'triangle', 110.00);
+    },
+    /* B = v22 旧版 */
+    B: function(c, t){
+      tone(c, 415.30, t, 0.14, 0.32, 'triangle', 349.23);
+      tone(c, 277.18, t + 0.13, 0.20, 0.30, 'triangle', 233.08);
+      tone(c, 98.00, t + 0.30, 0.26, 0.26, 'sine', 82.41);
+    },
+    /* C = 长鸣蜂鸣器 */
+    C: function(c, t){
+      buzz(c, 204.00, t, 0.42, 0.34, 12);
+      buzz(c, 204.00, t + 0.40, 0.28, 0.32, 11, 138.59);
+    },
+    /* D = 木琴三连下行 */
+    D: function(c, t){
+      tone(c, 523.25, t, 0.16, 0.34, 'triangle');
+      tone(c, 440.00, t + 0.14, 0.18, 0.34, 'triangle');
+      tone(c, 349.23, t + 0.28, 0.30, 0.34, 'triangle');
+    }
+  };
+
+  function play(name, twice){
+    var c = ac();
+    if (!c) return;
+    master();
+    var t = c.currentTime + 0.03;
+    PLAY[name](c, t);
+    if (twice) PLAY[name](c, t + 0.70);
+  }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-play]');
+    if (!b) return;
+    e.preventDefault();
+    play(b.getAttribute('data-play'), !!b.getAttribute('data-twice'));
+    b.style.transform = 'scale(.96)';
+    setTimeout(function(){ b.style.transform = ''; }, 130);
+  });
+})();
+</script>
+</body>
+</html>

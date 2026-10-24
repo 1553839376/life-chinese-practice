@@ -385,9 +385,21 @@ def gate_static(html):
         if 'function sfxNo' in html else ''
     _vols = [float(x) for x in re.findall(
         r"synthTone\(ctx,\s*[\d.]+,\s*[^,]+,\s*[\d.]+,\s*(0\.\d+)", sfbody)]
-    rec('G1', '错误音不比正确音轻（三音以上且每个 vol ≥ 0.26）',
+    # v23 起错误音的主干改用 synthBuzz（双路差频方波打拍）。规则跟着设计改：
+    # 两种发声器都要数，否则只数 synthTone 会把真正发声的那两层漏掉（v23 就被这儿挡住过一次）。
+    # synthBuzz 的签名是 (ctx, freq, at, dur, vol, beatHz, bendTo)，vol 仍在第 5 位。
+    _vols += [float(x) for x in re.findall(
+        r"synthBuzz\(ctx,\s*[\d.]+,\s*[^,]+,\s*[\d.]+,\s*(0\.\d+)", sfbody)]
+    rec('G1', '错误音不比正确音轻（三层以上且每层 vol ≥ 0.26）',
         len(_vols) >= 3 and min(_vols) >= 0.26,
-        ('sfxNo 音量实测 %s' % _vols) if sfbody else '找不到 sfxNo')
+        ('sfxNo 各层音量实测 %s' % _vols) if sfbody else '找不到 sfxNo')
+    # v23：错误音必须「扎」得出去。方波泛音一直排到高频，手机/平板外放才放得出来；
+    # v22 用 triangle + 98 Hz「咚」，老师两次反馈「不明显」——低频那层在小喇叭上没有声压。
+    _buzzbody = html.split('function synthBuzz')[1][:1400] \
+        if 'function synthBuzz' in html else ''
+    rec('G1', '错误音用方波打拍（synthBuzz 里有 square + 两路差频，别退回圆润的 triangle）',
+        "'square'" in _buzzbody and 'freq + (beatHz' in _buzzbody and 'synthBuzz(ctx' in sfbody,
+        '' if _buzzbody else '找不到 synthBuzz')
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

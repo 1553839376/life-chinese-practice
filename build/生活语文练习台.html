@@ -1100,7 +1100,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v22</span>
+    <span id="appVer" class="app-ver">v23</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -2334,7 +2334,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v22';
+var APP_VER = 'v23';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语'];
 var TYPE_DESC = {
@@ -4069,6 +4069,38 @@ function synthTone(ctx, freq, at, dur, vol, type, bendTo){
   } catch (e) { return null; }
 }
 
+/* 粗糙音：两只方波差 beatHz 同时响，会互相打拍子，耳朵听到的是「嗡嗡」的颗粒感。
+   方波泛音一直排到高频，手机、平板那种小喇叭也能放得出来；
+   纯 sine/triangle 的低音（v22 那记 98Hz）在小喇叭上基本没有声压，等于白加。
+   vol 是主音增益，伴音固定取 0.38 倍，两路各自过自己的 gain，峰值可控不糊。 */
+function synthBuzz(ctx, freq, at, dur, vol, beatHz, bendTo){
+  try {
+    var o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+    var g1 = ctx.createGain(), g2 = ctx.createGain();
+    var ramp = Math.min(0.012, dur * 0.3);
+    o1.type = 'square'; o2.type = 'square';
+    o1.frequency.setValueAtTime(freq, at);
+    o2.frequency.setValueAtTime(freq + (beatHz || 10), at);
+    if (bendTo){
+      o1.frequency.exponentialRampToValueAtTime(bendTo, at + dur);
+      o2.frequency.exponentialRampToValueAtTime(bendTo + (beatHz || 10) * 0.6, at + dur);
+    }
+    g1.gain.setValueAtTime(0.0001, at);
+    g1.gain.exponentialRampToValueAtTime(vol, at + ramp);
+    g1.gain.setValueAtTime(vol, at + dur * 0.72);
+    g1.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    g2.gain.setValueAtTime(0.0001, at);
+    g2.gain.exponentialRampToValueAtTime(vol * 0.38, at + ramp);
+    g2.gain.setValueAtTime(vol * 0.38, at + dur * 0.72);
+    g2.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o1.connect(g1); g1.connect(VA_SFX_GAIN);
+    o2.connect(g2); g2.connect(VA_SFX_GAIN);
+    o1.start(at); o1.stop(at + dur + 0.03);
+    o2.start(at); o2.stop(at + dur + 0.03);
+    return g1;
+  } catch (e) { return null; }
+}
+
 /* 对了：明亮的「叮—咚」，E5-G#5-B5 大三和弦快速上行，最后一颗 E6 收尾。
    原来的采样音偏低偏闷、尾音还拖，孩子听着像"没答对"。
    现在现场合成：点下去 10ms 内出声，音高明确往上走，一听就知道是"对了"。 */
@@ -4082,19 +4114,24 @@ function sfxOk(){
   synthTone(ctx, 987.77, t + 0.11, 0.24, 0.21, 'triangle');
   synthTone(ctx, 1318.51, t + 0.17, 0.32, 0.18, 'sine');
 }
-/* 错了：两短一沉（A♭4→F4、C♯4→B♭3，末尾 98 Hz「咚」）。
-   旧版是 sine 的 0.20/0.17 —— 比正确音（0.26 起）还轻，方向就是反的；
-   教室后排根本听不见。这次三处一起改（T-016）：
-   ① 音量提到 0.32/0.30/0.26，全部不低于正确音峰值；② sine→triangle，同响度泛音更多更"扎"；
-   ③ 加一个低频短"咚"，和正确音的"明亮上行"在音区和走向上同时拉开，闭着眼也能分对错。 */
+/* 错了：两级下滑的「嗡嗡」，最后收一口闷响。
+   为什么换掉 v22（A♭4→F4、C♯4→B♭3 + 98Hz「咚」）——老师两次反馈「还是不明显」，
+   查下来是两个真原因，不是音量不够大：
+   ① 98Hz 在小喇叭上没有声压。平板/笔记本外放 200Hz 以下掉得厉害，那一记「咚」
+      在教室里几乎等于没响，白占了 0.26 的增益预算；
+   ② triangle 太圆润。下行 + 柔和音色听起来是「叹气」，和正确音的「明亮上行」
+      只是旋律方向相反，闭着眼仍然可能混。
+   现在：方波（泛音多、穿透力强）+ 双路打拍（嗡嗡的粗糙感）+ 两次往下滑（走向明确向下），
+   音区从 233Hz 落到 130Hz，全部落在小喇叭放得出的范围里，收尾再补 147Hz 的短闷响。
+   总长约 0.62s，比 v22（0.56s）略长，给孩子留出「这题不对」的反应时间。 */
 function sfxNo(){
   if (!AV.sfx) return;
   var ctx = vaCtx();
   if (!ctx) return;
   var t = ctx.currentTime + 0.005;
-  synthTone(ctx, 415.30, t, 0.14, 0.32, 'triangle', 349.23);
-  synthTone(ctx, 277.18, t + 0.13, 0.20, 0.30, 'triangle', 233.08);
-  synthTone(ctx, 98.00, t + 0.30, 0.26, 0.26, 'sine', 82.41);
+  synthBuzz(ctx, 233.08, t, 0.26, 0.32, 12, 174.61);
+  synthBuzz(ctx, 174.61, t + 0.24, 0.26, 0.30, 10, 130.81);
+  synthTone(ctx, 146.83, t + 0.46, 0.16, 0.30, 'triangle', 110.00);
 }
 /* 连对：音高随连击往上抬，越玩越顺，比每关都一样的老虎机音更有节奏 */
 function sfxStreak(level){

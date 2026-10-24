@@ -15,6 +15,8 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   const played = [];      /* 每次 vaPlay 的片段：[{k, gap}] */
   const systems = [];     /* 回退到系统语音的记录 */
   const peaks = [];       /* 合成音效的峰值增益，用来守「教室里听得见」 */
+  const oscTypes = [];    /* 振荡器波形，用来守「错误音要用方波才够穿透」 */
+  const freqs = [];       /* 振荡器频率，用来守「别再用小喇叭放不出的低频」 */
   let srcCount = 0;
   let rateSeen = [];
 
@@ -59,12 +61,17 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
         };
         /* 对错音效已改为现场合成（振荡器），这里也要统计，否则会把"响了"当成"没响" */
         this.createOscillator = function(){
-          return {
+          const osc = {
             type: 'sine',
-            frequency: { value: 0, setValueAtTime(){}, exponentialRampToValueAtTime(){} },
+            frequency: {
+              value: 0,
+              setValueAtTime(v){ freqs.push(v); },
+              exponentialRampToValueAtTime(v){ freqs.push(v); }
+            },
             connect(){}, disconnect(){}, stop(){},
-            start(){ srcCount++; }
+            start(){ srcCount++; oscTypes.push(osc.type); }
           };
+          return osc;
         };
         this.createBiquadFilter = function(){
           return {
@@ -245,12 +252,23 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   const okPeak = Math.max.apply(null, peaks.concat([0]));
   ok(okPeak >= 0.2, '正确音效峰值 ' + okPeak + '（不低于 0.2，旧版 0.075 几乎听不见）');
   peaks.length = 0;
+  oscTypes.length = 0;
+  freqs.length = 0;
   w.sfxNo();
   await wait(60);
   const noPeak = Math.max.apply(null, peaks.concat([0]));
   ok(noPeak >= 0.30, '错误音效峰值 ' + noPeak + '（不低于 0.30，v21 及以前只有 0.20/0.17）');
   ok(noPeak >= okPeak, '错误音不比正确音轻（旧版方向反了：错 0.20 < 对 0.26）');
-  ok(peaks.length >= 3, '错误音是「两短一沉」三个音：实测 ' + peaks.length + ' 个');
+  ok(peaks.length >= 3, '错误音是分层下滑（实测 ' + peaks.length + ' 个增益包络）');
+  ok(oscTypes.indexOf('square') >= 0,
+     '错误音用了方波（v22 全是 triangle/sine，圆润得像叹气；v23 起要有粗糙感）：' +
+     oscTypes.join('/'));
+  /* v22 的第三层是 98Hz「咚」——平板/笔记本外放 200Hz 以下掉得厉害，教室里等于没响。
+     这条守住：错误音不许再用小喇叭放不出的低频当主要信息。 */
+  const lo = Math.min.apply(null, freqs.concat([9999]));
+  ok(lo >= 100, '错误音最低 ' + lo + 'Hz（不低于 100Hz，小喇叭才放得出来）');
+  ok(Math.max.apply(null, freqs.concat([0])) >= 200,
+     '错误音主音在 200Hz 以上（泛音顶到中高频，穿透力够）');
   ok(w.VA_SFX_GAIN.gain.value >= 1, '音效总线没被压：' + w.VA_SFX_GAIN.gain.value);
 
   /* ---------- 8. 四款游戏：指令 → 停顿 → 字 ---------- */
