@@ -465,7 +465,8 @@ function startQuiz(type){
       return;
     }
     STATE.quiz = { type: type, qs: wgs, i: 0, right: 0, prompts: 0,
-                   answered: false, promptUsed: 0 };
+                   answered: false, promptUsed: 0,
+                   missed: 0, wrongLogged: false, retried: 0 };
     $('qTotal').textContent = String(wgs.length);
     if (isDrill){
       var wl = [];
@@ -482,7 +483,8 @@ function startQuiz(type){
     return;
   }
   STATE.quiz = { type: type, qs: buildQuestions(pool, total, stu, isFocus ? tp : null),
-                 i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0 };
+                 i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
+                 missed: 0, wrongLogged: false, retried: 0 };
   $('qTotal').textContent = String(STATE.quiz.qs.length);
   if (isDrill){
     var ws = [];
@@ -560,8 +562,7 @@ function renderStage(){
         '<span class="read-tip">先跟着念一遍，再点这个按钮</span>' +
       CLOSE('div');
     setHTML(stage, head + body);
-    STATE.quiz.answered = false;
-    STATE.quiz.promptUsed = 0;
+    resetQState();
     bindStage();
     syncHelpBar();
     /* 题目先显示出来，让孩子看清界面再开口，不要一渲染就念 */
@@ -571,8 +572,7 @@ function renderStage(){
 
   for (i = 0; i < q.opts.length; i++){ opts += optCardHTML(q.opts[i]); }
   setHTML(stage, head + body + '<div class="opts four">' + opts + CLOSE('div'));
-  STATE.quiz.answered = false;
-  STATE.quiz.promptUsed = 0;
+  resetQState();
   bindStage();
   syncHelpBar();
   setTimeout(function(){ readQuestion(); }, PACE.ready * 1000);
@@ -600,8 +600,7 @@ function renderWordBuild(q, head){
     '<div class="wb-slots"><span class="wb-slots-lb">要拼的词</span>' + slots + CLOSE('div') +
     '<div class="wb-tiles">' + tiles + CLOSE('div') +
     '<div class="wb-tip" id="wbTip">点两个字，拼成一个词 · 一共 ' + q.words.length + ' 个词</div>');
-  STATE.quiz.answered = false;
-  STATE.quiz.promptUsed = 0;
+  resetQState();
   bindStage();
   syncHelpBar();
   setTimeout(function(){ readQuestion(); }, PACE.ready * 1000);
@@ -837,25 +836,83 @@ function syncHelpBar(){
 }
 
 /* ------------------------- 作答 ------------------------- */
+/* 每道新题把「这一题自己的状态」清干净。missed / wrongLogged 是 T-016 加的：
+   点错不再判死，所以「这题错了几次」「这次错有没有记进档案」要跟着题目走，
+   不能留到下一题（否则第 2 题错第一次就不记档案了）。 */
+function resetQState(){
+  STATE.quiz.answered = false;
+  STATE.quiz.promptUsed = 0;
+  STATE.quiz.missed = 0;
+  STATE.quiz.wrongLogged = false;
+  STATE.quiz.picked = '';
+}
+function optEl(ch){
+  var all = document.querySelectorAll('#stage .opt'), i;
+  for (i = 0; i < all.length; i++){
+    if (all[i].getAttribute('data-c') === ch) return all[i];
+  }
+  return null;
+}
 function pickOption(ch){
   var q = curQ();
   if (!q || STATE.quiz.answered) return;
   STATE.quiz.picked = ch;
-  gradeAnswer(ch === q.target.w);
+  /* 点错不判死：把它试过的那个变灰，剩下的还能点（T-016）。
+     旧版这里直接 gradeAnswer(false)，一错就锁死，孩子只能点「下一题」。 */
+  if (ch !== q.target.w){ missOption(ch); return; }
+  gradeAnswer(true);
+}
+/* 点错一次：记一次错（一题最多记一次）→ 变灰 + 抖 + 错误音 → 继续等他自己找对的。
+   只有连错 2 次才把正确项亮出来并念一遍：这时「测」已经失败了，目的改成教会他。 */
+function missOption(ch){
+  var q = curQ(), el, r, stu, nth;
+  if (!q || STATE.quiz.answered) return;
+  nth = STATE.quiz.missed = (STATE.quiz.missed || 0) + 1;
+  stu = STATE.cur;
+  if (stu && !STATE.quiz.wrongLogged){
+    /* 宽松口径：一题最多记 1 次错。重试的目的是「给他机会」，不该双重惩罚。
+       n 也在这时 +1 —— 一题「错一次再对」真的练了两次（错一次、对一次），
+       这样 alone + hinted + wrong === n 这条不变量才不会被破坏。 */
+    r = getLog(stu.name, q.target.w);
+    r.n++;
+    r.wrong++;
+    r.prompts += STATE.quiz.promptUsed;
+    r.last = nowISO();
+    r.level = levelOf(r);
+    r.dirty = true;
+    flushLogs();
+    STATE.quiz.wrongLogged = true;
+  }
+  sfxNo();
+  el = optEl(ch);
+  if (el) el.classList.add('miss');
+  toast(nth >= 2 ? '看这个亮的，就是它' : '再试试别的');
+  if (nth === 2){
+    el = optEl(q.target.w);
+    if (el){
+      el.classList.add('glow');
+      setTimeout(function(){ if (el) el.classList.remove('glow'); }, 2600);
+    }
+    /* 等错误音过去再念，两个声音不叠在一起 */
+    setTimeout(function(){
+      if (STATE.quiz && !STATE.quiz.answered) readTarget();
+    }, 460);
+  }
 }
 function gradeAnswer(right){
   var q = curQ();
   if (!q) return;
+  /* 答错不再在这里判死（pickOption 会转给 missOption）。
+     保留这个入口，是为了万一有调用方传 false 也落到同一套「不判死」逻辑上。 */
+  if (!right){ missOption(STATE.quiz.picked || ''); return; }
   STATE.quiz.answered = true;
-  var picked = STATE.quiz.picked || '';
   var stu = STATE.cur, r = getLog(stu.name, q.target.w);
   r.n++;
-  if (right){
-    if (STATE.quiz.promptUsed) r.hinted++; else r.alone++;
-    STATE.quiz.right++;
-  } else {
-    r.wrong++;
-  }
+  if (STATE.quiz.promptUsed) r.hinted++; else r.alone++;
+  /* 试过才答对：本次练习记一笔，结算页报「其中 N 题是试了再答对的」。
+     不落库 —— 云端日志 schema 没有这一列，写进去也会被同步覆盖成 0（比不写更糟）。 */
+  if (STATE.quiz.wrongLogged) STATE.quiz.retried = (STATE.quiz.retried || 0) + 1;
+  STATE.quiz.right++;
   r.prompts += STATE.quiz.promptUsed;
   r.last = nowISO();
   r.level = levelOf(r);
@@ -866,31 +923,19 @@ function gradeAnswer(right){
   for (i = 0; i < all.length; i++){
     el = all[i];
     if (el.getAttribute('data-c') === q.target.w) el.classList.add('right');
-    else if (picked && el.getAttribute('data-c') === picked) el.classList.add('wrong');
   }
-  if (right){
-    sfxOk();
-    /* 先响音效，停一下再开口说「答对了」，两个声音不叠在一起 */
-    setTimeout(function(){
-      if (STATE.quiz && STATE.quiz.answered) say('答对了！');
-    }, PACE.afterOk * 1000);
-  } else { sfxNo(); }
-  var tail = '<div class="feedback ' + (right ? 'ok' : 'no') + '">' +
-    (right ? '答对了！' : '这个是「' + esc(q.target.w) + '」，再听一遍') +
+  sfxOk();
+  /* 先响音效，停一下再开口说「答对了」，两个声音不叠在一起 */
+  setTimeout(function(){
+    if (STATE.quiz && STATE.quiz.answered) say('答对了！');
+  }, PACE.afterOk * 1000);
+  var tail = '<div class="feedback ok">答对了！' +
     '<button type="button" class="help-btn" id="btnGo" style="margin-left:auto">下一题</button>' +
     CLOSE('div');
   var host = document.querySelector('#stage .opts');
   if (host) insertAfter(host, tail); else appendToStage(tail);
   var go = $('btnGo');
   if (go) go.addEventListener('click', nextQuestion);
-  if (!right){
-    /* 等错误音效播完再读正确读音，两个声音不叠在一起 */
-    setTimeout(function(){
-      if (STATE.quiz && STATE.quiz.answered) readTarget();
-    }, 560);
-    syncHelpBar();
-    return;
-  }
   syncHelpBar();
   /* 念完「答对了」再留一拍，别刚说完就翻页 */
   setTimeout(function(){
@@ -953,6 +998,9 @@ function renderSummary(){
     '<div class="big-char" style="font-size:74px">' + rate + '%</div>' +
     '<div class="star-row" style="justify-content:center">' + starHTML + CLOSE('div') +
     '<div class="feedback ok" style="justify-content:center">' + esc(msg) + CLOSE('div') +
+    /* 重试不扣分（结算页是给孩子的激励），但要让老师一眼看出这轮是靠试出来的 */
+    (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
+      z.retried + ' 题是试了再答对的</div>' : '') +
     '<div class="row" style="justify-content:center;margin-top:18px">' +
       '<button type="button" class="primary" id="btnAgain">再来一轮</button>' +
       '<button type="button" class="secondary" id="btnBackTypes">换题型</button>' +

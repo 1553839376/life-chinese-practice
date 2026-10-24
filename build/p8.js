@@ -505,14 +505,19 @@ function sfxOk(){
   synthTone(ctx, 987.77, t + 0.11, 0.24, 0.21, 'triangle');
   synthTone(ctx, 1318.51, t + 0.17, 0.32, 0.18, 'sine');
 }
-/* 错了：两声低而柔的下行（G4→C4），明确但不刺耳，不吓孩子 */
+/* 错了：两短一沉（A♭4→F4、C♯4→B♭3，末尾 98 Hz「咚」）。
+   旧版是 sine 的 0.20/0.17 —— 比正确音（0.26 起）还轻，方向就是反的；
+   教室后排根本听不见。这次三处一起改（T-016）：
+   ① 音量提到 0.32/0.30/0.26，全部不低于正确音峰值；② sine→triangle，同响度泛音更多更"扎"；
+   ③ 加一个低频短"咚"，和正确音的"明亮上行"在音区和走向上同时拉开，闭着眼也能分对错。 */
 function sfxNo(){
   if (!AV.sfx) return;
   var ctx = vaCtx();
   if (!ctx) return;
   var t = ctx.currentTime + 0.005;
-  synthTone(ctx, 392.00, t, 0.13, 0.20, 'sine', 349.23);
-  synthTone(ctx, 261.63, t + 0.12, 0.22, 0.17, 'sine', 233.08);
+  synthTone(ctx, 415.30, t, 0.14, 0.32, 'triangle', 349.23);
+  synthTone(ctx, 277.18, t + 0.13, 0.20, 0.30, 'triangle', 233.08);
+  synthTone(ctx, 98.00, t + 0.30, 0.26, 0.26, 'sine', 82.41);
 }
 /* 连对：音高随连击往上抬，越玩越顺，比每关都一样的老虎机音更有节奏 */
 function sfxStreak(level){

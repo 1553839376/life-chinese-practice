@@ -365,6 +365,30 @@ def gate_static(html):
     rec('G1', '预习态藏起老师辅助，开题后放回（.is-pre 规则 + preMode 两处调用）',
         '.is-pre #btnHint' in html and 'preMode(true)' in html and 'preMode(false)' in html)
 
+    # v22 答错可重试（T-014 第 1 期）：用户原话「点错了就没办法再试，而是要点下一题」。
+    # 钉四件事：点错不判死、一题最多记 1 次错、只灰一个不锁整题、错误音不再比正确音轻。
+    pobody = html.split('function pickOption')[1].split('function gradeAnswer')[0] \
+        if 'function pickOption' in html else ''
+    rec('G1', '点错不判死（pickOption 转给 missOption，不回退到 gradeAnswer(false)）',
+        'missOption(ch)' in pobody and 'gradeAnswer(ch === q.target.w)' not in pobody,
+        '' if pobody else '找不到 pickOption')
+    mobody = html.split('function missOption')[1].split('function gradeAnswer')[0] \
+        if 'function missOption' in html else ''
+    rec('G1', '一题最多记 1 次错（missOption 用 wrongLogged 挡住重复记账）',
+        'wrongLogged' in mobody and 'r.wrong++' in mobody,
+        '' if mobody else '找不到 missOption')
+    _misscss = html.split('.opt.miss')[1][:260] if '.opt.miss' in html else ''
+    rec('G1', '点错只灰一个、题目不结束（.opt.miss 不可点，missOption 不许置 answered）',
+        'pointer-events:none' in _misscss and 'STATE.quiz.answered = true' not in mobody,
+        '' if _misscss else '找不到 .opt.miss 样式')
+    sfbody = html.split('function sfxNo')[1].split('function sfxStreak')[0] \
+        if 'function sfxNo' in html else ''
+    _vols = [float(x) for x in re.findall(
+        r"synthTone\(ctx,\s*[\d.]+,\s*[^,]+,\s*[\d.]+,\s*(0\.\d+)", sfbody)]
+    rec('G1', '错误音不比正确音轻（三音以上且每个 vol ≥ 0.26）',
+        len(_vols) >= 3 and min(_vols) >= 0.26,
+        ('sfxNo 音量实测 %s' % _vols) if sfbody else '找不到 sfxNo')
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

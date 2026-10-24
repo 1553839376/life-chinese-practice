@@ -202,17 +202,26 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   await wait(150);
   ok(played.length === 1, '点读题立刻再读一次');
 
-  /* ---------- 6. 选错：音效 + 稍后重读正确字 ---------- */
+  /* ---------- 6. 选错：音效 + 不判死 + 连错 2 次才念正确字（T-016） ---------- */
   const c0 = srcCount;
   flush();
   const wrong = [...d.querySelectorAll('#stage .opt')].find(el => el.getAttribute('data-c') !== q1.target.w);
   wrong.click();
   await wait(200);
   ok(srcCount > c0, '选错有音效（播了 ' + (srcCount - c0) + ' 段）');
-  ok(d.querySelector('#stage .feedback.no') !== null, '选错有文字反馈');
+  ok(d.querySelector('#stage .feedback.no') === null, '选错不判死：不出「答错了」反馈块');
   ok(!flat().includes('fb_right'), '选错不会说「答对了」');
-  await wait(700);
-  ok(flat().indexOf(w.charKey(q1.target.w)) >= 0, '错完把正确的字再读一遍');
+  ok(wrong.classList.contains('miss'), '选错的那个变灰（.miss）');
+  await wait(600);
+  ok(flat().indexOf(w.charKey(q1.target.w)) < 0, '第一次选错不直接念答案（念了就没得试了）');
+  /* 再错一个 → 这时才念正确字，目的从「测」变成「教会他」 */
+  const wrong2 = [...d.querySelectorAll('#stage .opt')]
+    .filter(el => el.getAttribute('data-c') !== q1.target.w && el !== wrong)[0];
+  wrong2.click();
+  await wait(900);
+  const rightEl1 = [...d.querySelectorAll('#stage .opt')].find(el => el.getAttribute('data-c') === q1.target.w);
+  ok(rightEl1.classList.contains('glow'), '连错 2 次把正确项亮出来');
+  ok(flat().indexOf(w.charKey(q1.target.w)) >= 0, '连错 2 次才念正确的字');
 
   /* ---------- 7. 选对：音效先响，停一下再说「答对了」 ---------- */
   w.nextQuestion();
@@ -239,7 +248,9 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   w.sfxNo();
   await wait(60);
   const noPeak = Math.max.apply(null, peaks.concat([0]));
-  ok(noPeak >= 0.15, '错误音效峰值 ' + noPeak + '（不低于 0.15）');
+  ok(noPeak >= 0.30, '错误音效峰值 ' + noPeak + '（不低于 0.30，v21 及以前只有 0.20/0.17）');
+  ok(noPeak >= okPeak, '错误音不比正确音轻（旧版方向反了：错 0.20 < 对 0.26）');
+  ok(peaks.length >= 3, '错误音是「两短一沉」三个音：实测 ' + peaks.length + ' 个');
   ok(w.VA_SFX_GAIN.gain.value >= 1, '音效总线没被压：' + w.VA_SFX_GAIN.gain.value);
 
   /* ---------- 8. 四款游戏：指令 → 停顿 → 字 ---------- */

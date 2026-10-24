@@ -124,7 +124,10 @@
       "preFootRefresh",
       "firstWordOf",
       "PRE",
-      "preMode"
+      "preMode",
+      "missOption",
+      "optEl",
+      "resetQState"
     ],
     "老师端": [
       "openTeacher",
@@ -204,7 +207,7 @@
       "name": "e2e_av",
       "script": "e2e_av.js",
       "args": [],
-      "min_cases": 87
+      "min_cases": 92
     },
     {
       "name": "smoke2",
@@ -212,7 +215,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 254
+      "min_cases": 266
     },
     {
       "name": "check_pair",

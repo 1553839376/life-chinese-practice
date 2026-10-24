@@ -133,6 +133,10 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .opt.right{border-color:var(--green);background:var(--green-bg);color:var(--green)}
 .opt.wrong{border-color:var(--red);background:var(--red-bg);color:var(--red)}
 .opt.dim{opacity:.35}
+/* 点错的那个：灰掉 + 抖一下 + 不能再点，但题目不结束、其余选项照旧可点（T-016）。
+   汉字要还能看清（孩子得知道自己试过哪个），所以不用游戏里那种 opacity:.34 的淡出。 */
+.opt.miss{border-color:#e2e2e6;border-style:dashed;background:#f4f4f6;color:#bdbdc3;
+  animation:shake .4s ease;pointer-events:none}
 /* ---------- 拼词语：上面是待填的词位，下面是散乱的字块 ---------- */
 .wb-slots{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:2px 0 22px}
 .wb-slots-lb{flex:1 1 100%;text-align:center;font-size:14px;font-weight:700;

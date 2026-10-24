@@ -122,16 +122,40 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await beginQuiz();
   ok(d.querySelectorAll('#stage .opt').length === 4, '开始练习后当前题有 4 个选项');
 
-  console.log('\n【3】作答与记录');
+  console.log('\n【3】作答与记录（答错可重试，T-016）');
   const before = store.log.length;
-  const opts = d.querySelectorAll('#stage .opt');
-  click(opts[0]);
+  const q3 = w.curQ();
+  const tgt3 = q3.target.w;
+  const opts = Array.from(d.querySelectorAll('#stage .opt'));
+  const wrongOpt = opts.filter(e => e.getAttribute('data-c') !== tgt3)[0];
+  const rightOpt = opts.filter(e => e.getAttribute('data-c') === tgt3)[0];
+  ok(!!wrongOpt && !!rightOpt, '4 个选项里能找到错的与对的');
+  click(wrongOpt);
   await wait(200);
-  ok(!!d.querySelector('#stage .feedback'), '作答后出现反馈块');
+  ok(!d.querySelector('#stage .feedback'), '点错不判死：不出「下一题」反馈块');
+  ok(wrongOpt.classList.contains('miss'), '点错的那个变灰（.miss）');
+  ok(rightOpt && !rightOpt.classList.contains('miss'), '正确项没被牵连，仍可点');
+  ok(d.getElementById('btnHint').disabled === false, '点错后「提示一下」仍可用（这题还没结束）');
+  ok(w.curQ() === q3, '点错还停在同一题，没有往前跳');
+  /* 连错 2 次 → 正确项亮一下（和游戏里的 glowPulse 同一套） */
+  const wrongOpt2 = Array.from(d.querySelectorAll('#stage .opt'))
+    .filter(e => e.getAttribute('data-c') !== tgt3 && e !== wrongOpt)[0];
+  click(wrongOpt2);
+  await wait(200);
+  ok(wrongOpt2.classList.contains('miss'), '第二个错的也变灰');
+  ok(rightOpt.classList.contains('glow'), '连错 2 次把正确项亮出来');
+  click(rightOpt);
+  await wait(200);
+  ok(!!d.querySelector('#stage .feedback'), '再点对后出现反馈块');
+  ok(rightOpt.classList.contains('right'), '正确项标成 .right');
+  ok(!d.querySelector('#stage .feedback.no'), '反馈块是 ok 态，不是「答错了」');
   ok(store.log.length > before, '写入了学习记录（新增 ' + (store.log.length - before) + ' 条）');
   const first = store.log[store.log.length - 1];
-  ok(typeof first['练习次数'] === 'number' && first['练习次数'] >= 1, '练习次数已累加：' + first['练习次数']);
+  ok(typeof first['练习次数'] === 'number' && first['练习次数'] >= 2,
+    '一题错一次再对记 2 次练习：' + first['练习次数']);
   ok(first['学生'] === '小明', '记录关联到正确学生：' + first['学生']);
+  ok(first['答错'] === 1, '宽松口径：错了 2 次也只记 1 次错：' + first['答错']);
+  ok(first['独立答对'] === 1, '重试后答对仍算「独立答对」（没用提示）：' + first['独立答对']);
   const sum = (first['独立答对'] || 0) + (first['提示后答对'] || 0) + (first['答错'] || 0);
   ok(sum === first['练习次数'], '对/错计数之和等于练习次数');
 
