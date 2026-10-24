@@ -2,7 +2,7 @@
   "_comment": "回归护栏：新增功能时必须把关键符号登记到这里，否则门禁保护不到。assets 为资产条数下限，脚本改动导致数量下降会被拦下。",
   "version": 1,
   "product": "build/生活语文练习台.html",
-  "max_bytes": 6000000,
+  "max_bytes": 16000000,
   "symbols": {
     "数据层": [
       "LS_DATA",

@@ -45,15 +45,23 @@
 - **v16 定：`repairCharWords()` 三处必须都调**（`boot()` / `loadAllData()` / `importBackup()`），少一处重启就空回去，G1 钉 `repairCharWords();` ≥3 处
 - 体检的边界：**只在整表一条组词都没有时才补**，老师填过一条就一律不动（有测试钉住），否则会覆盖老师的手工数据
 - `builtinWords()` 有兜底：扫完字表仍无词就用页面内置字表 `CHARS`（同一份 700 行字库，不是第二份词表），置 `fallback` 后界面直说「字库组词栏是空的，已用内置」，**不许装正常**
-- **v16 起老师端顶部有版本角标**（当前 `v20 · 内置词 969`）（兜底标「（兜底）」）。老师报「还是老样子」先要这一句：角标是新版且写着 969 → 问题在别处；角标是旧版本 → 他打开的是缓存页面。发版要同步改 `p4.js` 的 `APP_VER`
+- **v16 起老师端顶部有版本角标**（当前 `v21 · 内置词 969`）（兜底标「（兜底）」）。老师报「还是老样子」先要这一句：角标是新版且写着 969 → 问题在别处；角标是旧版本 → 他打开的是缓存页面。发版要同步改 `p4.js` 的 `APP_VER`
 
-## 语音（已定案，用户 2026-10-21 确认）
-- 引擎：**edge-tts**（微软神经语音）。Piper/CosyVoice 等模型下载源（GitHub raw / codeload / jsdelivr / HuggingFace）在本环境**全部不可达**
-- 音色：**zh-CN-XiaoxiaoNeural（晓晓）** —— 用户从四个候选里选定的就是它
-- 语速：生成时 `rate=-10%`，播放时 `playbackRate` 只做微调（0.85 / 1.0 / 1.12）
+## 语音（v21 换豆包，用户 2026-10-24 定稿）
+- **引擎：豆包语音合成 2.0（火山引擎）**，音色 **`zh_female_zhixingnv_uranus_bigtts`（知性女声）**，`speed_ratio 0.85`。
+  用户先嫌晓晓「三声（耳/雨）模糊、单字偏快（江/京）、音质发闷」，听完豆包 App 说「每个音调都读得准确」，从 6 个通用音色里挑了知性女声。
+  **明确不要儿童绘本 / 少儿故事 / 角色扮演类**——只要读得清晰准确、不加情感。
+- **编码：豆包直出 `encoding=wav` 的 24 kHz 无损**（不是 `ogg_opus`，那是 48 kHz 上采样的 267 kbps 虚高）→ 本地**只编码一次** 48 kbps AAC / mono / MP4。
+  **选 AAC 不选 Opus**：Opus 更省体积，但旧 Safari/iPad 的 `decodeAudioData` 对 ogg-opus 不可靠，课堂里「完全没声音」比多几 MB 严重得多。
+- 流程：`build/gen_doubao_voice.py`（断点续传，`ONLY_KEYS=` 可单条重做）→ `build/pack_doubao_voice.py`（裁 50 ms 头 /150 ms 尾、RMS 归一 -20 dBFS、写 `p_voice.json`）→ `build/build_html.py`。
+  `DOUBAO_APPID` / `DOUBAO_TOKEN` 走环境变量，仓库与日志里不留。
+- **豆包接口偶发返回垃圾音频**（同参数重请求就正常）：「到了」被拉成 3.2 s、「破了」3.0 s。
+  → `VERIFY=1 python build/gen_doubao_voice.py` 是离线时长自检，**「0 失败」不等于「全对」，必须跑**；顽固的用 `TEXT_OVERRIDE`（「到了」写成 `到 了` 才正常）。
+- **判断"语速快慢"绝不能看文件总时长**：知性女声总长比 Vivi 长，但尾部垫了 0.3~0.5 s 静音，**有效发音段反而短 8%~25%**。要按 10 ms RMS 去掉首尾静音再比。
 - **词语必须整词合成**，不能拿单字拼：`w` + 每字 4 位 hex（小手 = `w5c0f624b`）
-- 规模：1690 条（701 单字 + 972 整词 + 17 指令句），离线生成后 base64 内联，运行时零网络
-- 改语音的流程：改 `gen_tts.py`（VOICE/RATE）→ 生成到新 `_tts/raw_*` → `TTS_DIR=... pack_audio.py` → build
+- 规模：**1691** 条（701 单字 + 972 整词 + 18 指令句），`p_voice.json` **12.85 MB**，离线内联、运行时零网络。
+- 老链路 `gen_tts.py`/`pack_audio.py`（edge-tts 晓晓，24 kbps MP3）**已弃用但保留**，v20 及以前的声音就是它。
+- 体积预算：G0 `manifest.max_bytes` 6 MB → **16 MB**（v21 产物 13.99 MiB）
 
 ## 音效音量（v10 定）
 - 语音总线 `VA_VOICE_GAIN = 1`、音效总线 `VA_SFX_GAIN = 1`。**不要压总线**，用每个音的 `vol` 控力度

@@ -52,3 +52,7 @@ build/_*.png
 build/_verify*
 build/_g4_check_out*
 build/_tts_test/
+# v21 换语音时的音色试听对比页（音频内联，每个 MB 级；结论已写进 docs/03-变更日志 v21）
+build/_voice_test/
+# 门禁报告是每次跑都变的临时产物
+harness/reports/
