@@ -12,6 +12,9 @@
 - **线上产物不能字节比对**：平台注入 `data-page-node-id`、`data-pnid-children`、重排属性（线上大 ~19 KB 正常）。做法是抽出 `<style>` 与各 `<script>` 块逐一比对
 - `lint_page_quality.py` 在 >2 MB 上要跑 16 分钟（base64 回溯），后台跑或跳过
 - **静态直链**：`create_page_transaction` 返回的 `url` 是 **baseVersion（旧版）**；新版目录用 `list_page_publish_artifacts.py` 取 `data.url`。给用户前必须 curl 抓一次 grep 特征符号
+- **线上校验别 grep 属性组合**：平台会重排属性并插 `<!--pnid:...-->`，`class="app-ver" id="appVer"` 顺序会变 → 要 grep **值本身**（`APP_VER = 'v24'`、`>v24<`）
+- `build/upload_curl.py` 已改成**两平台自动探测** skill 目录 + `os.devnull`（2026-10-25 在 macOS 实测跑通全链路），换机器不用改
+- **2026-10-25 已发布 v24（newVersion 21）**：v21~v24 一起上线，门禁 64/450，G4 三块零差异，线上 14,707,143 B
 
 ## 二、数据结构与教学口径
 **字表（v11）**

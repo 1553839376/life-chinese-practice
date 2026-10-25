@@ -4,12 +4,22 @@
 原因：urllib 在当前环境会被强制走代理隧道，上传大 body 到对象存储直接失败；
 curl 走默认代理是通的（下载基线、拉素材都验证过）。
 """
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-PAGE_DIR = r'D:\职称参考\workbuddy\resources\app.asar.unpacked\resources\plugins\workbuddy-builtin\skills\library\page'
+# 两个平台都要能跑：教室那台是 Windows，家里/开发机是 macOS
+_CANDIDATES = [
+    r'D:\职称参考\workbuddy\resources\app.asar.unpacked\resources\plugins\workbuddy-builtin\skills\library\page',
+    '/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked'
+    '/resources/plugins/workbuddy-builtin/skills/library/page',
+]
+PAGE_DIR = next((p for p in _CANDIDATES if Path(p).is_dir()), '')
+if not PAGE_DIR:
+    print('ERROR 找不到 library/page 目录，先确认 WorkBuddy 安装位置')
+    raise SystemExit(1)
 sys.path.insert(0, PAGE_DIR)
 import upload_page_artifact as up  # noqa: E402
 
@@ -44,7 +54,7 @@ def main():
     r = subprocess.run(
         ['curl', '-sS', '-X', 'PUT', '--data-binary', '@' + src,
          '-H', 'Content-Type: text/html; charset=utf-8',
-         url, '-o', 'NUL', '-w', 'HTTP %{http_code} 上传 %{size_upload} 字节'],
+         url, '-o', os.devnull, '-w', 'HTTP %{http_code} 上传 %{size_upload} 字节'],
         capture_output=True, text=True,
     )
     print(r.stdout.strip() or r.stderr.strip())
