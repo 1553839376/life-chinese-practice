@@ -10,7 +10,7 @@ import re
 import sys
 
 LOC = 'build/生活语文练习台.html'
-PUB = 'build/_pubcheck20/生活语文练习台.html'
+PUB = 'build/_pubcheck22/生活语文练习台.html'
 
 
 def blocks(s):
