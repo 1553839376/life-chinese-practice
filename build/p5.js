@@ -617,12 +617,21 @@ function startQuiz(type){
     return;
   }
 
-  if (pool.length < 4){
+  if (pool.length < 4 && !isWriteType(type)){
     setHTML($('stage'), '<div class="empty-tip">这位同学的字表只有 ' + pool.length + ' 个字，练这个题型至少要 4 个。请老师再选几个字。</div>');
     $('qNow').textContent = '0'; $('qTotal').textContent = '0';
     return;
   }
-  STATE.quiz = { type: type, qs: buildQuestions(pool, total, stu, isFocus ? tp : null),
+  /* 手写题型不靠选项，一个字的字表也能练；但写 6 个词对特需孩子已经够多了 */
+  if (isWriteType(type)){
+    if (total > WRITE_MAX) total = WRITE_MAX;
+    if (isFocus && tp.length < total) total = tp.length;
+    if (total < 1) total = 1;
+  }
+  STATE.quiz = { type: type,
+                 qs: isWriteType(type)
+                   ? buildWriteQuestions(tp, total, stu, isFocus ? tp : null)
+                   : buildQuestions(pool, total, stu, isFocus ? tp : null),
                  i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
                  missed: 0, wrongLogged: false, retried: 0 };
   $('qTotal').textContent = String(STATE.quiz.qs.length);
@@ -672,6 +681,9 @@ function renderStage(){
   var body = '', opts = '', i;
 
   if (type === '拼词语'){ renderWordBuild(q, head); return; }
+  /* 手写题型（v25）：没有选项，自己一套渲染 */
+  if (type === '汉字听写'){ renderDictation(q, head); return; }
+  if (type === '描红汉字'){ renderTrace(q, head); return; }
 
   if (type === '听音找字'){
     body = '<div class="q-head" style="margin-bottom:20px">' + speakerHTML() +
@@ -866,6 +878,327 @@ function wbFlash(el){
   setTimeout(function(){ el.classList.remove('hinted'); }, 2400);
 }
 
+/* ------------------------- 手写题型：汉字听写 / 描红汉字（v25，T-018） -------------------------
+   用户 2026-10-28：「需要增加两个题型，一个是汉字词语听写，给一个方框给学生默写。
+   还有一个是描红汉字。」
+
+   这两个题型的共同点：没有选项可点。听写的答案根本不在屏幕上，描红的答案已经给在屏幕上。
+   离线单文件没有手写识别，所以不伪装成「自动判分」：
+     · 听写：写完点「写好了」→ 每个方框里浮出正确的字（浅绿）→ 孩子和老师对一下
+       → 「写对了」或「没写好，重写」。重写不判死，一题最多记 1 次错（同 T-016 口径）。
+     · 描红：照着浅灰的字描完 → 「描完了」→ 直接过，但记的是「辅助完成」（hinted/prompts），
+       不记 alone。照着描不等于认出来了，否则描两遍就进「已掌握」，档案会骗老师。
+
+   两条硬约束：
+     ① 门禁测试跑在 jsdom 上，它没有 canvas 实现（getContext 返回 null）。所有绘制先判空，
+        结构（几个方框、几个按钮）必须不依赖画布就能测。
+     ② 平板上写字不能带着页面一起滚，canvas 必须 touch-action:none。
+   -------------------------------------------------------------------------------------- */
+var WG = { boxes: [] };
+
+/* 听写写哪个词：优先字库「组词」栏的第一个词（和字卡上显示的一致），
+   只收 1~4 个字且确实包含这个字的，防止组词栏里混进成语或半截词。
+   没有组词就听写单字，不留空格子。 */
+function writeWordOf(c){
+  var w = firstWordOf(c);
+  if (w && w.length >= 1 && w.length <= 4 && w.indexOf(c.w) >= 0) return w;
+  return '';
+}
+function wgAnswerOf(q){
+  if (!q) return '';
+  if (STATE.quiz && STATE.quiz.type === '汉字听写') return q.text || q.target.w;
+  return q.target.w;
+}
+function buildWriteQuestions(pool, n, stu, focusPool){
+  var targets = pickTargets(focusPool || pool, n, stu), qs = [], i;
+  for (i = 0; i < targets.length; i++){
+    qs.push({ target: targets[i], text: writeWordOf(targets[i]) });
+  }
+  return qs;
+}
+
+/* ------------------------- 画布 ------------------------- */
+function wgSize(b){
+  var cv = b.cv, r, w, h, dpr, ctx;
+  if (!cv || !cv.getBoundingClientRect) return;
+  r = cv.getBoundingClientRect();
+  w = Math.round(r.width); h = Math.round(r.height);
+  /* 隐藏/未布局时量到 0：这时不要动 canvas.width，否则退回到默认 300×150 会拉花 */
+  if (!w || !h) return;
+  b.w = w; b.h = h;
+  dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  ctx = b.ctx = (cv.getContext ? cv.getContext('2d') : null);
+  if (!ctx) return;                       /* jsdom 没有 canvas 实现，走到这里就停 */
+  if (ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  wgRedraw(b);
+}
+function wgPen(ctx){
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#1B242C';
+  ctx.fillStyle = '#1B242C';
+}
+function wgRedraw(b){
+  var ctx = b.ctx, i, j, s;
+  if (!ctx || !ctx.clearRect) return;
+  ctx.clearRect(0, 0, b.w || 1, b.h || 1);
+  wgPen(ctx);
+  for (i = 0; i < b.strokes.length; i++){
+    s = b.strokes[i];
+    if (!s.length) continue;
+    /* 一个点也是一笔（顿笔），别让它凭空消失 */
+    if (s.length === 1){
+      ctx.beginPath();
+      ctx.arc(s[0].x, s[0].y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(s[0].x, s[0].y);
+    for (j = 1; j < s.length; j++) ctx.lineTo(s[j].x, s[j].y);
+    ctx.stroke();
+  }
+}
+function wgPoint(b, ev){
+  var r = b.cv.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+function wgBindOne(b){
+  var cv = b.cv;
+  if (!cv || !cv.addEventListener) return;
+  cv.addEventListener('pointerdown', function(ev){
+    if (STATE.quiz && STATE.quiz.answered) return;
+    b.cur = [wgPoint(b, ev)];
+    b.strokes.push(b.cur);
+    if (cv.setPointerCapture && ev.pointerId !== undefined){
+      try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+    }
+    if (ev.preventDefault) ev.preventDefault();
+  });
+  cv.addEventListener('pointermove', function(ev){
+    var ctx = b.ctx, n, s;
+    if (!b.cur) return;
+    n = b.cur.length;
+    b.cur.push(wgPoint(b, ev));
+    /* 边写边画：只补最后一小段，不用整块重绘，笔迹才跟手 */
+    s = b.cur;
+    if (ctx && s.length >= 2){
+      wgPen(ctx);
+      ctx.beginPath();
+      ctx.moveTo(s[n - 1].x, s[n - 1].y);
+      ctx.lineTo(s[n].x, s[n].y);
+      ctx.stroke();
+    }
+    if (ev.preventDefault) ev.preventDefault();
+  });
+  function end(){
+    if (!b.cur) return;
+    b.cur = null;
+    wgRedraw(b);            /* 收笔重画一遍，补上单点顿笔 */
+  }
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('pointerleave', end);
+}
+/* 方框多大：行宽除以个数。不用 CSS 的 aspect-ratio —— 教室那台平板是不是
+   iOS 15 以上不确定，量出来再写死 px 最稳，顺带把底字的字号一起定下来
+   （字要占格子约 76%，太大就画出格，太小又看不清笔画）。 */
+function wgLayout(){
+  var row = document.getElementById('wgRow'), n = WG.boxes.length, avail, size, i, gap = 14, el;
+  if (!row || !n) return;
+  avail = row.clientWidth || 0;
+  if (!avail) return;                     /* 还没布局（或 jsdom）：留着 CSS 的兜底尺寸 */
+  size = Math.floor((avail - gap * (n - 1)) / n);
+  if (size > 300) size = 300;
+  if (size < 96) size = 96;
+  for (i = 0; i < n; i++){
+    el = WG.boxes[i].el;
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    if (el.style.setProperty) el.style.setProperty('--wg-fs', Math.round(size * 0.76) + 'px');
+  }
+}
+function wgInit(){
+  var list = document.querySelectorAll('#stage .wg-box'), i, el, cv;
+  WG.boxes = [];
+  for (i = 0; i < list.length; i++){
+    el = list[i];
+    cv = el.querySelector('canvas');
+    if (!cv) continue;
+    WG.boxes.push({ el: el, cv: cv, ctx: null, strokes: [], cur: null, w: 0, h: 0 });
+  }
+  wgLayout();
+  for (i = 0; i < WG.boxes.length; i++){ wgSize(WG.boxes[i]); wgBindOne(WG.boxes[i]); }
+  /* 首帧字号/滚动条还没落定，量到的宽度会差几像素；下一拍再量一次。
+     不挂 requestAnimationFrame —— 后台标签页可能整页都不执行。 */
+  setTimeout(function(){
+    wgLayout();
+    for (var j = 0; j < WG.boxes.length; j++) wgSize(WG.boxes[j]);
+  }, 80);
+}
+function wgHasInk(){
+  for (var i = 0; i < WG.boxes.length; i++){ if (WG.boxes[i].strokes.length) return true; }
+  return false;
+}
+function wgClear(){
+  var i, b;
+  for (i = 0; i < WG.boxes.length; i++){
+    b = WG.boxes[i];
+    b.strokes = [];
+    b.cur = null;
+    wgRedraw(b);
+  }
+}
+function wgBoxHTML(i, ghost){
+  return '<div class="wg-box" data-wg="' + i + '">' +
+    (ghost ? '<span class="wg-ghost">' + esc(ghost) + CLOSE('span') : '') +
+    '<span class="wg-ans"></span>' +
+    '<canvas></canvas>' +
+  CLOSE('div');
+}
+
+/* ------------------------- 渲染 ------------------------- */
+function renderDictation(q, head){
+  var word = wgAnswerOf(q), i, boxes = '';
+  for (i = 0; i < word.length && i < 4; i++) boxes += wgBoxHTML(i, '');
+  /* 说明不在这块里再写一遍：顶部 q-ask 已经是 TYPE_DESC 那句，重复两遍孩子只会更乱。
+     顺序是「方框 → 写好了 → 擦掉/再听」：主按钮贴着写字区，辅助操作放它下面。 */
+  setHTML($('stage'), head +
+    '<div class="wg-row" id="wgRow">' + boxes + CLOSE('div') +
+    '<div class="wg-foot" id="wgFoot">' +
+      '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
+      '<span class="wg-tip">写完点这里，我们一起看对不对</span>' +
+    CLOSE('div') +
+    '<div class="wg-tools">' +
+      '<button type="button" class="ghost-btn" data-wg-act="say" id="wgPlay">再听一遍</button>' +
+      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重写</button>' +
+    CLOSE('div'));
+  resetQState();
+  bindStage();
+  syncHelpBar();
+  wgInit();
+  setTimeout(function(){ readQuestion(); }, PACE.ready * 1000);
+}
+function renderTrace(q, head){
+  setHTML($('stage'), head +
+    '<div class="wg-row" id="wgRow">' + wgBoxHTML(0, q.target.w) + CLOSE('div') +
+    '<div class="wg-foot" id="wgFoot">' +
+      '<button type="button" class="wg-main" data-wg-act="done">描完了</button>' +
+    CLOSE('div') +
+    '<div class="wg-tools">' +
+      '<button type="button" class="ghost-btn" data-wg-act="say">念一遍这个字</button>' +
+      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重描</button>' +
+    CLOSE('div'));
+  resetQState();
+  bindStage();
+  syncHelpBar();
+  wgInit();
+  setTimeout(function(){ readQuestion(); }, PACE.ready * 1000);
+}
+
+/* ------------------------- 作答 ------------------------- */
+/* 记一次「没写好」。和 missOption 同一口径：一题最多记 1 次错，
+   重写是给他机会，不该双重惩罚，否则 n 和 wrong 会一路涨。 */
+function logWriteMiss(){
+  var q = curQ(), stu = STATE.cur, r;
+  if (!q || !stu || !STATE.quiz || STATE.quiz.wrongLogged) return false;
+  r = getLog(stu.name, q.target.w);
+  r.n++;
+  r.wrong++;
+  r.prompts += STATE.quiz.promptUsed;
+  r.last = nowISO();
+  r.level = levelOf(r);
+  r.dirty = true;
+  flushLogs();
+  STATE.quiz.wrongLogged = true;
+  return true;
+}
+function wgReveal(){
+  var q = curQ(), word = wgAnswerOf(q), i, b, el;
+  for (i = 0; i < WG.boxes.length && i < word.length; i++){
+    b = WG.boxes[i];
+    el = b.el.querySelector('.wg-ans');
+    if (el) el.textContent = word.charAt(i);
+    if (b.el.classList) b.el.classList.add('reveal');
+  }
+}
+function wgHideAns(){
+  var i, b, el;
+  for (i = 0; i < WG.boxes.length; i++){
+    b = WG.boxes[i];
+    el = b.el.querySelector('.wg-ans');
+    if (el) el.textContent = '';
+    if (b.el.classList) b.el.classList.remove('reveal');
+  }
+}
+function wgFootWrite(){
+  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
+    '<span class="wg-tip">慢一点，一笔一笔写</span>');
+}
+function wgToolsShow(on){
+  var el = document.querySelector('#stage .wg-tools');
+  if (el) el.hidden = !on;
+}
+function wgDone(){
+  var q = curQ();
+  if (!q || !STATE.quiz || STATE.quiz.answered) return;
+  if (!wgHasInk()){ sfxTap(); toast('先在方框里写一写'); return; }
+  if (STATE.quiz.type === '描红汉字'){ wgFinishTrace(); return; }
+  /* 听写：这一下只「亮答案」，不判分 —— 判分要靠人看一眼 */
+  STATE.quiz.checked = true;
+  wgReveal();
+  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="ok">写对了</button>' +
+    '<button type="button" class="ghost-btn" data-wg-act="miss">没写好，重写</button>');
+  /* 「擦掉重写」在这一步收起来：下面已经有「没写好，重写」了，两个重写并排会点错 */
+  wgToolsShow(false);
+  sfxPop();
+  toast('对照一下，写对了吗');
+}
+function wgOk(){
+  if (!STATE.quiz || STATE.quiz.answered) return;
+  gradeAnswer(true);
+}
+function wgMiss(){
+  if (!STATE.quiz || STATE.quiz.answered) return;
+  logWriteMiss();
+  sfxNo();
+  wgClear();
+  wgHideAns();
+  wgFootWrite();
+  wgToolsShow(true);
+  STATE.quiz.checked = false;
+  toast('再写一次，慢慢来');
+  /* 等错误音过去再念，两个声音不叠在一起 */
+  setTimeout(function(){
+    if (STATE.quiz && !STATE.quiz.answered) readTarget();
+  }, 520);
+}
+function wgFinishTrace(){
+  /* 描红记「辅助完成」：promptUsed 置 1 → gradeAnswer 走 hinted++ / prompts++。
+     不记 alone 是刻意的（见本节开头）。 */
+  STATE.quiz.promptUsed = 1;
+  gradeAnswer(true);
+}
+/* 老师按「提示一下」：听写直接把答案亮出来（记一次辅助），描红把底字加深 */
+function wgHint(){
+  var q = curQ(), b;
+  if (!q || !STATE.quiz) return;
+  STATE.quiz.promptUsed++;
+  sfxPop();
+  if (STATE.quiz.type === '描红汉字'){
+    b = WG.boxes[0];
+    if (b && b.el.classList) b.el.classList.add('hint');
+    toast('底下的字加深了，沿着它描');
+  } else {
+    wgReveal();
+    toast('答案亮出来了，照着写（这次记一次辅助）');
+  }
+  readTarget();
+}
+
 function bindStage(){
   var rd = $('qRead');
   var wbt = document.querySelectorAll('#stage .wb-tile'), ti;
@@ -916,8 +1249,10 @@ function bindStage(){
 function readTarget(){
   var q = curQ();
   if (!q) return;
-  var ok = speak(q.target.w);
-  readHint($('pyHint'), ok, q.target.p || q.target.w);
+  /* 听写要听的是「词」，不是那个字：念成单字，孩子就不知道要写两个格子 */
+  var txt = (STATE.quiz && STATE.quiz.type === '汉字听写') ? wgAnswerOf(q) : q.target.w;
+  var ok = speak(txt);
+  readHint($('pyHint'), ok, q.target.p || txt);
 }
 function speak(text){ return say(text); }
 
@@ -942,6 +1277,15 @@ function quizSay(type, q){
   }
   if (type === '认读跟读'){
     return [{ t: w, gap: PACE.afterChar }, { t: w }];
+  }
+  /* 听写：说明 + 停一拍 + 念那个词。这个词就是题目本身，必须念；
+     念完要停够（afterAsk），孩子得听完才知道有几个字要写。 */
+  if (type === '汉字听写'){
+    return [{ t: '听一听，写下来。', gap: PACE.afterAsk }, { t: wgAnswerOf(q) }];
+  }
+  /* 描红：字已经摆在屏幕上了，念一遍是帮他认，不是给答案 */
+  if (type === '描红汉字'){
+    return [{ t: '照着描一遍。', gap: PACE.afterAsk }, { t: w }];
   }
   return [{ t: w }];
 }
@@ -985,6 +1329,8 @@ function resetQState(){
   STATE.quiz.missed = 0;
   STATE.quiz.wrongLogged = false;
   STATE.quiz.picked = '';
+  /* 听写「亮过答案没有」。跟着题目走：上一题亮过，下一题不能继承 */
+  STATE.quiz.checked = false;
 }
 function optEl(ch){
   var all = document.querySelectorAll('#stage .opt'), i;
@@ -1065,11 +1411,13 @@ function gradeAnswer(right){
     if (el.getAttribute('data-c') === q.target.w) el.classList.add('right');
   }
   sfxOk();
+  /* 描红没有「对错」，只有「写完了」，说「答对了」孩子会以为自己在做题 */
+  var okTxt = (STATE.quiz.type === '描红汉字') ? '写好了！' : '答对了！';
   /* 先响音效，停一下再开口说「答对了」，两个声音不叠在一起 */
   setTimeout(function(){
-    if (STATE.quiz && STATE.quiz.answered) say('答对了！');
+    if (STATE.quiz && STATE.quiz.answered) say(okTxt);
   }, PACE.afterOk * 1000);
-  var tail = '<div class="feedback ok">答对了！' +
+  var tail = '<div class="feedback ok">' + okTxt +
     '<button type="button" class="help-btn" id="btnGo" style="margin-left:auto">下一题</button>' +
     CLOSE('div');
   var host = document.querySelector('#stage .opts');
@@ -1095,6 +1443,8 @@ function appendToStage(markup){
 function useHint(){
   if (!STATE.quiz || STATE.quiz.answered) return;
   if (STATE.quiz.type === '拼词语'){ wbHint(); return; }
+  /* 手写题型没有「去掉两个错的」可去，提示换成「亮答案 / 加深底字」 */
+  if (isWriteType(STATE.quiz.type)){ wgHint(); return; }
   STATE.quiz.promptUsed++;
   sfxPop();
   var q = curQ();

@@ -1205,6 +1205,19 @@ function wireEvents(){
     if (pcard){ preSay(pcard.getAttribute('data-pre')); return; }
     var pgo = el.closest ? el.closest('#preGo') : null;
     if (pgo){ preStart(); return; }
+    /* 手写题型（v25）：写好了 / 写对了 / 没写好 / 擦掉 / 再听。
+       用 data-wg-act 而不是 data-wg —— 方框自己带 data-wg（序号），
+       混用一个属性会让点方框也走进来。这也要排在 .opt 之前。 */
+    var wga = el.closest ? el.closest('[data-wg-act]') : null;
+    if (wga){
+      var wact = wga.getAttribute('data-wg-act');
+      if (wact === 'clear'){ wgClear(); sfxTap(); }
+      else if (wact === 'done'){ wgDone(); }
+      else if (wact === 'ok'){ wgOk(); }
+      else if (wact === 'miss'){ wgMiss(); }
+      else if (wact === 'say'){ readTarget(); }
+      return;
+    }
     var card = el.closest ? el.closest('.stu-card') : null;
     if (card){ enterStudent(card.getAttribute('data-stu')); return; }
     var tab = el.closest ? el.closest('.type-tab') : null;

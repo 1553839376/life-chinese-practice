@@ -260,6 +260,41 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .help-btn:disabled{opacity:.4}
 .help-btn:active{transform:scale(.97)}
 
+/* ---------- 手写题型：汉字听写 / 描红汉字（v25） ----------
+   方框就是田字格：白纸、暖色框、中间十字线。汉字是主角，字占格子约 76%。
+   描红的底字必须用楷体 —— 学校描红本都是楷体，用黑体描出来的笔画位置是错的。
+   尺寸由 wgLayout() 按行宽算出来写死 px（见 p5.js），这里给的只是没跑 JS 时的兜底。
+   顺序：方框 → 「写好了」大按钮 → 擦掉/再听。大按钮贴着写字区，和跟读页的
+   「读完啦，下一个」同一套绿底立体样式，孩子一眼知道下一步点哪。 */
+.wg-row{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+.wg-box{position:relative;flex:0 0 auto;width:min(42vw,300px);height:min(42vw,300px);
+  background-color:#fff;border:2px solid var(--line2);border-radius:12px;
+  overflow:hidden;touch-action:none;cursor:crosshair;
+  background-image:
+    linear-gradient(to right,transparent calc(50% - 1px),#E7DCC2 calc(50% - 1px),#E7DCC2 calc(50% + 1px),transparent calc(50% + 1px)),
+    linear-gradient(to bottom,transparent calc(50% - 1px),#E7DCC2 calc(50% - 1px),#E7DCC2 calc(50% + 1px),transparent calc(50% + 1px))}
+.wg-ghost,.wg-ans{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:"Kaiti SC","KaiTi","STKaiti","AR PL UKai CN","楷体",serif;
+  font-size:var(--wg-fs,64px);line-height:1;pointer-events:none;
+  -webkit-user-select:none;user-select:none}
+.wg-ghost{color:#DCD4BE}
+.wg-box.hint .wg-ghost{color:#B7AB8C}
+/* 听写的答案：写在笔画底下（浅绿），孩子能直接对着看自己哪一笔不对 */
+.wg-ans{color:var(--green);opacity:0;transition:opacity .18s ease}
+.wg-box.reveal .wg-ans{opacity:.45}
+.wg-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+  touch-action:none;cursor:crosshair}
+.wg-tools{display:flex;justify-content:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.wg-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;flex-wrap:wrap}
+.wg-tip{font-size:13px;color:var(--ink3)}
+/* 手写题的主按钮：和跟读页「读完啦，下一个」同一套绿底立体样式 */
+.wg-main{min-height:64px;min-width:min(280px,70vw);padding:0 34px;border:none;border-radius:20px;
+  background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;font-size:21px;font-weight:900;
+  letter-spacing:.02em;touch-action:manipulation;
+  box-shadow:0 5px 0 #1F7A42,0 12px 20px rgba(34,122,67,.22);
+  transition:transform .1s ease,box-shadow .1s ease}
+.wg-main:active{transform:translateY(3px);box-shadow:0 2px 0 #1F7A42,0 6px 12px rgba(34,122,67,.2)}
+
 /* 跟读的大按钮：孩子不认字，按钮要有分量、要明确指向「下一步」 */
 .read-actions{display:flex;flex-direction:column;align-items:center;gap:10px;margin:20px 0 6px}
 .read-next{min-height:76px;min-width:min(360px,84vw);padding:0 36px;border:none;border-radius:26px;
@@ -1014,6 +1049,8 @@ tr.tr-builtin td{background:#FBFAF3}
   .pgc{min-height:52px;font-size:24px}
   .prof-acts button{flex:1 1 100%}
   .big-char{font-size:104px}
+  /* 手写题型：窄屏把提示字收掉，方框尺寸由 wgLayout() 按行宽重算 */
+  .wg-tip{display:none}
   .opt{min-height:104px;font-size:52px}
   /* 词库表窄屏：先砍掉「释义/例句」「图示」两列，剩下的 5 列刚好塞下，不至于横滚到看不见按钮 */
   #tpWord table.grid th:nth-child(4),#tpWord table.grid td:nth-child(4),

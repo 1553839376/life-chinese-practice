@@ -1,172 +1,162 @@
 # 生活语文练习台 · 项目长期约定
 
-（2026-10-24 压缩整理。数字以 `docs/STATE.md` 与脚本实跑为准，本文只留"必须遵守的规则"和"踩过的坑"。）
+（2026-10-28 压缩整理。数字以 `docs/STATE.md` 与脚本实跑为准，本文只留「必须遵守的规则」和「踩过的坑」。）
 
 ## 一、产物与发布
-- 交付文件 `build/生活语文练习台.html`（单文件全内联，无外链）。线上节点 `nU41kHmAoelqM2mGxWRFll` → https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll
-- 构建 `cd build && python build_html.py`（13 段）。已加 `newline=''`，md5 可复现
-- 数据全存本机 `localStorage['wb2_data_v1']`，云端只当镜像（断网可用）。学生/照片/记录不随发布丢失
-- 发布：`create_page_transaction` →（curl 下基线，**urllib 走代理必 502**）→ `build/upload_curl.py`（**别用 `upload_page_artifact.py`**）→ `commit` → `publish`。后两步随机 `TEMPORARY_ERROR`，**必须循环重试 1~6 次，10~12s 退避**
-- 校验用 `download_page_artifacts.py --source publish`（`workbuddy.link` 直连 502）
-- **G4 逐块比对两边都要过滤空块**：线上多一个平台注入的空 `inject.js`，只过滤本地侧会索引错位、内容一致却报 DIFF
-- **线上产物不能字节比对**：平台注入 `data-page-node-id`、`data-pnid-children`、重排属性（线上大 ~19 KB 正常）。做法是抽出 `<style>` 与各 `<script>` 块逐一比对
-- `lint_page_quality.py` 在 >2 MB 上要跑 16 分钟（base64 回溯），后台跑或跳过
-- **静态直链**：`create_page_transaction` 返回的 `url` 是 **baseVersion（旧版）**；新版目录用 `list_page_publish_artifacts.py` 取 `data.url`。给用户前必须 curl 抓一次 grep 特征符号
-- **线上校验别 grep 属性组合**：平台会重排属性并插 `<!--pnid:...-->`，`class="app-ver" id="appVer"` 顺序会变 → 要 grep **值本身**（`APP_VER = 'v24'`、`>v24<`）
-- `build/upload_curl.py` 已改成**两平台自动探测** skill 目录 + `os.devnull`（2026-10-25 在 macOS 实测跑通全链路），换机器不用改
-- **2026-10-25 已发布 v24（newVersion 21）**：v21~v24 一起上线，门禁 64/450，G4 三块零差异，线上 14,707,143 B
-- **跨机器 git 同步（2026-10-26 踩坑）**：仓库级 `http.proxy` 存的是**上次那次**代理端口（59149），本次起来是 50730 —— 端口每次启动都变，报 502 先查 `env | grep -i http_proxy` 和 `git config http.proxy` 是否一致。更坑的是**代理间歇 502 且 git 与 curl 表现不同**（同一端口 curl 连续 3 次 200、git 连续 4 次 CONNECT 502）→ **fetch/push 一律写 6~8 次重试循环（间隔 6~10s）**，单发一次就判"网断了"必误判
+- 交付 `build/生活语文练习台.html`（单文件全内联）。节点 `nU41kHmAoelqM2mGxWRFll` → https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll
+- 构建 `cd build && python build_html.py`（13 段，`newline=''`，md5 可复现）
+- 数据全存本机 `localStorage['wb2_data_v1']`，云端只当镜像（断网可用）
+- 发布：`create_page_transaction` →（curl 下基线，**urllib 走代理必 502**）→ `build/upload_curl.py`（**别用 `upload_page_artifact.py`**）→ `commit` → `publish`。后两步随机 `TEMPORARY_ERROR`，**循环重试 1~6 次、10~12s 退避**
+- 校验 `download_page_artifacts.py --source publish`（`workbuddy.link` 直连 502）
+- **线上产物不能字节比对**：平台注入 `data-page-node-id`/`pnid` 注释并重排属性（大 ~19 KB 正常）→ 抽出 `<style>` 与各 `<script>` 逐块比；**两边都要过滤空块**（线上多一个空 `inject.js`，只滤本地侧会索引错位）
+- **静态直链**：`create_page_transaction` 的 `url` 是 baseVersion（旧版），新版目录用 `list_page_publish_artifacts.py` 取 `data.url`；给用户前 curl 抓一次 grep 特征符号
+- **线上校验 grep 值本身**（`APP_VER = 'v25'`、`>v25<`），别 grep 属性组合（顺序会变）
+- `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过
+- **跨机器 git**：`http.proxy` 存的端口每次启动都变，502 先比对 `env | grep -i http_proxy` 与 `git config http.proxy`；代理**间歇 502 且 git 与 curl 表现不同** → fetch/push 一律 6~8 次重试循环，单发一次判「断网」必误判
+- 现状：**v25 已构建、门禁全绿，线上仍是 v24（newVersion 21）**
 
 ## 二、数据结构与教学口径
-**字表（v11）**
-- 出题**只认 `stu.chars`**；`stu.groups` 只是来源标签。**空字表不回退全库**（旧版回退 700 字已删，G1 禁回潮）
-- 字库 700 条**只有 561 个不重复字**（138 字跨册重复）→ 一切计数按字去重、走 `expandGroups`
-- 云端 schema 无字表列 → `mergeCloudStudents` 必须继承本机 `chars`，否则刷新打回「按组展开」
-- 迁移 `migrateStuChars` 是一次性快照；之后字库新增的字**不会**自动进已有字表，这是刻意语义
-- 交互：整组加入 + 逐字剔除，chip 最小 44×44；搜索支持汉字/拼音跨组加字
+**字表**
+- 出题**只认 `stu.chars`**；`groups` 只是来源标签；**空字表不回退全库**（G1 禁回潮）
+- 字库 700 条**只有 561 个不重复字** → 一切计数按字去重、走 `expandGroups`
+- 云端 schema 无字表列 → `mergeCloudStudents` 必须继承本机 `chars`
+- `migrateStuChars` 是一次性快照；之后字库新增的字**不会**进已有字表（刻意）
+- 测试字表的字**必须在内置字库查得到**，否则 `charsOf` 过滤后不足 4 个、`startQuiz` 静默 return
 
-**进度口径（v12）**
-- **分母永远是 `stu.chars`**，不是字库、不是册次（v11 拿"字库那一册"当分母，学会 9/20 显示 3%）
-- 四态：已掌握/练习中/需巩固/待学。`stuProfile` 一次算出计数、掌握率、逐字明细、建议顺序
-- 建议顺序：需巩固 → 练习中但 prompts≥2 → 练习中 → 待学；已掌握不进名单
-- 抽练 `QUIZ_FOCUS`：**目标字**取子集，**干扰项仍取整张字表**（子集 3 个字凑不出 4 个选项）
-- 从老师端进练习用 `STATE.fromTeacher`，返回键「回老师端」
-- **进度条容器不要嵌套**：`#profBar` 自带 `.prog-bar`，再套同类 div 会让内层宽度塌成 0（表现为"一根灰线"）；`progSegsHTML()` 只产出 `<i>`
-- **百分比指标落代码前先手算期望值**（3% vs 45% 这种 bug 不报错、不崩、数还看着合理）
-- 测试用字表里的字**必须都能在内置字库查到**，否则 `charsOf` 过滤后不足 4 个、`startQuiz` 静默 return
+**进度**
+- **分母永远是 `stu.chars`**（v11 拿字库那一册当分母，学会 9/20 显示 3%）
+- 四态：已掌握/练习中/需巩固/待学；`stuProfile` 一次算计数、掌握率、逐字明细、建议顺序
+- 建议顺序：需巩固 → 练习中且 prompts≥2 → 练习中 → 待学；已掌握不进名单
+- 抽练 `QUIZ_FOCUS`：**目标字**取子集，**干扰项仍取整张字表**
+- **百分比落代码前先手算期望值**（3% vs 45% 这类 bug 不报错、不崩、数还看着合理）
+- **进度条容器不要嵌套**：`#profBar` 自带 `.prog-bar`，再套同类 div 内层宽度塌成 0；`progSegsHTML()` 只产出 `<i>`
 
 **在学上限（v19）**
-- **不新增 `cap` 字段**：`stu.count` 升格成"在学字数"（3–10，默认 6）
-- `stu.active` = 在学名单，`stu.lock` = 锁定不换，`stageOf()` 现算在学/已掌握/待学
-- **`levelOf` 与状态机是两个维度**：前者"练得怎么样"，后者"排没排进这批"，档案页分两行写
-- **补位只补"因学会而让出"的名额**；手动加入的字必须 **unshift 到最前**；已掌握的字手动拉回=复习，**自动锁定**
-- `openStuProfile` 必须先 `syncActive` 再画，否则显示「在学 0 / 6」但练习时有 6 个字
+- **不新增 `cap`**：`stu.count` 升格「在学字数」（3–10，默认 6）；`stu.active` 在学名单、`stu.lock` 锁定
+- **`levelOf` 与状态机是两个维度**：前者「练得怎么样」，后者「排没排进这批」，档案页分两行写
+- **补位只补「因学会让出」的名额**；手动加入 **unshift 到最前**；已掌握手动拉回＝复习，**自动锁定**
+- `openStuProfile` 必须先 `syncActive` 再画
 
-**今日字卡预习（v18）**
-- 点学生 → 今日字卡 →「开始练习」才进题。预习**不写 `logs`**，点卡只打勾
-- **字单按 `stuProfile().focus` 取**，绝不能用 `weightOf`（那里「待学」=0 排最前，字单会全是新字）
-- **出题必须收敛到 `PRE.list`**，否则刚认完 8 个、做题却是另外 8 个
-- 预习态 `.is-pre` 藏起「提示/读对了/跳过」：`useHint` 有 `if (!STATE.quiz) return` 不会崩，但「按了没动静」比特需孩子没按钮更糟
-- 拼词语 `raw = tp.length` **只在 `isDrill` 时成立**；点击委托里 `[data-pre]`/`#preGo` 必须排在 `.opt` 之前
+**今日字卡（v18）／学生主页（v24）**
+- 流程：点照片 → 主页 → 今日字卡 → 正式练习；`enterStudent`/`homeGo` 都**不许直接 `startQuiz`**
+- 预习**不写 `logs`**，点卡只打勾；**字单按 `stuProfile().focus`**，绝不用 `weightOf`（那里「待学」=0 排最前）
+- **出题必须收敛到 `PRE.list`**，否则刚认完 8 个、做题是另外 8 个
+- 预习态 `.is-pre` 藏起「提示/读对了/跳过」（按了没动静比特需孩子没按钮更糟）
+- **星星按掌握率每 20% 一颗**（`rate>0` 至少 1 颗），不是「每 5 字一颗」
+- **连续天数**：`logs.last` 是 UTC 串，必须 `Date.parse` 后按本地日（`dayKey`）取整；今天没练**从昨天数、不清零**
+- 主页藏题号 `.is-home .qcount{display:none}`
+- 点击委托里 `[data-pre]`/`#preGo`/`[data-wg-act]` 必须排在 `.opt` 之前（那几屏 `STATE.quiz` 还是 null）
 
 **答错可重试（v22）**
-- 点错**不判死**：只给该选项加 `.opt.miss`（灰+虚线+shake+`pointer-events:none`），题目继续
-- **第一次错绝不念答案**；**连错 2 次**才给正确项 `.glow` 并念读音（此时"测"已失败，改成教会）
-- 记录：一题**最多记 1 次错**；`n` 错 +1、对再 +1，`alone+hinted+wrong===n` 不变量仍成立
-- 重试后答对算 `alone++` 但 `wrong` 也 +1 → 停在「练习中」不是「已掌握」，刻意（`levelOf` 一行没改）
-- **不加 `retry` 字段落库**（云端 logs 无此列，会被同步覆盖成 0）；只在 `STATE.quiz.retried` 报一句
-- 结算 `rate` 仍按「最终答对÷总题数」，**重试不扣分**
-- 每道新题必须 `resetQState()` 清 `missed/wrongLogged/picked`
+- 点错**不判死**：只加 `.opt.miss`（灰+虚线+shake+`pointer-events:none`），题目继续
+- **第一次错绝不念答案**；**连错 2 次**才 `.glow` 正确项并念读音
+- 一题**最多记 1 次错**；`n` 错 +1、对再 +1，`alone+hinted+wrong===n` 不变量保持
+- 重试后答对算 `alone++` 但 `wrong` 也 +1 → 停在「练习中」，刻意（`levelOf` 一行没改）
+- **不加 `retry` 字段落库**（云端 logs 无此列），只在 `STATE.quiz.retried` 报一句
+- 每道新题必须 `resetQState()` 清 `missed/wrongLogged/picked/checked`
 
-**学生主页（v24）**
-- 点照片 → **我的主页** → 今日字卡 → 正式练习；字卡页 `#preBack` 回主页
-- 主页四件事：我是谁 / 学到哪了（圆环+三数字）/ 今天练什么 / 一个大按钮
-- **星星按掌握率每 20% 一颗**（不是"每 5 字一颗"），且 `rate>0` 至少 1 颗
-- **连续天数**：`logs.last` 是 `toISOString()` 的 **UTC** 串，必须 `Date.parse` 后按本地日（`dayKey`）取整；今天没练**从昨天数、不清零**
-- 主页藏题号 `.is-home .qcount{display:none}`（否则显示「主页 / 24」被误读成页码）
-- `enterStudent` 与 `homeGo` 都**不许直接 `startQuiz`**，认字仍要在字卡上过
+**手写题型（v25）**
+- `汉字听写`：听词（取组词栏第一个词，没有就听单字）→ 田字格写 → 「写好了」亮**浅绿答案叠在笔迹下** → 「写对了」/「没写好，重写」
+- `描红汉字`：格子底下浅灰**楷体**字照着描（黑体笔画位置是错的），「提示一下」加深底字
+- **没有手写识别，就不假装判分**（离线单文件做不了）；「亮答案 + 人核对」
+- **描红记 `hinted`/`prompts`，不记 `alone`**（做法：`promptUsed=1` 再 `gradeAnswer(true)`）。照着描≠认出来，否则描两遍就「已掌握」，档案骗老师
+- 手写题型**不要求 4 个字**、一次最多 6 个、读题**念词不念单字**
+- 画布：按 DPR 放大再 `setTransform` 缩回；`touch-action:none`；笔迹存笔画数组（擦除＝清空，不做 undo）；尺寸由 `wgLayout()` 算 px（**不用 `aspect-ratio`**），字号＝0.76 格宽；量宽要量两次（80ms 后再量，**不挂 rAF**）
+- **jsdom 没有 canvas**（`getContext` 返回 null）→ 绘制全部先判空，结构不依赖画布也能测
 
-**奖励机制（2026-10-25 二轮讨论中，未动代码 → `tasks/T-017-学生奖励机制.md`）**
-- 支点：星星/掌握率全是**能力刻度**，学得慢的孩子半年停在 2/12 → 奖励机制第一职责是给一条**人人都能拉满的轨道**（"今天我来了"）
-- **计价口径倾向按天**（不按题量——按题量会诱发"专挑会的字刷成长"）；5 天一个循环，不清零、不倒退、不补
-- **载体 = 学生自己已经在意的对象**。班里孩子爱小火车/地铁/汽车/美食 → 推荐**「我的线路图」**（5 站一线，站名用生活场景词：学校/公园/超市/医院/菜场，于是线路图本身就是复习材料）
-- **不要用"我们自己觉得好看"的东西**（花、宠物）代替"孩子已经在意的"。嫌植物没吸引力，真因不是植物丑，是没锚在孩子兴趣上
-- **宠物是成本最高、风险最大**的：美术 4 阶段×3 情绪、有照顾义务（饥饿/难过＝惩罚缺席）、对无感的孩子更糟。可视化优势列车完全能覆盖
-- **已否决**：集卡片（数量会变成孩子间比较；做成"字卡"就是掌握率换皮）、盲盒/抽奖（可变比率强化易成固着；"努力了却抽到重复"的挫折成本最高；学校场景被质疑就全推翻）
-- **架构重点：奖励状态只存"练过的日期数组"，皮肤是可替换渲染层**。老师端可切 线路/花园/厨房，换皮零数据迁移——这条比选哪个皮肤更重要
-- 待拍板：载体线路还是厨房 / 站名场景词还是序号 / 一线 5 站还是 6 站
+**奖励机制（T-017，未动代码）**
+- 支点：星星/掌握率是**能力刻度**，学得慢的孩子半年停在 2/12 → 奖励要给一条**人人都能拉满的轨道**（「今天我来了」）
+- **按天计价**（按题量会诱发「专挑会的字刷成长」）；5 天一个循环，不清零、不倒退、不补
+- **载体＝孩子已经在意的对象**（班里爱小火车/地铁/美食）→ 推荐「我的线路图」5 站一线，站名用生活场景词（学校/公园/超市/医院/菜场），线路图本身即复习材料
+- **别用「我们自己觉得好看」的**（花、宠物）代替孩子兴趣；宠物成本最高（4 阶段×3 情绪、有照顾义务＝惩罚缺席）
+- **已否决**：集卡（变成孩子间比较）、盲盒/抽奖（可变比率强化易成固着）
+- **架构：状态只存「练过的日期数组」，皮肤是可替换渲染层**（换皮零迁移）——比选哪个皮肤更重要
+- 待拍板：载体线路/厨房、站名场景词/序号、5 站/6 站
 
 ## 三、语音与音效
-**语音（v21 豆包，已定稿）**
-- 豆包 TTS 2.0，音色 `zh_female_zhixingnv_uranus_bigtts`（知性女声），`speed_ratio 0.85`。**不要儿童绘本/少儿故事/角色扮演**，只要清晰准确、不加情感
-- 直出 `encoding=wav` 24 kHz 无损（不用 `ogg_opus`，那是 48 kHz 上采样的 267 kbps 虚高）→ 只编码一次 **48 kbps AAC/mono/MP4**
-- **选 AAC 不选 Opus**：旧 Safari/iPad 的 `decodeAudioData` 对 ogg-opus 不可靠，课堂"完全没声音"比多几 MB 严重
-- `gen_doubao_voice.py`（断点续传，`ONLY_KEYS=` 单条重做）→ `pack_doubao_voice.py`（裁 50/150 ms、RMS 归一 -20 dBFS、写 `p_voice.json`）→ 构建。`DOUBAO_APPID`/`DOUBAO_TOKEN` 走环境变量
-- **接口偶发返回垃圾音频**（同参数重请求就正常，如「到了」3.2 s）→ `VERIFY=1` 是离线时长自检，**"0 失败"不等于"全对"，必须跑**；顽固的用 `TEXT_OVERRIDE`（`到 了`）
-- **判断语速决不能看总时长**：尾部垫了 0.3~0.5 s 静音，总长更长但**有效发音段短 8%~25%**。按 10 ms RMS 去首尾再比
-- **词语必须整词合成**（`w`+每字 4 位 hex，小手=`w5c0f624b`）
-- 1691 条（701 单字 + 972 整词 + 18 指令句），`p_voice.json` 12.85 MB；预算 `manifest.max_bytes` → **16 MB**
-- **加一条语音改三处**：`gen_doubao_voice.py` 的 SENTS、`p_voice.json`（`add_voice.py`）、`p8.js` 的 `SENT_FULL`。漏第三处会静默回退成逐字念
-- 老链路 `gen_tts.py`/`pack_audio.py`（晓晓）已弃用但保留
+**语音（v21 豆包，定稿）**
+- 豆包 TTS 2.0，`zh_female_zhixingnv_uranus_bigtts`（知性女声），`speed_ratio 0.85`；**不要绘本腔/角色扮演**
+- 直出 24 kHz 无损 WAV → 只编码一次 **48 kbps AAC/mono/MP4**（不用 ogg_opus；**旧 Safari `decodeAudioData` 对 opus 不可靠**，课堂没声音比多几 MB 严重）
+- 链路：`gen_doubao_voice.py`（断点续传，`ONLY_KEYS=` 单条重做）→ `pack_doubao_voice.py`（裁 50/150ms、RMS −20 dBFS）→ 构建；`DOUBAO_APPID/TOKEN` 走环境变量
+- 接口偶尔返回垃圾音频（同参数重请求就正常）→ `VERIFY=1` 必须跑，**「0 失败」≠「全对」**；顽固的用 `TEXT_OVERRIDE`
+- **判语速别看总时长**（尾部垫 0.3~0.5s 静音），按 10ms RMS 去首尾再比
+- **词语必须整词合成**（`w`+每字 4 位 hex）
+- 1691 条（701 单字 + 972 整词 + 18 指令句），`p_voice.json` 12.85 MB；预算 16 MB
+- **加一条语音改三处**：`gen_doubao_voice.py` 的 SENTS、`p_voice.json`、`p8.js` 的 `SENT_FULL`（漏第三处静默回退逐字念）
 
 **音效（v23 定稿 A 版）**
-- 总线 `VA_VOICE_GAIN`/`VA_SFX_GAIN` = 1，**不压总线**，用每音 `vol` 控力度
-- 正确音 0.26/0.24/0.21/0.18，连对 0.18/0.16。低于 0.15 教室听不见（v8 的 0.075 是教训）
-- 错误音：**方波两级下滑 + 闷响**，`233→175`（差 12 Hz 打拍）→ `175→131`（差 10 Hz）→ `147→110`，峰值 **0.32/0.30/0.30**，0.62 s
-- **「响度够」≠「听得见」**：v22 顶到 0.32 老师仍说"不明显"，真因是 98 Hz 在小喇叭上没声压（外放 200 Hz 以下衰减极狠）→ 错误音**全部 ≥100 Hz、主音 ≥200 Hz**，靠方波泛音顶到中高频
-- **音色比对错更重要**：triangle 下行=叹气，闭眼会和"明亮上行"混；方波差频打拍=嗡嗡，响度/音区/音色三维拉开
-- G1「错误音不比正确音轻」必须**`synthTone` 与 `synthBuzz` 都数**（v23 被它挡过一次）
-- 试听页 `build/错误音对比.html`（答对音 + A/B/C/D）。已定 **A**；C 长鸣蜂鸣器 / D 木琴三连留作退路，再被说"不明显/太吵"先翻试听页换档，别重新设计
+- 总线增益 = 1，**不压总线**，用每音 `vol`
+- 正确音 0.26/0.24/0.21/0.18，连对 0.18/0.16；低于 0.15 教室听不见
+- 错误音：**方波两级下滑 + 闷响**，`233→175`→`175→131`→`147→110`，峰值 **0.32/0.30/0.30**，0.62 s
+- **「响度够」≠「听得见」**：98 Hz 在小喇叭没声压 → **全部 ≥100 Hz、主音 ≥200 Hz**，靠方波泛音顶到中高频
+- **音色比对错更重要**：triangle 下行＝叹气，会被听成「明亮上行」；方波差频＝嗡嗡
+- G1「错误音不比正确音轻」必须 `synthTone` 与 `synthBuzz` 都数
+- 试听页 `build/错误音对比.html`（已定 A；C/D 留退路，再被说「不明显/太吵」先翻它换档）
 
 ## 四、UI 与视觉
 **老师端表单（v13）**
-- 长列表必须**容器内滚动**（`.list-wrap{max-height:min(56vh,620px)}`）。700 行不限高时整页 4.4 万像素、表单被顶到底 → 老师报"按钮不能用"
-- 表单 DOM **排在列表之前**；`revealForm()` 滚动+聚焦；保存行 `position:sticky` 粘底
+- 长列表**容器内滚动**（`.list-wrap{max-height:min(56vh,620px)}`）；否则 700 行 4.4 万像素、表单被顶到底 → 报「按钮不能用」
+- 表单 DOM **排在列表之前**；`revealForm()` 滚动+聚焦；保存行 sticky
 - 校验失败用 `markField()` 红框+抖动+滚进视线，**不要只靠 toast**
-- 「按钮不能用」分三种：① 逻辑没跑 ② 跑了报错 ③ 跑了但结果在视口外。③ 最常被误判成 ①
+- 「按钮不能用」三种：① 没跑 ② 报错 ③ 跑了但结果在视口外 —— **③ 最常被误判成 ①**
 
 **进度页（v17）**
-- "丑"的可核对定义：6 张同款数字卡 + 只有数字没比例 + 行内条 9px 高 122px 定宽 + 标题下 14px 灰字抢眼
-- 现结构：`ringHTML(rate)` 圆环 + `stackHTML(p)` 四段条 + 四个带色数字 `.slg` + 三个胶囊 `.hp`；每人一行 `.pn-txt` / `.prog-mini`(12px 高 width:100%) / `.prow-rate` / 档案
-- **说明文字一律 11.5px 灰字 `.prog-note` 或删掉**；圆环 `r=52`（周长 326.7）、`rotate(-90 60 60)`
-- 窄屏：名字+百分比一行 / 条一行 / 档案按钮整行
+- 结构：`ringHTML(rate)` 圆环 + `stackHTML(p)` 四段条 + 带色数字 `.slg` + 胶囊 `.hp`；每人一行 `.pn-txt` / `.prog-mini`(12px, width:100%) / `.prow-rate` / 档案
+- **说明文字一律 11.5px 灰字 `.prog-note` 或删掉**；圆环 `r=52`、`rotate(-90 60 60)`
 
 **游戏美术（v9/v10）**
-- 鱼：头在右尾在左，`fishSVG` viewBox `200×116`，身体 `cx=106 rx=54`，眼 `cx=142`，尾鳍 `M58 58 L14 24 Q36 58 14 92 Z`
-- 果树：整棵一张 `treeSVG()`（`400×250`），树干深插树冠，**别退回 div 树干+div 树冠**
-- `.game-field` 有 `max-height:min(620px,80vw)`；窄屏等比 SVG 会被纵向拉长
-- **动效必须有可见幅度**：游动 ±20px/3.4s，摆尾 ±13°、划鳍 ±10°，都要 `transform-box:fill-box`（否则 origin 按整张 SVG 算）
-- 测量：headless 不推进 CSS 动画（手动设 `getAnimations()[0].currentTime`）；溢出量用 `clientWidth`；SVG `<g>` 没有 `offsetWidth`
-- **先分"没播"和"幅度太小"**：量 `currentTime` 跳变后的 rect，能变就是幅度问题
-- **画面会看图验收**：报"画得不对"都是真画错（尾鳍长在嘴上），先核 SVG 坐标
+- 鱼：头右尾左，`fishSVG` viewBox `200×116`，身体 `cx=106 rx=54`，眼 `cx=142`，尾鳍 `M58 58 L14 24 Q36 58 14 92 Z`
+- 果树：整棵 `treeSVG()`（`400×250`），**别退回 div 树干+div 树冠**
+- `.game-field` 有 `max-height:min(620px,80vw)`
+- **动效必须有可见幅度**（游动 ±20px/3.4s、摆尾 ±13°），都要 `transform-box:fill-box`
+- **先分「没播」和「幅度太小」**；**画面会看图验收**，报「画得不对」都是真画错，先核 SVG 坐标
 
 **截图探针**
-- 造数据用 **`STATE.chars`，不是 `CHARS`**（`CHARS` 的 `c.w` 是组词串）→ 会出"正在学 0"这种假 bug
-- **headless Chrome 窗口宽度钳到最小 500px**：`--window-size=430` 右边被裁是假象，判溢出读 `getBoundingClientRect().right > innerWidth`
-- `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-sandbox --disable-gpu --screenshot=...`（必须 `--no-sandbox`）
+- 造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 出「正在学 0」假 bug）
+- **headless 窗口宽度会被钳住**（Chrome 钳到 ~500px）：`--window-size=430` 右边被裁是假象，判溢出读 `scrollWidth === innerWidth`
+- Mac：`"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-sandbox --disable-gpu --screenshot=...`
+- **Windows 本机没装 Chrome，用 Edge**：`"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --no-sandbox --disable-gpu --screenshot=...`
+- 想量数值又没 driver：注入脚本把测量结果写进 `document.title`，用 `--dump-dom | grep '<title>'` 读出来
 
-**节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户对此敏感、多次返工——**调之前先问**。
+**节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户敏感、多次返工——**调之前先问**。
 
 ## 五、工程纪律
 **文档**
 - `docs/`：`STATE.md`(先读) `00-功能清单.md` `01-HARNESS.md` `02-验收清单.md` `03-变更日志.md` `tasks/` `logs/`。每个任务一卡+一日志+变更一条，**不改文档等于没做完**
-- **发布铁律：先改这 5 处 → 构建 → 门禁 → 再发布**。5 处 = `p4.js` 的 `APP_VER`、`p2.html` 角标、`STATE.md` 现状角标文案、`00-功能清单.md` 4.3.8、`README.md` 当前版本
-- 语音条数跟 `p_voice.json` 走，加一条要同步三处文档表
-- `build/check_docs.py` 已接进 G1
-- **说了要做的事必须当天下到 `tasks/` 或 backlog**（T-009 只挂队列没建卡 = 没记）
+- **发版铁律：先改 5 处 → 构建 → 门禁 → 发布**。5 处 = `p4.js` `APP_VER`、`p2.html` 角标、`STATE.md` 现状角标文案、`00-功能清单.md` 4.3.8、`docs/README.md` 当前版本
+- `build/check_docs.py` 已接进 G1（版本号/角标/语音条数/任务卡引用）
+- **说了要做的事必须当天下到 `tasks/` 或 backlog**
 
 **门禁**
-- `python harness/run_gate.py`（G0 构建/体积、G1 静态护栏、G2 五套测试、G3 报告）。全绿 = 做完
-- 新增功能必须在 `harness/manifest.json` 登记关键符号，否则保护不到
-- 基线**以脚本实跑为准**：当前 36+98+281+16+19=**450 项**，门禁 **64 项**
-- **门禁红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**
-- 取函数体 `split('function X')[1].split('function Y')[0]` —— **Y 必须是文件里排在 X 后面的函数**，取反会切成空串、断言无故变红
-- **先怀疑工具口径**：按钮体检第一版只认 `$('id').addEventListener`，把委托控件误报成孤儿
-- `smoke2.js`/`check_lib.js` 要传 HTML 文件名，其余三套不传；需设 `NODE_PATH` 指向 managed node workspace
+- `python harness/run_gate.py`（G0 构建/体积、G1 静态护栏、G2 五套测试、G3 报告）；全绿＝做完
+- 新增功能必须在 `harness/manifest.json` 登记符号 + 抬 `min_cases`
+- 基线以脚本实跑为准：当前 36+98+319+16+19=**488 项**，门禁 **64 项**
+- **红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**
+- 取函数体 `split('function X')[1].split('function Y')[0]` —— **Y 必须在文件里排在 X 之后**，取反会切空串
+- **先怀疑工具口径**（按钮体检第一版把委托控件误报成孤儿）
+- `smoke2.js`/`check_lib.js` 要传 HTML 文件名；需设 `NODE_PATH`（本机 `~/.workbuddy/binaries/node/workspace/node_modules`）
 
 **数字与副作用**
-- **数字必须脚本现算**，别抄上一版（犯过两次：语音误记 1696、产物误记 5,231,040）
-- 必须发生的副作用**别挂 `requestAnimationFrame`**（后台标签可能永不执行），用 `setTimeout(fn,0)`
-- 新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入四处（参考 `repairCharWords()` 三处必调，少一处静默丢失）
-- 云端 schema 没列的字段**一律不落库**（会被覆盖）
+- **数字必须脚本现算**，别抄上一版（犯过两次）
+- 必须发生的副作用**别挂 `requestAnimationFrame`**，用 `setTimeout`
+- 新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入（少一处静默丢）
+- 云端 schema 没列的字段**一律不落库**
 
 ## 六、词库与拼词语
-- 词库页 = 内置组词（只读派生 `builtinWords()`）+ 我的词库（`STATE.words`），由 `wordRowsHTML()` 两源渲染
-- **内置词绝不写进 `STATE.words`**（会和字库分叉、备份多 87 KB、删了又回来）。要改就「收进词库」复制一份（`copyBuiltinWord`），出题按 `byW` 去重
-- `wordBank()` 从字库「组词」栏 + 自建词库现抽（969 个双字词）。**另存副本必然分叉**
-- 词库表窄屏**必须砍列**（释义/图示），别用 `min-width` 横滚——「收进词库」会被滚出屏幕
-- 拼词语一屏 3 词 = 6 字块两两点选；同组不共用；**任取两字不能拼成本组以外的词**（`wbCrossHit`）；反序也算对
-- 只给词里**属于学生字表**的字记分；结算按**词**算（8 词对 6 = 75%）；**读题绝不念词**，拼对后才整词朗读
-- 字表只有 2 个字也要跑一遍出题（暴露"整组重复""题量被字数截断"）
-- 老师报"词库是空的"先分：数据在不在（`builtinWords().list.length`）vs 界面没渲染
-- **同一症状第二次出现一定要往下游找**（v16）：v15 修渲染，真因是派生源 `STATE.chars[*].words` 为空；上游三处会弄丢这列，而 `migrateCharset()` 只在 charsetVer 不匹配时重灌 → **一空就永远空**
-- `repairCharWords()` **三处必调**（`boot`/`loadAllData`/`importBackup`），G1 钉 ≥3。边界：**只在整表一条都没有时才补**，老师填过一条就不动
-- `builtinWords()` 兜底用内置字表 `CHARS`（同一份字库，不是第二份词表），置 `fallback` 后界面直说「组词栏是空的，已用内置」，**不许装正常**
-- 老师端角标（当前 `v24 · 内置词 969`，兜底标「（兜底）」）。老师报"还是老样子"先问这一句
+- 词库页 = 只读派生 `builtinWords()` + `STATE.words`，由 `wordRowsHTML()` 两源渲染
+- **内置词绝不写进 `STATE.words`**（会分叉、备份多 87 KB）；要改就「收进词库」复制（`copyBuiltinWord`），出题按 `byW` 去重
+- `wordBank()` 从字库组词栏 + 自建词库现抽（969 双字词），**另存副本必然分叉**
+- 词库表窄屏**必须砍列**，别用 `min-width` 横滚（按钮会被滚出屏幕）
+- 拼词语：一屏 3 词 6 字块两两点选；同组不共用；**任取两字不能拼成本组外的词**（`wbCrossHit`）；反序也算对
+- 只给词里**属于学生字表**的字记分；结算按**词**算；**读题绝不念词**，拼对后才整词朗读
+- 老师报「词库是空的」先分：数据在不在 vs 界面没渲染；**同一症状第二次出现一定往下游找**（v16 真因是 `STATE.chars[*].words` 为空）
+- `repairCharWords()` **三处必调**（`boot`/`loadAllData`/`importBackup`），边界：**只在整表一条都没有时才补**
+- `builtinWords()` 兜底用内置字表 `CHARS`，界面直说「组词栏是空的，已用内置」，**不许装正常**
+- 老师端角标 `v25 · 内置词 969`（兜底标「（兜底）」）。报「还是老样子」先问这一句
 
 ## 七、用户偏好与不做清单
 - 特需学生：点击目标大、单指点击、**不要拖拽**；语音慢、句间有停顿
 - 字卡主次：汉字 86px 是主角，组词 22px 次要；没图不留空图位
-- 图示覆盖率 16%，**游戏不依赖图片**是刻意设计，别为配图削弱
+- 图示覆盖率 16%，**游戏不依赖图片**是刻意设计
 - **不做**：排行榜/班级花园墙、虚拟货币商店、枯萎降级饥饿、抽奖盲盒、多页签
-- 用户是特需班语文老师，讨厌重复手工排版，偏好"一键生成+可直接用"
+- 用户是特需班语文老师，讨厌重复手工排版，偏好「一键生成 + 可直接用」

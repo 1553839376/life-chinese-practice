@@ -132,7 +132,25 @@
    "preMode",
    "missOption",
    "optEl",
-   "resetQState"
+   "resetQState",
+   "isWriteType",
+   "WRITE_TYPES",
+   "WRITE_MAX",
+   "buildWriteQuestions",
+   "writeWordOf",
+   "wgAnswerOf",
+   "renderDictation",
+   "renderTrace",
+   "wgDone",
+   "wgReveal",
+   "wgMiss",
+   "wgHint",
+   "wgFinishTrace",
+   "wgLayout",
+   "wgRedraw",
+   "wgClear",
+   "logWriteMiss",
+   "WG"
   ],
   "老师端": [
    "openTeacher",
@@ -220,7 +238,7 @@
    "args": [
     "生活语文练习台.html"
    ],
-   "min_cases": 281
+   "min_cases": 319
   },
   {
    "name": "check_pair",

@@ -279,8 +279,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(120);
   ok(d.getElementById('stuForm').hidden === false, '新增表单展开');
   const typeBoxes = [...d.querySelectorAll('#fStuTypes input[data-t]')].map(x => x.value);
-  ok(typeBoxes.length === 6, '题型复选框 6 个：' + typeBoxes.length);
+  /* v25 起 8 个（原 6 个 + 汉字听写 / 描红汉字） */
+  ok(typeBoxes.length === 8, '题型复选框 8 个：' + typeBoxes.length);
   ok(typeBoxes.indexOf('拼词语') >= 0, '题型里能勾「拼词语」');
+  ok(typeBoxes.indexOf('汉字听写') >= 0 && typeBoxes.indexOf('描红汉字') >= 0,
+    'v25 两个手写题型在老师端可勾：' + typeBoxes.join('/'));
   d.getElementById('fStuName').value = '小安';
   const box = d.querySelectorAll('#fStuTypes input[data-t]')[0];
   box.checked = true;
@@ -1055,6 +1058,140 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   v19_s.count = 5;
   ok(w.stuActive(v19_s).length === 5, '改上限后立即收到 5：' + w.stuActive(v19_s).length);
   ok(w.STATE.students[1].count === 3, '改一个人的上限不影响别人');
+
+  console.log('\n【25】手写题型：汉字听写 / 描红汉字（v25）');
+  ok(w.TYPE_ORDER.length === 8 && w.TYPE_ORDER.indexOf('汉字听写') >= 0 && w.TYPE_ORDER.indexOf('描红汉字') >= 0,
+    '题型扩到 8 个，两个手写题型在列：' + w.TYPE_ORDER.join('/'));
+  ok(w.isWriteType('汉字听写') && w.isWriteType('描红汉字') && !w.isWriteType('听音找字'),
+    'isWriteType 只认这两个手写题型');
+  ok(w.WRITE_MAX === 6, '手写一次最多 6 个（写字比点选慢）：' + w.WRITE_MAX);
+
+  /* 每个字都给一个词：听写要念词，「字库组词栏为空」会静默退回单字，测不出两格 */
+  const v25_ch = (ch, words) => ({ w: ch, p: '', words: words, on: true });
+  w.STATE.chars = [
+    v25_ch('小', '小手、大小'), v25_ch('手', '小手、手心'),
+    v25_ch('大', '大人、大小'), v25_ch('人', '大人、工人'),
+    v25_ch('山', '山上、高山'), v25_ch('水', '水果、喝水'),
+    v25_ch('火', '火山、大火'), v25_ch('木', '木头、树木')
+  ];
+  w.STATE.logs = {};
+  const v25_stu = { id: 'local_v25', name: '听写生', types: ['汉字听写', '描红汉字'],
+    chars: ['小', '手', '大', '人', '山', '水', '火', '木'], groups: [], count: 10,
+    status: '在读', photo: '' };
+  w.STATE.students.push(v25_stu);
+  w.STATE.cur = v25_stu;
+  w.preReset('听写生');
+
+  w.startQuiz('汉字听写');
+  await wait(60);
+  ok(w.STATE.quiz && w.STATE.quiz.type === '汉字听写', 'startQuiz 进得去听写');
+  ok(w.STATE.quiz.qs.length === 6, '字数 10 个时听写也只出 6 题：' + w.STATE.quiz.qs.length);
+  ok(d.querySelectorAll('#stage .wg-box').length >= 1, '听写出了方框');
+
+  /* 固定成两字词，方框数必须跟着词的字数走（不能一律一个格子） */
+  w.STATE.quiz.qs = [{ target: w.STATE.chars[0], text: '小手' }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+  ok(d.querySelectorAll('#stage .wg-box').length === 2, '两字词给两个方框：' +
+    d.querySelectorAll('#stage .wg-box').length);
+  ok(d.querySelectorAll('#stage .wg-box canvas').length === 2, '每个方框各有一块画布');
+  ok(Array.from(d.querySelectorAll('#stage .wg-ans')).every(x => !x.textContent),
+    '答案一开始不写在页面上（要先自己写）');
+  ok(!d.querySelector('#stage .wg-box.reveal'), '一开始不亮答案');
+
+  /* 没写就点「写好了」：只提醒，不判分、不记错 */
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(40);
+  ok(w.STATE.quiz.answered === false, '空格子点「写好了」不判分');
+  ok(w.STATE.logs['听写生|小'] === undefined || !w.STATE.logs['听写生|小'].n,
+    '空格子点「写好了」不写记录');
+
+  /* 有笔迹 → 亮答案（浅绿），仍不算答对 */
+  w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }, { x: 30, y: 30 }]);
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(40);
+  ok(!!d.querySelector('#stage .wg-box.reveal'), '写完点「写好了」把答案亮出来');
+  ok(d.querySelector('#stage .wg-ans').textContent === '小',
+    '亮出来的就是这个词的第一个字：' + d.querySelector('#stage .wg-ans').textContent);
+  ok(w.STATE.quiz.answered === false, '亮答案不等于判对，还要人对一下');
+  ok(!!d.querySelector('#stage [data-wg-act="ok"]') && !!d.querySelector('#stage [data-wg-act="miss"]'),
+    '亮完答案给「写对了 / 没写好」两个按钮');
+
+  click(d.querySelector('#stage [data-wg-act="ok"]'));
+  await wait(40);
+  ok(w.STATE.quiz.answered === true, '点「写对了」才算答对');
+  ok(w.STATE.logs['听写生|小'].alone === 1 && w.STATE.logs['听写生|小'].n === 1,
+    '听写答对记一次独立答对：alone=' + w.STATE.logs['听写生|小'].alone +
+    ' n=' + w.STATE.logs['听写生|小'].n);
+
+  /* 「没写好」→ 记一次错 + 擦干净重写；同一题再点不再重复记账 */
+  w.startQuiz('汉字听写');
+  w.STATE.quiz.qs = [{ target: w.STATE.chars[0], text: '小手' }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+  w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }]);
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(30);
+  click(d.querySelector('#stage [data-wg-act="miss"]'));
+  await wait(60);
+  ok(w.STATE.logs['听写生|小'].wrong === 1, '「没写好」记一次错：' + w.STATE.logs['听写生|小'].wrong);
+  ok(w.WG.boxes[0].strokes.length === 0, '「没写好」把笔迹擦干净，重写');
+  ok(!d.querySelector('#stage .wg-box.reveal'), '擦掉时答案也收起来');
+  ok(!!d.querySelector('#stage [data-wg-act="done"]'), '回到「写好了」等重写');
+  w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }]);
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(30);
+  click(d.querySelector('#stage [data-wg-act="miss"]'));
+  await wait(60);
+  ok(w.STATE.logs['听写生|小'].wrong === 1, '一题最多记 1 次错，重写不重复惩罚：' +
+    w.STATE.logs['听写生|小'].wrong);
+  ok(w.STATE.quiz.answered === false, '「没写好」不结束这题');
+
+  /* 听写念的是词，不是单字 —— 念成单字孩子不知道要写两格 */
+  const v25_say = w.quizSay('汉字听写', { target: { w: '小', p: 'xiao' }, text: '小手' });
+  ok(v25_say[v25_say.length - 1].t === '小手', '听写念的是词：' + v25_say[v25_say.length - 1].t);
+
+  /* 老师「提示一下」= 亮答案，并记一次辅助 */
+  w.startQuiz('汉字听写');
+  await wait(60);
+  w.useHint();
+  ok(w.STATE.quiz.promptUsed === 1, '听写的提示记一次辅助：' + w.STATE.quiz.promptUsed);
+  ok(!!d.querySelector('#stage .wg-box.reveal'), '听写的「提示一下」把答案亮出来');
+
+  /* 描红：底字摆在格子里，描完直接过，但记的是「辅助完成」 */
+  w.startQuiz('描红汉字');
+  await wait(60);
+  const v25_ghost = d.querySelector('#stage .wg-ghost');
+  ok(!!v25_ghost, '描红有浅灰底字');
+  ok(d.querySelectorAll('#stage .wg-box').length === 1, '描红一次只描一个字');
+  const v25_gch = v25_ghost.textContent;
+  ok(v25_gch === w.STATE.quiz.qs[0].target.w, '底字就是目标字：' + v25_gch);
+  const v25_b4 = w.STATE.logs['听写生|' + v25_gch] || { alone: 0, hinted: 0, n: 0 };
+  const v25_a0 = v25_b4.alone || 0, v25_h0 = v25_b4.hinted || 0;
+  w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }, { x: 20, y: 20 }]);
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(80);
+  const v25_r = w.STATE.logs['听写生|' + v25_gch];
+  ok(v25_r.n === (v25_b4.n || 0) + 1, '描红记一次练习：n=' + v25_r.n);
+  ok(v25_r.alone === v25_a0, '描红不算「独立答对」：alone 还是 ' + v25_r.alone);
+  ok(v25_r.hinted === v25_h0 + 1, '描红记一次辅助：hinted ' + v25_h0 + '→' + v25_r.hinted);
+  ok(w.levelOf(v25_r) !== '已掌握', '描红不能把字直接送进「已掌握」：' + w.levelOf(v25_r));
+
+  /* 字表只有 2 个字也能开手写题型（老逻辑要求 4 个选项） */
+  const v25_two = { id: 'local_v25b', name: '两个字', types: ['汉字听写'],
+    chars: ['山', '水'], groups: [], count: 10, status: '在读', photo: '' };
+  w.STATE.cur = v25_two;
+  w.preReset('两个字');
+  w.startQuiz('汉字听写');
+  await wait(50);
+  ok(!/至少要 4 个/.test(d.getElementById('stage').textContent),
+    '字表只有 2 个字也能开听写（手写题型不靠干扰项）');
+  ok(w.STATE.quiz && w.STATE.quiz.qs.length === 2, '题量不超过字表字数：' +
+    (w.STATE.quiz && w.STATE.quiz.qs.length));
+  w.resetQState();
+  ok(w.STATE.quiz.checked === false, 'resetQState 清掉「亮过答案」，不带到下一题');
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
