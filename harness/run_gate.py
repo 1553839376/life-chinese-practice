@@ -585,11 +585,50 @@ def gate_static(html):
     _ipy, _ich = html.find('id="sheetPy"'), html.find('id="sheetChar"')
     rec('G1', '学字卡拼音排在汉字上面（注音在上，不再压在字底下）',
         0 < _ipy < _ich, '拼音 @%d / 汉字 @%d' % (_ipy, _ich))
-    rec('G1', '描写入口只剩「描一描」（田字格图标 + 三个字，不再有一整行说明书）',
-        '</span>描一描' in html and '点这个字，看笔顺照着描<' not in html
-        and 'class="sth-i"' in html)
+    # v30：老师「描红那个改成铅笔的图标吧，好理解」——图标从田字格小方块换成铅笔
+    _tr0 = html.find('id="sheetTrace"')
+    _tr1 = html.find('</button>', _tr0) if _tr0 > 0 else -1
+    _tr = html[_tr0:_tr1] if _tr0 > 0 and _tr1 > _tr0 else ''
+    rec('G1', '描写入口是「铅笔图标 + 描一描」（不再是一整行说明书）',
+        'svg' in _tr and 'sth-i' in _tr and '描一描' in _tr
+        and '点这个字，看笔顺照着描' not in _tr,
+        '' if _tr else '找不到 #sheetTrace')
     rec('G1', '喇叭挂在汉字右侧不参与居中（absolute + left:100%，字才落在中轴线）',
         'position:absolute;left:100%' in html and 'translateY(-50%)' in html)
+
+    # v30：老师「这几个的样式都特别不好看」——选人卡、操作列、学生列三处重排
+    _pick = html[html.find('function renderPick'):]
+    _pick = _pick[:max(_pick.find('function ', 10), 1)]
+    rec('G1', '选人卡不再铺整串题型名（只写「N 个题型」）',
+        "s.types.length + ' 个题型'" in _pick and 's.types.join' not in _pick,
+        '' if _pick else '找不到 renderPick')
+    _list = html[html.find('function renderStuList'):]
+    _list = _list[:max(_list.find('function ', 10), 1)]
+    rec('G1', '名单三个操作收在一条 .ops 里（不再被挤到第二行）',
+        'class="ops"' in _list and 'op-btn op-main' in _list and 'op-btn op-del' in _list
+        and 'danger" data-del' not in _list)
+    rec('G1', '学生列头像与姓名包在 .stu-cell 里（同一行不换行）',
+        'class="stu-cell"' in _list and 'table.grid .stu-cell .mini-av{margin-right:0}' in html)
+    rec('G1', '胶囊不换行（窄屏「在读」不会被拆成竖排两个字）',
+        '.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12.5px;'
+        'font-weight:800;\n  white-space:nowrap}' in html)
+
+    # v30：老师「练完回到乐园会回到最上面…这样又要滑动下来非常麻烦」
+    rec('G1', '每屏记住滚动位置，回来还在原地（SCROLL_MEM + scrollTo 恢复）',
+        'var SCROLL_MEM = {}' in html and 'SCROLL_MEM[prev] = window.pageYOffset' in html
+        and 'var y = SCROLL_MEM[name] || 0' in html and 'window.scrollTo(0, y)' in html)
+
+    # v30：老师「点进去才能看到档案，也不方便，是否应该在上面入口单独设置一个学生档案的地方」
+    _tp0 = html.find('id="tpStu"')
+    _tp1 = html.find('id="tpProf"')
+    _tp2 = html.find('id="stuProfile"')
+    _tp3 = html.find('id="tpLib"')
+    rec('G1', '「学生档案」是独立一页（tpProf 在学生管理之后、字库之前，档案不嵌套在 tpStu 里）',
+        'data-tp="prof"' in html and 0 < _tp0 < _tp1 < _tp2 < _tp3,
+        'tpStu@%d tpProf@%d stuProfile@%d tpLib@%d' % (_tp0, _tp1, _tp2, _tp3))
+    rec('G1', '档案页默认先列全班档案卡（renderProfPick 画 pp-card）',
+        'function renderProfPick' in html and 'pp-card' in html
+        and 'function renderProfRoute' in html)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

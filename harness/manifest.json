@@ -172,7 +172,9 @@
       "writesWord",
       "isDictation",
       "migrateTypes",
-      "LS_DATA_BAK_T023"
+      "LS_DATA_BAK_T023",
+      "SCROLL_MEM",
+      "renderPick"
     ],
     "老师端": [
       "openTeacher",
@@ -195,7 +197,11 @@
       "copyBuiltinWord",
       "paintAppVer",
       "ringHTML",
-      "stackHTML"
+      "stackHTML",
+      "renderProfPick",
+      "renderProfRoute",
+      "STU_FORM_FROM",
+      "findStu"
     ],
     "页面结构": [
       "scrLearn",
@@ -228,7 +234,11 @@
       "traceNext",
       "traceTip",
       "sheetSpeak",
-      "sheetChar"
+      "sheetChar",
+      "tpProf",
+      "profPickGrid",
+      "profPickEmpty",
+      "profPick"
     ],
     "笔顺描写": [
       "STROKE_PACK",
@@ -309,7 +319,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 467
+      "min_cases": 487
     },
     {
       "name": "check_pair",

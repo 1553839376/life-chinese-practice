@@ -33,20 +33,26 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
-.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
-.stu-card{background:var(--card);border:2px solid var(--line);border-radius:20px;
-  padding:18px 10px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;
-  transition:transform .08s ease,border-color .15s ease;min-height:170px;justify-content:center}
+/* 选人卡（v30 重排）：原来卡片里塞着「9 个题型」的完整清单，折成五行走廊，
+   一个字都没对上——孩子只需要认脸，老师只需要知道「他能不能练」。
+   现在卡片只有三样：大照片、姓名、一句胶囊（几个题型 / 还没排练习）。 */
+.stu-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:18px}
+.stu-card{width:200px;background:var(--card);border:2px solid var(--line);border-radius:24px;
+  padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;
+  transition:transform .1s ease,border-color .15s ease,box-shadow .15s ease}
 .stu-card:active{transform:scale(.97)}
-.stu-card:hover{border-color:var(--blue-line)}
+.stu-card:hover{border-color:var(--blue-line);box-shadow:0 10px 22px rgba(24,95,165,.10)}
 .stu-card.paused{opacity:.5}
-.stu-av{width:92px;height:92px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
+.stu-av{width:100px;height:100px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;flex:none;
-  font-size:40px;font-weight:800;color:var(--blue);border:2px solid #fff}
+  font-size:44px;font-weight:800;color:var(--blue);
+  border:3px solid #fff;box-shadow:0 0 0 2px var(--line)}
 .stu-av img{width:100%;height:100%;object-fit:cover;display:block}
-.stu-nm{font-size:20px;font-weight:800;letter-spacing:.02em;text-align:center;
-  max-width:100%;overflow-wrap:anywhere}
-.stu-tag{font-size:13px;color:var(--ink3)}
+.stu-nm{font-size:21px;font-weight:800;letter-spacing:.02em;text-align:center;
+  max-width:100%;overflow-wrap:anywhere;line-height:1.25}
+.stu-tag{font-size:12.5px;font-weight:800;color:var(--ink2);background:#F2EDDF;
+  border-radius:999px;padding:4px 12px;white-space:nowrap;line-height:1.4}
+.stu-tag.warn{color:var(--amber);background:var(--amber-bg)}
 .empty-tip{background:var(--amber-bg);border:1.5px solid var(--amber-line);border-radius:14px;
   padding:16px 18px;font-size:16px;color:var(--amber);margin:8px 0 0}
 .go-learn{margin-top:14px;border:2px solid var(--blue-line);background:var(--blue-bg);
@@ -420,6 +426,28 @@ table.grid th{background:#F4EFE1;text-align:left;padding:10px 12px;font-weight:8
 table.grid td{padding:9px 12px;border-top:1px solid #EFE8D8;vertical-align:middle}
 table.grid tr.on td{background:#FFF8E6}
 .lib-cell{font-size:26px;font-weight:700}
+/* 表格里的操作键（v30）：原来「档案/编辑/删除」三个按钮各带 2px 描边，
+   在 7 列表格里排不下一行，「删除」被挤到第二行，整行被撑到 90px，
+   一屏只看得到三个学生。现在统一成一行 34px 小按钮：
+   档案＝唯一带底色的主操作，编辑＝白底细描边，删除＝纯红字（破坏性动作不该最抢眼）。 */
+.stu-cell{display:flex;align-items:center;gap:8px;white-space:nowrap}
+table.grid .stu-cell .mini-av{margin-right:0}
+table.grid .stu-nm{font-size:15.5px;font-weight:800;text-align:left;letter-spacing:0}
+.td-types{max-width:250px}
+.td-types-in{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:13.5px;line-height:1.5;color:var(--ink2)}
+.ops-cell{white-space:nowrap}
+.ops{display:flex;align-items:center;gap:6px}
+.ops .op-btn{display:inline-flex;align-items:center;justify-content:center;
+  min-height:34px;padding:0 12px;border-radius:9px;font-size:13.5px;font-weight:800;
+  border:1.5px solid transparent;white-space:nowrap;
+  transition:background .12s ease,border-color .12s ease,color .12s ease}
+.ops .op-main{background:var(--green-bg);border-color:var(--green-line);color:var(--green)}
+.ops .op-main:hover{background:#D7EBDE}
+.ops .op-edit{background:#fff;border-color:var(--line2);color:var(--ink2)}
+.ops .op-edit:hover{border-color:var(--blue-line);color:var(--blue);background:var(--blue-bg)}
+.ops .op-del{color:var(--red)}
+.ops .op-del:hover{background:var(--red-bg);border-color:var(--red-line)}
 /* 内置派生行：灰一点、浅底色，一眼看出「不用你维护」 */
 tr.tr-builtin td{background:#FBFAF3}
 .sp-builtin{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:7px;
@@ -430,7 +458,9 @@ tr.tr-builtin td{background:#FBFAF3}
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--blue);
   vertical-align:middle;margin-right:8px}
 .mini-av img{width:100%;height:100%;object-fit:cover;display:block}
-.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:800}
+/* 胶囊永远不换行：窄屏表格把列压窄时，「在读」会被拆成上下两个字的竖排（用户截图里就是这样） */
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:800;
+  white-space:nowrap}
 .pill.g{background:var(--green-bg);color:var(--green)}
 .pill.b{background:var(--blue-bg);color:var(--blue)}
 .pill.a{background:var(--amber-bg);color:var(--amber)}
@@ -510,6 +540,33 @@ tr.tr-builtin td{background:#FBFAF3}
 .lg-t{color:var(--red)} .lg-o{color:var(--ink3)}
 
 .prof-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0 16px}
+/* 学生档案 tab（v30）：老师原话「点进去才能看到档案，也不方便，是否应该在上面
+   入口单独设置一个学生档案的地方」。档案从「学生管理」里搬出来独立成页：
+   上面是全班档案卡（一眼看谁的掌握率高、谁还没练），点一张进逐字档案。
+   学生管理只管增删改，两件事不再混在一个入口里。 */
+.prof-pick-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.prof-pick-head h3{margin:0}
+.prof-pick-note{font-size:12px;color:var(--ink3);font-weight:700}
+.prof-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:14px}
+.pp-card{text-align:left;background:#fff;border:2px solid var(--line);border-radius:18px;
+  padding:14px 16px 13px;display:flex;flex-direction:column;gap:9px;
+  transition:border-color .14s ease,transform .08s ease,box-shadow .14s ease}
+.pp-card:hover{border-color:var(--blue-line);box-shadow:0 8px 18px rgba(24,95,165,.09)}
+.pp-card:active{transform:scale(.985)}
+.pp-top{display:flex;align-items:center;gap:10px;width:100%}
+.pp-av{width:42px;height:42px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
+  display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;
+  color:var(--blue);flex:none;border:2px solid #fff}
+.pp-av img{width:100%;height:100%;object-fit:cover;display:block}
+.pp-nm{font-size:17px;font-weight:800;flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.pp-rate{display:flex;align-items:baseline;gap:6px;width:100%}
+.pp-rate b{font-size:28px;font-weight:800;color:var(--green);line-height:1}
+.pp-rate i{font-style:normal;font-size:12.5px;font-weight:700;color:var(--ink3)}
+.pp-rate .pp-none{font-size:14px;color:var(--amber)}
+.pp-meta{font-size:12.5px;font-weight:700;color:var(--ink2);width:100%}
+.pp-bar{display:block;width:100%}
+.pp-time{font-size:11.5px;color:var(--ink3);font-weight:700;width:100%}
 .prof-who{display:flex;align-items:center;gap:12px;flex:1;min-width:180px}
 .prof-av{width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;
@@ -758,20 +815,18 @@ tr.tr-builtin td{background:#FBFAF3}
 .sheet-word i{font-style:normal;color:var(--red)}
 .sheet-word .lb{font-size:12.5px;font-weight:700;color:var(--ink3);
   margin-right:7px;letter-spacing:0}
-/* 描写入口（v29）：只剩「田字格图标 + 描一描」。
+/* 描写入口（v29）：只剩「描一描」三个字。
    原来那句「点这个字，看笔顺照着描」是给大人看的说明书，
-   对着孩子念叨一整行，反而比字还吵。 */
+   对着孩子念叨一整行，反而比字还吵。
+   v30：图标从小方格换成**铅笔**——方格看着像田字格，铅笔一眼就是「写」。 */
 .sheet-trace-hint{display:inline-flex;align-items:center;gap:8px;
   cursor:pointer;background:#fff;border:1.5px solid var(--green-line);border-radius:999px;
   padding:7px 18px 7px 14px;font-size:14.5px;font-weight:800;color:var(--green);min-height:40px;
   transition:border-color .12s ease,background .12s ease,transform .08s ease}
 .sheet-trace-hint:hover{border-color:var(--green);background:#F1F7F2}
 .sheet-trace-hint:active{transform:scale(.98)}
-.sheet-trace-hint .sth-i{width:17px;height:17px;flex:0 0 auto;border-radius:4px;
-  border:1.7px solid var(--green-line);
-  background-image:linear-gradient(var(--green-line),var(--green-line)),
-                   linear-gradient(var(--green-line),var(--green-line));
-  background-size:100% 1.5px,1.5px 100%;background-position:center;background-repeat:no-repeat}
+.sheet-trace-hint .sth-i{width:17px;height:17px;flex:0 0 auto;display:block;
+  fill:currentColor;stroke:none}
 .sheet-games{margin-top:4px}
 .sg-title{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:10px}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1095,6 +1150,15 @@ tr.tr-builtin td{background:#FBFAF3}
 
 /* ---------- 窄屏降级（共用电脑也可能接小屏，必须能单列） ---------- */
 
+/* 平板竖屏（768 左右）：学生名单 7 列原本自然宽 735px，差一点点放不下就得横向滚。
+   这里把单元格内边距和「练习题型」列各收一点，正好压进 670 以内。 */
+@media (max-width:820px){
+  table.grid th{padding:9px 8px}
+  table.grid td{padding:9px 8px}
+  .td-types{max-width:170px}
+  .ops .op-btn{padding:0 9px}
+}
+
 @media (max-width:640px){
   .screen{padding:14px 12px 22px}
   /* 我的主页窄屏：头像和圆环都要收，不然一行塞不下会挤成两行 */
@@ -1109,7 +1173,11 @@ tr.tr-builtin td{background:#FBFAF3}
   .home-go{min-height:62px;font-size:20px}
   .pre-foot .pre-back{width:100%;margin-left:0}
   .opts,.opts.four{grid-template-columns:1fr}
-  .stu-grid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr))}
+  .stu-grid{gap:12px}
+  .stu-card{width:140px;padding:16px 10px 14px;gap:9px;border-radius:20px}
+  .stu-av{width:76px;height:76px;font-size:34px}
+  .stu-nm{font-size:18px}
+  .stu-tag{font-size:11.5px;padding:3px 10px}
   /* 今日字卡窄屏：两列、字略小，开始按钮整行（单手好按） */
   .pre-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .pre-card{min-height:152px;padding:24px 8px 18px}

@@ -108,11 +108,12 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v29</span>
+    <span id="appVer" class="app-ver">v30</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
     <button class="tea-tab on" data-tp="stu" type="button">学生管理</button>
+    <button class="tea-tab" data-tp="prof" type="button">学生档案</button>
     <button class="tea-tab" data-tp="lib" type="button">字库</button>
     <button class="tea-tab" data-tp="word" type="button">词库</button>
     <button class="tea-tab" data-tp="prog" type="button">进度总览</button>
@@ -166,15 +167,30 @@
           <tbody id="stuTbody"></tbody>
         </table>
       </div>
-      <p class="tips">进度条按「这位同学自己字表」算：<b class="lg-m">已掌握</b>／<b class="lg-d">练习中</b>／<b class="lg-t">需巩固</b>／<b class="lg-o">待学</b>。点「档案」看每个字的掌握情况，也能只挑几个字单独练。</p>
+      <p class="tips">进度条按「这位同学自己字表」算：<b class="lg-m">已掌握</b>／<b class="lg-d">练习中</b>／<b class="lg-t">需巩固</b>／<b class="lg-o">待学</b>。这一页只管增删改；看每个字练得怎么样，到上面「学生档案」。</p>
       <div class="row" style="margin-top:14px">
         <button id="btnStuNew" class="primary" type="button">新增学生</button>
       </div>
     </div>
 
+  </div>
+
+  <!-- 学生档案（v30）：从「学生管理」里独立出来。老师原话「点进去才能看到档案，
+       也不方便，是否应该在上面入口单独设置一个学生档案的地方」。
+       上面一排档案卡看全班，点一张进逐字档案；学生管理只负责增删改。 -->
+  <div id="tpProf" class="panel" hidden>
+    <div id="profPick">
+      <div class="prof-pick-head">
+        <h3>学生档案</h3>
+        <span class="prof-pick-note">分母是各人的字表；点一张看逐字掌握</span>
+      </div>
+      <div id="profPickGrid" class="prof-pick-grid"></div>
+      <p id="profPickEmpty" class="empty-tip" hidden>还没有学生。先到「学生管理」加一个。</p>
+    </div>
+
     <div id="stuProfile" hidden>
       <div class="prof-top">
-        <button id="btnProfBack" class="ghost-btn" type="button">返回名单</button>
+        <button id="btnProfBack" class="ghost-btn" type="button">返回档案列表</button>
         <div class="prof-who">
           <span id="profAv" class="prof-av"></span>
           <div class="prof-who-t">
@@ -204,7 +220,6 @@
         <button id="btnProfPause" class="secondary" type="button">设为暂停</button>
       </div>
     </div>
-
   </div>
 
   <div id="tpLib" class="panel" hidden>
@@ -344,7 +359,10 @@
         </div>
         <div id="sheetWord" class="sheet-word"></div>
         <button id="sheetTrace" class="sheet-trace-hint" type="button">
-          <span class="sth-i" aria-hidden="true"></span>描一描
+          <svg class="sth-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 17.4V21h3.6L17.3 10.3l-3.6-3.6L3 17.4z"/>
+            <path d="M20.6 6.9a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.7 1.7 3.5 3.5 1.7-1.7z"/>
+          </svg>描一描
         </button>
       </div>
     </div>

@@ -33,20 +33,26 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
-.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
-.stu-card{background:var(--card);border:2px solid var(--line);border-radius:20px;
-  padding:18px 10px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;
-  transition:transform .08s ease,border-color .15s ease;min-height:170px;justify-content:center}
+/* 选人卡（v30 重排）：原来卡片里塞着「9 个题型」的完整清单，折成五行走廊，
+   一个字都没对上——孩子只需要认脸，老师只需要知道「他能不能练」。
+   现在卡片只有三样：大照片、姓名、一句胶囊（几个题型 / 还没排练习）。 */
+.stu-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:18px}
+.stu-card{width:200px;background:var(--card);border:2px solid var(--line);border-radius:24px;
+  padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;
+  transition:transform .1s ease,border-color .15s ease,box-shadow .15s ease}
 .stu-card:active{transform:scale(.97)}
-.stu-card:hover{border-color:var(--blue-line)}
+.stu-card:hover{border-color:var(--blue-line);box-shadow:0 10px 22px rgba(24,95,165,.10)}
 .stu-card.paused{opacity:.5}
-.stu-av{width:92px;height:92px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
+.stu-av{width:100px;height:100px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;flex:none;
-  font-size:40px;font-weight:800;color:var(--blue);border:2px solid #fff}
+  font-size:44px;font-weight:800;color:var(--blue);
+  border:3px solid #fff;box-shadow:0 0 0 2px var(--line)}
 .stu-av img{width:100%;height:100%;object-fit:cover;display:block}
-.stu-nm{font-size:20px;font-weight:800;letter-spacing:.02em;text-align:center;
-  max-width:100%;overflow-wrap:anywhere}
-.stu-tag{font-size:13px;color:var(--ink3)}
+.stu-nm{font-size:21px;font-weight:800;letter-spacing:.02em;text-align:center;
+  max-width:100%;overflow-wrap:anywhere;line-height:1.25}
+.stu-tag{font-size:12.5px;font-weight:800;color:var(--ink2);background:#F2EDDF;
+  border-radius:999px;padding:4px 12px;white-space:nowrap;line-height:1.4}
+.stu-tag.warn{color:var(--amber);background:var(--amber-bg)}
 .empty-tip{background:var(--amber-bg);border:1.5px solid var(--amber-line);border-radius:14px;
   padding:16px 18px;font-size:16px;color:var(--amber);margin:8px 0 0}
 .go-learn{margin-top:14px;border:2px solid var(--blue-line);background:var(--blue-bg);
@@ -420,6 +426,28 @@ table.grid th{background:#F4EFE1;text-align:left;padding:10px 12px;font-weight:8
 table.grid td{padding:9px 12px;border-top:1px solid #EFE8D8;vertical-align:middle}
 table.grid tr.on td{background:#FFF8E6}
 .lib-cell{font-size:26px;font-weight:700}
+/* 表格里的操作键（v30）：原来「档案/编辑/删除」三个按钮各带 2px 描边，
+   在 7 列表格里排不下一行，「删除」被挤到第二行，整行被撑到 90px，
+   一屏只看得到三个学生。现在统一成一行 34px 小按钮：
+   档案＝唯一带底色的主操作，编辑＝白底细描边，删除＝纯红字（破坏性动作不该最抢眼）。 */
+.stu-cell{display:flex;align-items:center;gap:8px;white-space:nowrap}
+table.grid .stu-cell .mini-av{margin-right:0}
+table.grid .stu-nm{font-size:15.5px;font-weight:800;text-align:left;letter-spacing:0}
+.td-types{max-width:250px}
+.td-types-in{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:13.5px;line-height:1.5;color:var(--ink2)}
+.ops-cell{white-space:nowrap}
+.ops{display:flex;align-items:center;gap:6px}
+.ops .op-btn{display:inline-flex;align-items:center;justify-content:center;
+  min-height:34px;padding:0 12px;border-radius:9px;font-size:13.5px;font-weight:800;
+  border:1.5px solid transparent;white-space:nowrap;
+  transition:background .12s ease,border-color .12s ease,color .12s ease}
+.ops .op-main{background:var(--green-bg);border-color:var(--green-line);color:var(--green)}
+.ops .op-main:hover{background:#D7EBDE}
+.ops .op-edit{background:#fff;border-color:var(--line2);color:var(--ink2)}
+.ops .op-edit:hover{border-color:var(--blue-line);color:var(--blue);background:var(--blue-bg)}
+.ops .op-del{color:var(--red)}
+.ops .op-del:hover{background:var(--red-bg);border-color:var(--red-line)}
 /* 内置派生行：灰一点、浅底色，一眼看出「不用你维护」 */
 tr.tr-builtin td{background:#FBFAF3}
 .sp-builtin{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:7px;
@@ -430,7 +458,9 @@ tr.tr-builtin td{background:#FBFAF3}
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--blue);
   vertical-align:middle;margin-right:8px}
 .mini-av img{width:100%;height:100%;object-fit:cover;display:block}
-.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:800}
+/* 胶囊永远不换行：窄屏表格把列压窄时，「在读」会被拆成上下两个字的竖排（用户截图里就是这样） */
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:800;
+  white-space:nowrap}
 .pill.g{background:var(--green-bg);color:var(--green)}
 .pill.b{background:var(--blue-bg);color:var(--blue)}
 .pill.a{background:var(--amber-bg);color:var(--amber)}
@@ -510,6 +540,33 @@ tr.tr-builtin td{background:#FBFAF3}
 .lg-t{color:var(--red)} .lg-o{color:var(--ink3)}
 
 .prof-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0 16px}
+/* 学生档案 tab（v30）：老师原话「点进去才能看到档案，也不方便，是否应该在上面
+   入口单独设置一个学生档案的地方」。档案从「学生管理」里搬出来独立成页：
+   上面是全班档案卡（一眼看谁的掌握率高、谁还没练），点一张进逐字档案。
+   学生管理只管增删改，两件事不再混在一个入口里。 */
+.prof-pick-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.prof-pick-head h3{margin:0}
+.prof-pick-note{font-size:12px;color:var(--ink3);font-weight:700}
+.prof-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:14px}
+.pp-card{text-align:left;background:#fff;border:2px solid var(--line);border-radius:18px;
+  padding:14px 16px 13px;display:flex;flex-direction:column;gap:9px;
+  transition:border-color .14s ease,transform .08s ease,box-shadow .14s ease}
+.pp-card:hover{border-color:var(--blue-line);box-shadow:0 8px 18px rgba(24,95,165,.09)}
+.pp-card:active{transform:scale(.985)}
+.pp-top{display:flex;align-items:center;gap:10px;width:100%}
+.pp-av{width:42px;height:42px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
+  display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;
+  color:var(--blue);flex:none;border:2px solid #fff}
+.pp-av img{width:100%;height:100%;object-fit:cover;display:block}
+.pp-nm{font-size:17px;font-weight:800;flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.pp-rate{display:flex;align-items:baseline;gap:6px;width:100%}
+.pp-rate b{font-size:28px;font-weight:800;color:var(--green);line-height:1}
+.pp-rate i{font-style:normal;font-size:12.5px;font-weight:700;color:var(--ink3)}
+.pp-rate .pp-none{font-size:14px;color:var(--amber)}
+.pp-meta{font-size:12.5px;font-weight:700;color:var(--ink2);width:100%}
+.pp-bar{display:block;width:100%}
+.pp-time{font-size:11.5px;color:var(--ink3);font-weight:700;width:100%}
 .prof-who{display:flex;align-items:center;gap:12px;flex:1;min-width:180px}
 .prof-av{width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;
@@ -758,20 +815,18 @@ tr.tr-builtin td{background:#FBFAF3}
 .sheet-word i{font-style:normal;color:var(--red)}
 .sheet-word .lb{font-size:12.5px;font-weight:700;color:var(--ink3);
   margin-right:7px;letter-spacing:0}
-/* 描写入口（v29）：只剩「田字格图标 + 描一描」。
+/* 描写入口（v29）：只剩「描一描」三个字。
    原来那句「点这个字，看笔顺照着描」是给大人看的说明书，
-   对着孩子念叨一整行，反而比字还吵。 */
+   对着孩子念叨一整行，反而比字还吵。
+   v30：图标从小方格换成**铅笔**——方格看着像田字格，铅笔一眼就是「写」。 */
 .sheet-trace-hint{display:inline-flex;align-items:center;gap:8px;
   cursor:pointer;background:#fff;border:1.5px solid var(--green-line);border-radius:999px;
   padding:7px 18px 7px 14px;font-size:14.5px;font-weight:800;color:var(--green);min-height:40px;
   transition:border-color .12s ease,background .12s ease,transform .08s ease}
 .sheet-trace-hint:hover{border-color:var(--green);background:#F1F7F2}
 .sheet-trace-hint:active{transform:scale(.98)}
-.sheet-trace-hint .sth-i{width:17px;height:17px;flex:0 0 auto;border-radius:4px;
-  border:1.7px solid var(--green-line);
-  background-image:linear-gradient(var(--green-line),var(--green-line)),
-                   linear-gradient(var(--green-line),var(--green-line));
-  background-size:100% 1.5px,1.5px 100%;background-position:center;background-repeat:no-repeat}
+.sheet-trace-hint .sth-i{width:17px;height:17px;flex:0 0 auto;display:block;
+  fill:currentColor;stroke:none}
 .sheet-games{margin-top:4px}
 .sg-title{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:10px}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1095,6 +1150,15 @@ tr.tr-builtin td{background:#FBFAF3}
 
 /* ---------- 窄屏降级（共用电脑也可能接小屏，必须能单列） ---------- */
 
+/* 平板竖屏（768 左右）：学生名单 7 列原本自然宽 735px，差一点点放不下就得横向滚。
+   这里把单元格内边距和「练习题型」列各收一点，正好压进 670 以内。 */
+@media (max-width:820px){
+  table.grid th{padding:9px 8px}
+  table.grid td{padding:9px 8px}
+  .td-types{max-width:170px}
+  .ops .op-btn{padding:0 9px}
+}
+
 @media (max-width:640px){
   .screen{padding:14px 12px 22px}
   /* 我的主页窄屏：头像和圆环都要收，不然一行塞不下会挤成两行 */
@@ -1109,7 +1173,11 @@ tr.tr-builtin td{background:#FBFAF3}
   .home-go{min-height:62px;font-size:20px}
   .pre-foot .pre-back{width:100%;margin-left:0}
   .opts,.opts.four{grid-template-columns:1fr}
-  .stu-grid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr))}
+  .stu-grid{gap:12px}
+  .stu-card{width:140px;padding:16px 10px 14px;gap:9px;border-radius:20px}
+  .stu-av{width:76px;height:76px;font-size:34px}
+  .stu-nm{font-size:18px}
+  .stu-tag{font-size:11.5px;padding:3px 10px}
   /* 今日字卡窄屏：两列、字略小，开始按钮整行（单手好按） */
   .pre-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .pre-card{min-height:152px;padding:24px 8px 18px}
@@ -1303,11 +1371,12 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v29</span>
+    <span id="appVer" class="app-ver">v30</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
     <button class="tea-tab on" data-tp="stu" type="button">学生管理</button>
+    <button class="tea-tab" data-tp="prof" type="button">学生档案</button>
     <button class="tea-tab" data-tp="lib" type="button">字库</button>
     <button class="tea-tab" data-tp="word" type="button">词库</button>
     <button class="tea-tab" data-tp="prog" type="button">进度总览</button>
@@ -1361,15 +1430,30 @@ tr.tr-builtin td{background:#FBFAF3}
           <tbody id="stuTbody"></tbody>
         </table>
       </div>
-      <p class="tips">进度条按「这位同学自己字表」算：<b class="lg-m">已掌握</b>／<b class="lg-d">练习中</b>／<b class="lg-t">需巩固</b>／<b class="lg-o">待学</b>。点「档案」看每个字的掌握情况，也能只挑几个字单独练。</p>
+      <p class="tips">进度条按「这位同学自己字表」算：<b class="lg-m">已掌握</b>／<b class="lg-d">练习中</b>／<b class="lg-t">需巩固</b>／<b class="lg-o">待学</b>。这一页只管增删改；看每个字练得怎么样，到上面「学生档案」。</p>
       <div class="row" style="margin-top:14px">
         <button id="btnStuNew" class="primary" type="button">新增学生</button>
       </div>
     </div>
 
+  </div>
+
+  <!-- 学生档案（v30）：从「学生管理」里独立出来。老师原话「点进去才能看到档案，
+       也不方便，是否应该在上面入口单独设置一个学生档案的地方」。
+       上面一排档案卡看全班，点一张进逐字档案；学生管理只负责增删改。 -->
+  <div id="tpProf" class="panel" hidden>
+    <div id="profPick">
+      <div class="prof-pick-head">
+        <h3>学生档案</h3>
+        <span class="prof-pick-note">分母是各人的字表；点一张看逐字掌握</span>
+      </div>
+      <div id="profPickGrid" class="prof-pick-grid"></div>
+      <p id="profPickEmpty" class="empty-tip" hidden>还没有学生。先到「学生管理」加一个。</p>
+    </div>
+
     <div id="stuProfile" hidden>
       <div class="prof-top">
-        <button id="btnProfBack" class="ghost-btn" type="button">返回名单</button>
+        <button id="btnProfBack" class="ghost-btn" type="button">返回档案列表</button>
         <div class="prof-who">
           <span id="profAv" class="prof-av"></span>
           <div class="prof-who-t">
@@ -1399,7 +1483,6 @@ tr.tr-builtin td{background:#FBFAF3}
         <button id="btnProfPause" class="secondary" type="button">设为暂停</button>
       </div>
     </div>
-
   </div>
 
   <div id="tpLib" class="panel" hidden>
@@ -1539,7 +1622,10 @@ tr.tr-builtin td{background:#FBFAF3}
         </div>
         <div id="sheetWord" class="sheet-word"></div>
         <button id="sheetTrace" class="sheet-trace-hint" type="button">
-          <span class="sth-i" aria-hidden="true"></span>描一描
+          <svg class="sth-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 17.4V21h3.6L17.3 10.3l-3.6-3.6L3 17.4z"/>
+            <path d="M20.6 6.9a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.7 1.7 3.5 3.5 1.7-1.7z"/>
+          </svg>描一描
         </button>
       </div>
     </div>
@@ -3133,7 +3219,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v29';
+var APP_VER = 'v30';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -5309,7 +5395,18 @@ function copyArr(a){
 }
 
 /* ------------------------- 视图切换 ------------------------- */
+/* v30：每屏记住自己滚到哪儿，回来时原样回去。
+   老师原话：「练完回到乐园会回到最上面，没有保持刚刚那个汉字的位置，
+   这样又要滑动下来非常麻烦」——认字乐园是 22 个册次一长条字格，
+   从第 500 个字点进去玩一局，回来被甩到顶上，等于从头再翻一遍。 */
+var SCROLL_MEM = {};
 function showScreen(name){
+  var prev = STATE.phase;
+  if (prev && prev !== name){
+    SCROLL_MEM[prev] = window.pageYOffset ||
+      (document.documentElement && document.documentElement.scrollTop) ||
+      (document.body && document.body.scrollTop) || 0;
+  }
   STATE.phase = name;
   $('scrLearn').hidden = (name !== 'learn');
   $('scrPick').hidden = (name !== 'pick');
@@ -5324,10 +5421,17 @@ function showScreen(name){
     on = (name === 'learn' && to === 'learn') || (name === 'pick' && to === 'pick');
     if (on) nb[i].classList.add('on'); else nb[i].classList.remove('on');
   }
-  window.scrollTo(0, 0);
+  /* 回原位：先立刻滚一次，再用 setTimeout 补一次——屏幕刚显示时高度可能还没算好，
+     直接滚会落在半路（jsdom 里量不到，真机上是「差一点」那种恼人）。 */
+  var y = SCROLL_MEM[name] || 0;
+  window.scrollTo(0, y);
+  if (y > 0) setTimeout(function(){ window.scrollTo(0, y); }, 0);
 }
 
 /* ------------------------- 选人页 ------------------------- */
+/* v30：卡片上不再铺「听音找字 · 找一样的字 · …」整串题型（9 个题型折成五行，
+   把卡片撑得又高又乱，孩子也读不懂）。只留三样：照片、姓名、一句胶囊。
+   具体排了哪些题型到老师端去看，这里只回答「他能不能开始练」。 */
 function renderPick(){
   var grid = $('stuGrid'), html = '', i, s;
   var live = [];
@@ -5341,7 +5445,8 @@ function renderPick(){
     html += '<button type="button" class="stu-card" data-stu="' + esc(s.name) + '">' +
       avatarHTML(s, 'stu-av') +
       TAG_STU_NM + esc(s.name) + CLOSE('span') +
-      '<span class="stu-tag">' + (s.types.length ? esc(s.types.join(' · ')) : '还没排练习') + '</span>' +
+      '<span class="stu-tag' + (s.types.length ? '' : ' warn') + '">' +
+        (s.types.length ? s.types.length + ' 个题型' : '还没排练习') + CLOSE('span') +
       CLOSE('button');
   }
   setHTML(grid, html);
@@ -7337,7 +7442,7 @@ function soWire(){
    ===================================================================== */
 
 /* 数据表绑定标记：属性必须直接写在标签字面量里（lint 只在 <tag ...> 内识别） */
-var TAG_STU_SPAN = '<span data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
+var TAG_STU_SPAN = '<span class="stu-nm" data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_STU_TD   = '<td data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_STU_NM   = '<span class="stu-nm" data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_LIB_SPAN = '<span class="lib-cell" data-sp-bindable="database" data-sp-database-id="xNa5qeVuLMCljcIzP5Ey5V">';
@@ -7345,6 +7450,9 @@ var TAG_LOG_DIV  = '<div class="n" data-sp-bindable="database" data-sp-database-
 
 var TEA_TAB = 'stu';
 var EDIT_STU = null, EDIT_LIB = null, EDIT_WD = null;
+/* 从档案页点「编辑资料与字表」进来的：存一下是谁，
+   保存/取消后回到他的档案，而不是把人丢在名单里（v30） */
+var STU_FORM_FROM = '';
 var PHOTO_URL = '', LIB_PIC_URL = '', WD_PIC_URL = '';
 
 /* ------------------------- 打开 / 分页 ------------------------- */
@@ -7372,16 +7480,20 @@ function renderTeacher(){
     else tabs[i].classList.remove('on');
   }
   $('tpStu').hidden = (TEA_TAB !== 'stu');
+  $('tpProf').hidden = (TEA_TAB !== 'prof');
   $('tpLib').hidden = (TEA_TAB !== 'lib');
   $('tpWord').hidden = (TEA_TAB !== 'word');
   $('tpProg').hidden = (TEA_TAB !== 'prog');
   renderOfflineNote();
   paintAppVer();
-  /* 学生 tab 有「名单 / 档案」两态，档案开着时切回来还停在档案上 */
+  /* 学生管理只剩「名单 + 表单」：档案搬去独立的一页了（v30） */
   if (TEA_TAB === 'stu'){
-    if (PROF_NAME && findStu(PROF_NAME)){ $('stuListView').hidden = true; $('stuProfile').hidden = false; renderStuProfile(); }
-    else { PROF_NAME = ''; $('stuProfile').hidden = true; $('stuListView').hidden = false; renderStuList(); }
+    $('stuProfile').hidden = true;
+    $('stuListView').hidden = false;
+    renderStuList();
   }
+  /* 档案页两态：点了具体的人 → 逐字档案；没点 → 全班档案卡 */
+  if (TEA_TAB === 'prof') renderProfRoute();
   if (TEA_TAB === 'lib') renderWordList('lib');
   if (TEA_TAB === 'word') renderWordList('word');
   if (TEA_TAB === 'prog') renderProgress();
@@ -7541,16 +7653,24 @@ function renderStuList(){
   for (i = 0; i < STATE.students.length; i++){
     s = STATE.students[i];
     p = stuProfile(s);
+    /* v30：这一行被三样东西撑乱了——头像和姓名各占一行、九个题型折成三行、
+       三个按钮里「删除」被挤到第二行。现在：姓名与头像同一行不换行，
+       题型限两行（悬停看全），三个操作缩成一行小按钮。 */
+    var typeTxt = s.types.length ? s.types.join('、') : '还没排';
     html += '<tr>' +
-      '<td>' + avatarHTML(s, 'mini-av') + TAG_STU_SPAN + esc(s.name) + CLOSE('span') + CLOSE('td') +
-      '<td>' + esc(s.types.join('、') || '还没排') + CLOSE('td') +
+      '<td><span class="stu-cell">' + avatarHTML(s, 'mini-av') +
+        TAG_STU_SPAN + esc(s.name) + CLOSE('span') + CLOSE('span') + CLOSE('td') +
+      '<td class="td-types" title="' + esc(typeTxt) + '">' +
+        '<span class="td-types-in">' + esc(typeTxt) + CLOSE('span') + CLOSE('td') +
       '<td>' + stuProgCell(s, p) + CLOSE('td') +
       TAG_STU_TD + esc(s.count) + CLOSE('td') +
       '<td><span class="pill ' + (s.status === '暂停' ? 'gy' : 'g') + '">' + esc(s.status) + CLOSE('span') + CLOSE('td') +
       '<td class="pm-txt">' + esc(sinceText(p.lastAt)) + CLOSE('td') +
-      '<td><button type="button" class="primary sm" data-prof="' + esc(s.name) + '">档案</button> ' +
-          '<button type="button" class="secondary sm" data-edit="' + esc(s.name) + '">编辑</button> ' +
-          '<button type="button" class="danger" data-del="' + esc(s.name) + '">删除</button>' + CLOSE('td') +
+      '<td class="ops-cell"><div class="ops">' +
+        '<button type="button" class="op-btn op-main" data-prof="' + esc(s.name) + '">档案</button>' +
+        '<button type="button" class="op-btn op-edit" data-edit="' + esc(s.name) + '">编辑</button>' +
+        '<button type="button" class="op-btn op-del" data-del="' + esc(s.name) + '">删除</button>' +
+      CLOSE('div') + CLOSE('td') +
     CLOSE('tr');
   }
   setHTML($('stuTbody'), html);
@@ -7596,25 +7716,63 @@ function findStu(name){
   }
   return null;
 }
+/* 档案页的「列表态」：全班一人一张卡，先看掌握率，再决定点谁。
+   老师原话「点进去才能看到档案，也不方便」——所以这一屏是档案 tab 的默认态。 */
+function renderProfPick(){
+  var html = '', i, s, p;
+  for (i = 0; i < STATE.students.length; i++){
+    s = STATE.students[i];
+    syncActive(s);            /* 不先摆正，「在学 0」会和实际进练习的 6 个字打架 */
+    p = stuProfile(s);
+    html += '<button type="button" class="pp-card" data-prof="' + esc(s.name) + '">' +
+      '<span class="pp-top">' + avatarHTML(s, 'pp-av') +
+        '<span class="pp-nm">' + esc(s.name) + CLOSE('span') +
+        '<span class="pill ' + (s.status === '暂停' ? 'gy' : 'g') + '">' + esc(s.status) + CLOSE('span') +
+      CLOSE('span') +
+      '<span class="pp-rate">' + (p.total
+        ? '<b>' + p.rate + '%</b><i>字表掌握</i>'
+        : '<b class="pp-none">还没选字</b>') + CLOSE('span') +
+      (p.total ? '<span class="pp-bar">' + progBarHTML(p, 'prog-mini') + CLOSE('span') : '') +
+      '<span class="pp-meta">' + (p.total
+        ? p.mastered + ' / ' + p.total + ' 已掌握 · 在学 ' + p.act
+        : '先编辑资料，挑几个字') + CLOSE('span') +
+      '<span class="pp-time">' + (p.lastAt ? '最近练习 ' + sinceText(p.lastAt) : '还没练过') + CLOSE('span') +
+    CLOSE('button');
+  }
+  setHTML($('profPickGrid'), html);
+  if ($('profPickEmpty')) $('profPickEmpty').hidden = STATE.students.length > 0;
+}
+function renderProfRoute(){
+  if (PROF_NAME && findStu(PROF_NAME)){
+    $('profPick').hidden = true;
+    $('stuProfile').hidden = false;
+    renderStuProfile();
+  } else {
+    PROF_NAME = '';
+    $('stuProfile').hidden = true;
+    $('profPick').hidden = false;
+    renderProfPick();
+  }
+}
 function openStuProfile(name){
   PROF_NAME = name; PROF_CH = '';
-  $('stuListView').hidden = true;
-  $('stuProfile').hidden = false;
+  TEA_TAB = 'prof';                 /* 档案是独立的一页，不在学生管理里 */
   $('stuForm').hidden = true;
-  var box = $('stuProfile');
-  if (box && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
   /* 先摆正在学名单再画：否则老数据（还没有 active）会显示「在学 0 / 6」，
      而实际进练习时有 6 个字。看到的和用到的不一致，比数字难看更糟。 */
   var s0 = findStu(name);
   if (s0) syncActive(s0);
-  renderStuProfile();
+  renderTeacher();
+  var box = $('stuProfile');
+  if (box && !box.hidden && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
 }
 function closeStuProfile(){
   PROF_NAME = ''; PROF_CH = '';
-  $('stuProfile').hidden = true;
-  $('stuListView').hidden = false;
   $('stuForm').hidden = true;
-  renderStuList();
+  TEA_TAB = 'prof';
+  renderTeacher();
+  var box = $('profPick');
+  if (box && !box.hidden && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
 }
 function profStatHTML(cls, n, label){
   return '<div class="prof-stat ' + cls + '"><b>' + n + CLOSE('b') +
@@ -7749,7 +7907,8 @@ function drillStudent(name, chars){
   if (!s) return;
   if (!chars.length){ toast('这位同学还没有需要抽练的字'); return; }
   if (!s.types.length){ toast('这位同学还没排练习题型，请先编辑资料'); return; }
-  STATE.fromTeacher = true;
+  /* 记下是从哪个老师端标签页抽练出去的：返回时回到那一页（v30 起还可能是「学生档案」） */
+  STATE.fromTeacher = TEA_TAB || 'stu';
   QUIZ_FOCUS = chars.slice();
   enterStudent(name);
 }
@@ -7772,6 +7931,12 @@ function openStuForm(name){
     if (!s) return;
     EDIT_STU = s;
     PHOTO_URL = s.photo || s.photoLocal || '';
+  }
+  /* 表单住在「学生管理」页里：从档案页点编辑，得先切回去，否则改完看不见（v30） */
+  STU_FORM_FROM = (name && PROF_NAME === name) ? name : '';
+  if (TEA_TAB !== 'stu'){
+    TEA_TAB = 'stu';
+    renderTeacher();
   }
   $('stuFormTitle').textContent = s ? ('编辑：' + s.name) : '新增学生';
   $('fStuName').value = s ? s.name : '';
@@ -7854,11 +8019,16 @@ function closeStuForm(){
   $('stuForm').hidden = true;
   $('fStuPhoto').value = '';
   clearFormCache();
-  if (PROF_NAME && findStu(PROF_NAME)){
-    $('stuListView').hidden = true;
-    $('stuProfile').hidden = false;
-    renderStuProfile();
+  /* 从谁的档案点进来的，关掉表单就回谁的档案 */
+  if (STU_FORM_FROM && findStu(STU_FORM_FROM)){
+    PROF_NAME = STU_FORM_FROM;
+    TEA_TAB = 'prof';
+    STU_FORM_FROM = '';
+    renderTeacher();
+    return;
   }
+  STU_FORM_FROM = '';
+  renderStuList();
 }
 function collected(el, attr){
   var boxes = el.querySelectorAll('input[' + attr + ']'), out = [], i;
@@ -7947,6 +8117,11 @@ function saveStudentForm(){
     clearFormCache();
     $('stuForm').hidden = true;
     EDIT_STU = null; PHOTO_URL = '';
+    if (STU_FORM_FROM && findStu(STU_FORM_FROM)){
+      PROF_NAME = STU_FORM_FROM;      /* 改完直接回他的档案，看改了之后的字表 */
+      TEA_TAB = 'prof';
+    }
+    STU_FORM_FROM = '';
     renderTeacher();
     toast(chars.length ? (name + ' 已保存') : (name + ' 已保存，但还没选字，进去练不了'));
 
@@ -8017,9 +8192,9 @@ function wordRowsHTML(want, kw){
         '<td class="td-dim">—</td>' +
         '<td class="td-dim">—</td>' +
         '<td class="td-dim">内置</td>' +
-        '<td>' + (have
+        '<td><div class="ops">' + (have
           ? '<span class="td-dim">已在词库</span>'
-          : '<button type="button" class="secondary" data-wcopy="' + esc(p.w) + '">收进词库</button>') + CLOSE('td') +
+          : '<button type="button" class="op-btn op-edit" data-wcopy="' + esc(p.w) + '">收进词库</button>') + CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
     }
   }
@@ -8037,8 +8212,10 @@ function wordRowsHTML(want, kw){
         '<td>' + esc(p.sent || '—') + CLOSE('td') +
         '<td>' + esc(p.img ? '已传' : '—') + CLOSE('td') +
         '<td>' + (p.on ? '启用' : '停用') + CLOSE('td') +
-        '<td><button type="button" class="secondary" data-wedit="' + esc(p.w) + '" data-kind="词">编辑</button> ' +
-            '<button type="button" class="danger" data-wdel="' + esc(p.w) + '" data-kind="词">删除</button>' + CLOSE('td') +
+        '<td><div class="ops">' +
+          '<button type="button" class="op-btn op-edit" data-wedit="' + esc(p.w) + '" data-kind="词">编辑</button>' +
+          '<button type="button" class="op-btn op-del" data-wdel="' + esc(p.w) + '" data-kind="词">删除</button>' +
+        CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
     }
   }
@@ -8095,8 +8272,10 @@ function renderWordList(which){
         '<td>' + esc(w.words || '—') + CLOSE('td') +
         '<td>' + esc(pic) + CLOSE('td') +
         '<td>' + (w.on ? '启用' : '停用') + CLOSE('td') +
-        '<td><button type="button" class="secondary" data-wedit="' + esc(w.w) + '" data-kind="字">编辑</button> ' +
-            '<button type="button" class="danger" data-wdel="' + esc(w.w) + '" data-kind="字">删除</button>' + CLOSE('td') +
+        '<td><div class="ops">' +
+          '<button type="button" class="op-btn op-edit" data-wedit="' + esc(w.w) + '" data-kind="字">编辑</button>' +
+          '<button type="button" class="op-btn op-del" data-wdel="' + esc(w.w) + '" data-kind="字">删除</button>' +
+        CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
       html += t;
     }
@@ -8627,7 +8806,7 @@ function wireEvents(){
       var back = STATE.fromTeacher;
       STATE.fromTeacher = '';
       leaveStudent(false);
-      TEA_TAB = (back === 'prog' ? 'prog' : 'stu');
+      TEA_TAB = (back === 'prog' || back === 'prof') ? back : 'stu';
       openTeacher();
       return;
     }

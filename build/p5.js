@@ -16,7 +16,18 @@ function copyArr(a){
 }
 
 /* ------------------------- 视图切换 ------------------------- */
+/* v30：每屏记住自己滚到哪儿，回来时原样回去。
+   老师原话：「练完回到乐园会回到最上面，没有保持刚刚那个汉字的位置，
+   这样又要滑动下来非常麻烦」——认字乐园是 22 个册次一长条字格，
+   从第 500 个字点进去玩一局，回来被甩到顶上，等于从头再翻一遍。 */
+var SCROLL_MEM = {};
 function showScreen(name){
+  var prev = STATE.phase;
+  if (prev && prev !== name){
+    SCROLL_MEM[prev] = window.pageYOffset ||
+      (document.documentElement && document.documentElement.scrollTop) ||
+      (document.body && document.body.scrollTop) || 0;
+  }
   STATE.phase = name;
   $('scrLearn').hidden = (name !== 'learn');
   $('scrPick').hidden = (name !== 'pick');
@@ -31,10 +42,17 @@ function showScreen(name){
     on = (name === 'learn' && to === 'learn') || (name === 'pick' && to === 'pick');
     if (on) nb[i].classList.add('on'); else nb[i].classList.remove('on');
   }
-  window.scrollTo(0, 0);
+  /* 回原位：先立刻滚一次，再用 setTimeout 补一次——屏幕刚显示时高度可能还没算好，
+     直接滚会落在半路（jsdom 里量不到，真机上是「差一点」那种恼人）。 */
+  var y = SCROLL_MEM[name] || 0;
+  window.scrollTo(0, y);
+  if (y > 0) setTimeout(function(){ window.scrollTo(0, y); }, 0);
 }
 
 /* ------------------------- 选人页 ------------------------- */
+/* v30：卡片上不再铺「听音找字 · 找一样的字 · …」整串题型（9 个题型折成五行，
+   把卡片撑得又高又乱，孩子也读不懂）。只留三样：照片、姓名、一句胶囊。
+   具体排了哪些题型到老师端去看，这里只回答「他能不能开始练」。 */
 function renderPick(){
   var grid = $('stuGrid'), html = '', i, s;
   var live = [];
@@ -48,7 +66,8 @@ function renderPick(){
     html += '<button type="button" class="stu-card" data-stu="' + esc(s.name) + '">' +
       avatarHTML(s, 'stu-av') +
       TAG_STU_NM + esc(s.name) + CLOSE('span') +
-      '<span class="stu-tag">' + (s.types.length ? esc(s.types.join(' · ')) : '还没排练习') + '</span>' +
+      '<span class="stu-tag' + (s.types.length ? '' : ' warn') + '">' +
+        (s.types.length ? s.types.length + ' 个题型' : '还没排练习') + CLOSE('span') +
       CLOSE('button');
   }
   setHTML(grid, html);

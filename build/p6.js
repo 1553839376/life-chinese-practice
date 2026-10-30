@@ -3,7 +3,7 @@
    ===================================================================== */
 
 /* 数据表绑定标记：属性必须直接写在标签字面量里（lint 只在 <tag ...> 内识别） */
-var TAG_STU_SPAN = '<span data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
+var TAG_STU_SPAN = '<span class="stu-nm" data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_STU_TD   = '<td data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_STU_NM   = '<span class="stu-nm" data-sp-bindable="database" data-sp-database-id="jmNjdfyRjnCNaI3I0UvfRg">';
 var TAG_LIB_SPAN = '<span class="lib-cell" data-sp-bindable="database" data-sp-database-id="xNa5qeVuLMCljcIzP5Ey5V">';
@@ -11,6 +11,9 @@ var TAG_LOG_DIV  = '<div class="n" data-sp-bindable="database" data-sp-database-
 
 var TEA_TAB = 'stu';
 var EDIT_STU = null, EDIT_LIB = null, EDIT_WD = null;
+/* 从档案页点「编辑资料与字表」进来的：存一下是谁，
+   保存/取消后回到他的档案，而不是把人丢在名单里（v30） */
+var STU_FORM_FROM = '';
 var PHOTO_URL = '', LIB_PIC_URL = '', WD_PIC_URL = '';
 
 /* ------------------------- 打开 / 分页 ------------------------- */
@@ -38,16 +41,20 @@ function renderTeacher(){
     else tabs[i].classList.remove('on');
   }
   $('tpStu').hidden = (TEA_TAB !== 'stu');
+  $('tpProf').hidden = (TEA_TAB !== 'prof');
   $('tpLib').hidden = (TEA_TAB !== 'lib');
   $('tpWord').hidden = (TEA_TAB !== 'word');
   $('tpProg').hidden = (TEA_TAB !== 'prog');
   renderOfflineNote();
   paintAppVer();
-  /* 学生 tab 有「名单 / 档案」两态，档案开着时切回来还停在档案上 */
+  /* 学生管理只剩「名单 + 表单」：档案搬去独立的一页了（v30） */
   if (TEA_TAB === 'stu'){
-    if (PROF_NAME && findStu(PROF_NAME)){ $('stuListView').hidden = true; $('stuProfile').hidden = false; renderStuProfile(); }
-    else { PROF_NAME = ''; $('stuProfile').hidden = true; $('stuListView').hidden = false; renderStuList(); }
+    $('stuProfile').hidden = true;
+    $('stuListView').hidden = false;
+    renderStuList();
   }
+  /* 档案页两态：点了具体的人 → 逐字档案；没点 → 全班档案卡 */
+  if (TEA_TAB === 'prof') renderProfRoute();
   if (TEA_TAB === 'lib') renderWordList('lib');
   if (TEA_TAB === 'word') renderWordList('word');
   if (TEA_TAB === 'prog') renderProgress();
@@ -207,16 +214,24 @@ function renderStuList(){
   for (i = 0; i < STATE.students.length; i++){
     s = STATE.students[i];
     p = stuProfile(s);
+    /* v30：这一行被三样东西撑乱了——头像和姓名各占一行、九个题型折成三行、
+       三个按钮里「删除」被挤到第二行。现在：姓名与头像同一行不换行，
+       题型限两行（悬停看全），三个操作缩成一行小按钮。 */
+    var typeTxt = s.types.length ? s.types.join('、') : '还没排';
     html += '<tr>' +
-      '<td>' + avatarHTML(s, 'mini-av') + TAG_STU_SPAN + esc(s.name) + CLOSE('span') + CLOSE('td') +
-      '<td>' + esc(s.types.join('、') || '还没排') + CLOSE('td') +
+      '<td><span class="stu-cell">' + avatarHTML(s, 'mini-av') +
+        TAG_STU_SPAN + esc(s.name) + CLOSE('span') + CLOSE('span') + CLOSE('td') +
+      '<td class="td-types" title="' + esc(typeTxt) + '">' +
+        '<span class="td-types-in">' + esc(typeTxt) + CLOSE('span') + CLOSE('td') +
       '<td>' + stuProgCell(s, p) + CLOSE('td') +
       TAG_STU_TD + esc(s.count) + CLOSE('td') +
       '<td><span class="pill ' + (s.status === '暂停' ? 'gy' : 'g') + '">' + esc(s.status) + CLOSE('span') + CLOSE('td') +
       '<td class="pm-txt">' + esc(sinceText(p.lastAt)) + CLOSE('td') +
-      '<td><button type="button" class="primary sm" data-prof="' + esc(s.name) + '">档案</button> ' +
-          '<button type="button" class="secondary sm" data-edit="' + esc(s.name) + '">编辑</button> ' +
-          '<button type="button" class="danger" data-del="' + esc(s.name) + '">删除</button>' + CLOSE('td') +
+      '<td class="ops-cell"><div class="ops">' +
+        '<button type="button" class="op-btn op-main" data-prof="' + esc(s.name) + '">档案</button>' +
+        '<button type="button" class="op-btn op-edit" data-edit="' + esc(s.name) + '">编辑</button>' +
+        '<button type="button" class="op-btn op-del" data-del="' + esc(s.name) + '">删除</button>' +
+      CLOSE('div') + CLOSE('td') +
     CLOSE('tr');
   }
   setHTML($('stuTbody'), html);
@@ -262,25 +277,63 @@ function findStu(name){
   }
   return null;
 }
+/* 档案页的「列表态」：全班一人一张卡，先看掌握率，再决定点谁。
+   老师原话「点进去才能看到档案，也不方便」——所以这一屏是档案 tab 的默认态。 */
+function renderProfPick(){
+  var html = '', i, s, p;
+  for (i = 0; i < STATE.students.length; i++){
+    s = STATE.students[i];
+    syncActive(s);            /* 不先摆正，「在学 0」会和实际进练习的 6 个字打架 */
+    p = stuProfile(s);
+    html += '<button type="button" class="pp-card" data-prof="' + esc(s.name) + '">' +
+      '<span class="pp-top">' + avatarHTML(s, 'pp-av') +
+        '<span class="pp-nm">' + esc(s.name) + CLOSE('span') +
+        '<span class="pill ' + (s.status === '暂停' ? 'gy' : 'g') + '">' + esc(s.status) + CLOSE('span') +
+      CLOSE('span') +
+      '<span class="pp-rate">' + (p.total
+        ? '<b>' + p.rate + '%</b><i>字表掌握</i>'
+        : '<b class="pp-none">还没选字</b>') + CLOSE('span') +
+      (p.total ? '<span class="pp-bar">' + progBarHTML(p, 'prog-mini') + CLOSE('span') : '') +
+      '<span class="pp-meta">' + (p.total
+        ? p.mastered + ' / ' + p.total + ' 已掌握 · 在学 ' + p.act
+        : '先编辑资料，挑几个字') + CLOSE('span') +
+      '<span class="pp-time">' + (p.lastAt ? '最近练习 ' + sinceText(p.lastAt) : '还没练过') + CLOSE('span') +
+    CLOSE('button');
+  }
+  setHTML($('profPickGrid'), html);
+  if ($('profPickEmpty')) $('profPickEmpty').hidden = STATE.students.length > 0;
+}
+function renderProfRoute(){
+  if (PROF_NAME && findStu(PROF_NAME)){
+    $('profPick').hidden = true;
+    $('stuProfile').hidden = false;
+    renderStuProfile();
+  } else {
+    PROF_NAME = '';
+    $('stuProfile').hidden = true;
+    $('profPick').hidden = false;
+    renderProfPick();
+  }
+}
 function openStuProfile(name){
   PROF_NAME = name; PROF_CH = '';
-  $('stuListView').hidden = true;
-  $('stuProfile').hidden = false;
+  TEA_TAB = 'prof';                 /* 档案是独立的一页，不在学生管理里 */
   $('stuForm').hidden = true;
-  var box = $('stuProfile');
-  if (box && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
   /* 先摆正在学名单再画：否则老数据（还没有 active）会显示「在学 0 / 6」，
      而实际进练习时有 6 个字。看到的和用到的不一致，比数字难看更糟。 */
   var s0 = findStu(name);
   if (s0) syncActive(s0);
-  renderStuProfile();
+  renderTeacher();
+  var box = $('stuProfile');
+  if (box && !box.hidden && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
 }
 function closeStuProfile(){
   PROF_NAME = ''; PROF_CH = '';
-  $('stuProfile').hidden = true;
-  $('stuListView').hidden = false;
   $('stuForm').hidden = true;
-  renderStuList();
+  TEA_TAB = 'prof';
+  renderTeacher();
+  var box = $('profPick');
+  if (box && !box.hidden && box.scrollIntoView) box.scrollIntoView({ block: 'start' });
 }
 function profStatHTML(cls, n, label){
   return '<div class="prof-stat ' + cls + '"><b>' + n + CLOSE('b') +
@@ -415,7 +468,8 @@ function drillStudent(name, chars){
   if (!s) return;
   if (!chars.length){ toast('这位同学还没有需要抽练的字'); return; }
   if (!s.types.length){ toast('这位同学还没排练习题型，请先编辑资料'); return; }
-  STATE.fromTeacher = true;
+  /* 记下是从哪个老师端标签页抽练出去的：返回时回到那一页（v30 起还可能是「学生档案」） */
+  STATE.fromTeacher = TEA_TAB || 'stu';
   QUIZ_FOCUS = chars.slice();
   enterStudent(name);
 }
@@ -438,6 +492,12 @@ function openStuForm(name){
     if (!s) return;
     EDIT_STU = s;
     PHOTO_URL = s.photo || s.photoLocal || '';
+  }
+  /* 表单住在「学生管理」页里：从档案页点编辑，得先切回去，否则改完看不见（v30） */
+  STU_FORM_FROM = (name && PROF_NAME === name) ? name : '';
+  if (TEA_TAB !== 'stu'){
+    TEA_TAB = 'stu';
+    renderTeacher();
   }
   $('stuFormTitle').textContent = s ? ('编辑：' + s.name) : '新增学生';
   $('fStuName').value = s ? s.name : '';
@@ -520,11 +580,16 @@ function closeStuForm(){
   $('stuForm').hidden = true;
   $('fStuPhoto').value = '';
   clearFormCache();
-  if (PROF_NAME && findStu(PROF_NAME)){
-    $('stuListView').hidden = true;
-    $('stuProfile').hidden = false;
-    renderStuProfile();
+  /* 从谁的档案点进来的，关掉表单就回谁的档案 */
+  if (STU_FORM_FROM && findStu(STU_FORM_FROM)){
+    PROF_NAME = STU_FORM_FROM;
+    TEA_TAB = 'prof';
+    STU_FORM_FROM = '';
+    renderTeacher();
+    return;
   }
+  STU_FORM_FROM = '';
+  renderStuList();
 }
 function collected(el, attr){
   var boxes = el.querySelectorAll('input[' + attr + ']'), out = [], i;
@@ -613,6 +678,11 @@ function saveStudentForm(){
     clearFormCache();
     $('stuForm').hidden = true;
     EDIT_STU = null; PHOTO_URL = '';
+    if (STU_FORM_FROM && findStu(STU_FORM_FROM)){
+      PROF_NAME = STU_FORM_FROM;      /* 改完直接回他的档案，看改了之后的字表 */
+      TEA_TAB = 'prof';
+    }
+    STU_FORM_FROM = '';
     renderTeacher();
     toast(chars.length ? (name + ' 已保存') : (name + ' 已保存，但还没选字，进去练不了'));
 
@@ -683,9 +753,9 @@ function wordRowsHTML(want, kw){
         '<td class="td-dim">—</td>' +
         '<td class="td-dim">—</td>' +
         '<td class="td-dim">内置</td>' +
-        '<td>' + (have
+        '<td><div class="ops">' + (have
           ? '<span class="td-dim">已在词库</span>'
-          : '<button type="button" class="secondary" data-wcopy="' + esc(p.w) + '">收进词库</button>') + CLOSE('td') +
+          : '<button type="button" class="op-btn op-edit" data-wcopy="' + esc(p.w) + '">收进词库</button>') + CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
     }
   }
@@ -703,8 +773,10 @@ function wordRowsHTML(want, kw){
         '<td>' + esc(p.sent || '—') + CLOSE('td') +
         '<td>' + esc(p.img ? '已传' : '—') + CLOSE('td') +
         '<td>' + (p.on ? '启用' : '停用') + CLOSE('td') +
-        '<td><button type="button" class="secondary" data-wedit="' + esc(p.w) + '" data-kind="词">编辑</button> ' +
-            '<button type="button" class="danger" data-wdel="' + esc(p.w) + '" data-kind="词">删除</button>' + CLOSE('td') +
+        '<td><div class="ops">' +
+          '<button type="button" class="op-btn op-edit" data-wedit="' + esc(p.w) + '" data-kind="词">编辑</button>' +
+          '<button type="button" class="op-btn op-del" data-wdel="' + esc(p.w) + '" data-kind="词">删除</button>' +
+        CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
     }
   }
@@ -761,8 +833,10 @@ function renderWordList(which){
         '<td>' + esc(w.words || '—') + CLOSE('td') +
         '<td>' + esc(pic) + CLOSE('td') +
         '<td>' + (w.on ? '启用' : '停用') + CLOSE('td') +
-        '<td><button type="button" class="secondary" data-wedit="' + esc(w.w) + '" data-kind="字">编辑</button> ' +
-            '<button type="button" class="danger" data-wdel="' + esc(w.w) + '" data-kind="字">删除</button>' + CLOSE('td') +
+        '<td><div class="ops">' +
+          '<button type="button" class="op-btn op-edit" data-wedit="' + esc(w.w) + '" data-kind="字">编辑</button>' +
+          '<button type="button" class="op-btn op-del" data-wdel="' + esc(w.w) + '" data-kind="字">删除</button>' +
+        CLOSE('div') + CLOSE('td') +
       CLOSE('tr');
       html += t;
     }
@@ -1293,7 +1367,7 @@ function wireEvents(){
       var back = STATE.fromTeacher;
       STATE.fromTeacher = '';
       leaveStudent(false);
-      TEA_TAB = (back === 'prog' ? 'prog' : 'stu');
+      TEA_TAB = (back === 'prog' || back === 'prof') ? back : 'stu';
       openTeacher();
       return;
     }

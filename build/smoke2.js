@@ -235,13 +235,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelectorAll('#stuTbody [data-sp-bindable="database"]').length >= 3, '学生列表文本带数据表绑定标记');
 
   const teaTabs = d.querySelectorAll('.tea-tab');
-  click(teaTabs[1]);
+  /* v30 起老师端多了「学生档案」一页，按 data-tp 找标签，别再数下标 */
+  const tabOf = k => Array.from(d.querySelectorAll('.tea-tab')).filter(t => t.getAttribute('data-tp') === k)[0];
+  click(tabOf('lib'));
   await wait(200);
   const libRows = d.querySelectorAll('#libTbody tr');
   ok(libRows.length === 8, '字库列出 8 个字：实际 ' + libRows.length);
   ok(!!d.querySelector('#libTbody .lib-cell'), '字库单元格使用 .lib-cell 类');
 
-  click(teaTabs[3]);
+  click(tabOf('prog'));
   await wait(200);
   /* v12 起进度页是「学生一行」而不是「学生 × 22 册次矩阵」：
      旧断言数 .mx-cell，新结构每行是 .prow + 四段进度条。
@@ -273,7 +275,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '进度页不再有 14px 解释长句（.tips），说明改成 11.5px 的 .prog-note');
 
   console.log('\n【9】新增学生（含字段写入）');
-  click(teaTabs[0]);
+  click(tabOf('stu'));
   await wait(120);
   click(d.getElementById('btnStuNew'));
   await wait(120);
@@ -494,12 +496,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const hardShui = cp.hard.filter(h => h.w === '水' && h.n === 2)[0];
   ok(!!hardShui && hardShui.names.length === 2, '同一个字两个孩子都需巩固 → 进共同难点：' + (hardShui ? hardShui.names.join('、') : '无'));
 
-  click(teaTabs[0]);
+  click(tabOf('stu'));
   await wait(150);
   w.openStuProfile('张一');
   await wait(160);
-  ok(d.getElementById('stuProfile').hidden === false && d.getElementById('stuListView').hidden === true,
-     '点「档案」后名单收起、档案展开');
+  /* v30：档案从「学生管理」搬出来独立成一页，点「档案」是切页而不是在同一页里换视图 */
+  ok(d.getElementById('stuProfile').hidden === false && d.getElementById('tpProf').hidden === false &&
+     d.getElementById('profPick').hidden === true && d.getElementById('tpStu').hidden === true,
+     '点「档案」→ 切到「学生档案」页，展开这个人的逐字档案（学生管理页收起）');
   ok(d.querySelectorAll('#profGrid .pgc').length === 6, '逐字网格一个字一格：' + d.querySelectorAll('#profGrid .pgc').length);
   ok(d.querySelectorAll('#profStats .prof-stat').length === 4, '档案顶部四态统计 4 块');
   ok(d.getElementById('profBar').querySelectorAll('i').length === 4,
@@ -542,7 +546,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      '返回后回到老师端，档案还开着（不用重新找学生）');
   ok(d.getElementById('drillBar').hidden === true, '退出练习后抽练条收起');
 
-  click(teaTabs[3]);
+  click(tabOf('prog'));
   await wait(220);
   const rows2 = d.querySelectorAll('#progMatrix .prow:not(.head)');
   ok(rows2.length === w.STATE.students.length, '进度页每个学生一行：' + rows2.length + ' / ' + w.STATE.students.length);
@@ -1585,6 +1589,102 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     .forEach(t => v27_one('游戏口令', t));
   ['答对了！', '写好了！', '太棒了！', '做得不错，继续加油', '再来一次会更好',
    '再试一试。', '今天的练习全部完成。'].forEach(t => v27_one('反馈', t));
+
+
+  /* ================= 【28】v30：选人卡、档案独立入口、铅笔图标、回来还在原地 =================
+     老师四条原话：「描红那个改成铅笔的图标吧，好理解」「点进去练习后回到乐园会回到最上面，
+     没有保持刚刚那个汉字的位置」「这几个的样式都特别不好看」「学生管理那里有些混乱，
+     点进去才能看到档案……是否应该在上面入口单独设置一个学生档案的地方呢」。 */
+  console.log('\n【28】v30：选人卡 / 学生档案独立入口 / 铅笔图标 / 回到原地');
+
+  const v30_chars = w.STATE.chars.slice(0, 6).map(c => c.w);
+  w.STATE.students = [
+    { id: 'local_v30a', name: '王小虎', types: ['听音找字', '找一样的字', '看拼音写字'],
+      chars: v30_chars, groups: [], count: 6, status: '在读', photo: '', edited: Date.now() },
+    { id: 'local_v30b', name: '李小凤', types: ['认读跟读'],
+      chars: v30_chars, groups: [], count: 6, status: '在读', photo: '', edited: Date.now() }
+  ];
+  w.saveSnap();
+  w.renderPick();
+  const v30_card = d.querySelector('#stuGrid .stu-card');
+  const v30_tag = v30_card.querySelector('.stu-tag');
+  ok(!!v30_tag && v30_tag.textContent === '3 个题型',
+    '选人卡只写「几个题型」：' + (v30_tag ? v30_tag.textContent : '无'));
+  ok(v30_card.textContent.indexOf('听音找字') < 0,
+    '选人卡不再铺整串题型名（原来 9 个题型折成五行，把卡片撑得又高又乱）');
+  ok(v30_card.textContent.indexOf('王小虎') >= 0, '选人卡还认脸：姓名还在');
+
+  w.TEA_TAB = 'prof';
+  w.openTeacher();
+  await wait(220);
+  ok(d.getElementById('tpProf').hidden === false && d.getElementById('tpStu').hidden === true,
+    '老师端多了独立的一页「学生档案」，不再和学生管理混在一起');
+  ok(d.querySelectorAll('#profPickGrid .pp-card').length === w.STATE.students.length,
+    '档案页默认先列全班档案卡：' + d.querySelectorAll('#profPickGrid .pp-card').length + ' 张 / ' +
+    w.STATE.students.length + ' 人');
+  ok(d.getElementById('stuProfile').hidden === true, '没点人之前不展开逐字档案');
+  const v30_pp = d.querySelector('#profPickGrid .pp-card');
+  ok(!!v30_pp && /\d+%/.test(v30_pp.textContent), '档案卡上直接能读到掌握率：' +
+    (v30_pp ? v30_pp.textContent.replace(/\s+/g, ' ').trim().slice(0, 40) : '无'));
+  click(v30_pp);
+  await wait(220);
+  ok(d.getElementById('stuProfile').hidden === false && d.getElementById('profPick').hidden === true,
+    '点一张档案卡 → 展开这个人的逐字档案');
+  ok(d.getElementById('profName').textContent === '王小虎',
+    '展开的是点的那个人：' + d.getElementById('profName').textContent);
+  ok(d.getElementById('btnProfBack').textContent.indexOf('档案列表') >= 0,
+    '返回键写明回档案列表：' + d.getElementById('btnProfBack').textContent);
+  click(d.getElementById('btnProfBack'));
+  await wait(160);
+  ok(d.getElementById('profPick').hidden === false, '点「返回档案列表」回到全班档案卡');
+
+  click(tabOf('stu'));
+  await wait(180);
+  const v30_ops = d.querySelectorAll('#stuTbody .ops');
+  ok(v30_ops.length === w.STATE.students.length, '学生名单每行一个操作条：' + v30_ops.length);
+  ok(!!v30_ops[0] && v30_ops[0].querySelectorAll('.op-btn').length === 3,
+    '档案 / 编辑 / 删除三个按钮收在同一条里（原来「删除」被挤到第二行，行高撑到 90px）');
+  ok(!!v30_ops[0] && v30_ops[0].querySelectorAll('.op-btn.op-main').length === 1,
+    '只有「档案」是带底色的主操作，层级分明');
+  ok(!!v30_ops[0] && !v30_ops[0].querySelector('.danger'),
+    '删除改成纯红字按钮，不再是一块红底方框抢眼');
+  const v30_cell = d.querySelector('#stuTbody .stu-cell');
+  ok(!!v30_cell && !!v30_cell.querySelector('.mini-av') && !!v30_cell.querySelector('.stu-nm'),
+    '头像和姓名包在同一个 .stu-cell 里（同一行，不再各占一行换行）');
+
+  /* 铅笔图标：不是田字格小方块，是两支 path 的铅笔 */
+  const v30_ch = w.STATE.chars.find(c => c.w === '木') || w.STATE.chars[0];
+  w.openCard(v30_ch);
+  await wait(140);
+  const v30_pen = d.querySelector('#sheetTrace svg.sth-i');
+  ok(!!v30_pen && v30_pen.querySelectorAll('path').length === 2,
+    '描写入口换成铅笔图标（笔身 + 笔尖两条 path）');
+  ok(d.getElementById('sheetTrace').textContent.replace(/\s+/g, '') === '描一描',
+    '按钮上只写「描一描」三个字：' + d.getElementById('sheetTrace').textContent.trim());
+  w.closeCard();
+  await wait(80);
+
+  /* 回来还在原地：showScreen 会记住每屏滚到哪儿 */
+  let v30_scrollOK = true;
+  const v30_seen = [];
+  let v30_y = 0;
+  try {
+    Object.defineProperty(w, 'pageYOffset', { configurable: true, get: () => v30_y });
+    w.scrollTo = (x, y) => { v30_seen.push(y); v30_y = y; };
+  } catch (e) { v30_scrollOK = false; }
+  if (v30_scrollOK){
+    w.showScreen('learn');
+    v30_y = 860;                  /* 假装滚到第 860px：前面几十个字都在屏外 */
+    w.showScreen('game');
+    ok(v30_scrollOK && v30_seen[v30_seen.length - 1] === 0, '换到游戏屏先回顶部，不继承上一屏的位置');
+    v30_seen.length = 0;
+    w.showScreen('learn');
+    ok(v30_seen.indexOf(860) >= 0,
+      '玩完回到认字乐园，停在原来那个字的位置（不再被甩回顶部）：' + v30_seen.join(','));
+  } else {
+    ok(false, '当前测试环境无法模拟滚动位置');
+    ok(false, '当前测试环境无法模拟滚动位置');
+  }
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
