@@ -13,7 +13,9 @@
 - **线上校验 grep 值本身**（`APP_VER = 'v25'`、`>v25<`），别 grep 属性组合（顺序会变）
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过
 - **跨机器 git**：`http.proxy` 存的端口每次启动都变，502 先比对 `env | grep -i http_proxy` 与 `git config http.proxy`；代理**间歇 502 且 git 与 curl 表现不同** → fetch/push 一律 6~8 次重试循环，单发一次判「断网」必误判
-- 现状：**v26 已构建、门禁全绿（498 项），线上仍是 v25（newVersion 22）**
+- 现状：**v26 已于 2026-10-30 发布上线（平台 newVersion 23，静态目录 `.../m1F84tAtFrLB/`），门禁 73 项 / 576 项测试全绿**
+- 发布实测：commit/publish 这次都一次过；`download_page_artifacts.py` 反而报了一次 `TEMPORARY_ERROR`（重试即过）——三个都别单发一次判死
+- **git push 的 `http.proxy` 每次开机都变**：先比 `env | grep -i http_proxy` 与 `git config --get http.proxy`，不一致就 `git config http.proxy "$http_proxy"`；本次第一次 push 报 `schannel: server closed abruptly`，第二次成功
 
 ## 二、数据结构与教学口径
 **字表**
