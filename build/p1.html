@@ -67,20 +67,41 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .who-av img{width:100%;height:100%;object-fit:cover;display:block}
 .who-name{font-size:20px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qcount{font-size:17px;font-weight:700;color:var(--ink2);white-space:nowrap}
-.type-tabs{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:14px}
-.type-tab{border:2px solid var(--line);background:var(--card);border-radius:14px;
-  padding:11px 20px;font-size:17px;font-weight:700;color:var(--ink2);min-height:48px}
-.type-tab.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
-/* 今天的题型进度（T-021）：一排圆点 + 一句话，让孩子知道还剩几个题型。
-   圆点 32px 是有意的——特需孩子要能一眼数清「还有几个空圈」。 */
-.type-prog{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 14px}
-.tp-dots{display:flex;gap:7px}
-.tp-dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--line2);
-  background:var(--card);display:flex;align-items:center;justify-content:center;
-  font-size:16px;font-weight:800;color:var(--ink3);line-height:1}
-.tp-dot.done{background:var(--green-bg);border-color:var(--green-line);color:var(--green)}
-.tp-dot.on{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-bg)}
-.tp-txt{font-size:15px;font-weight:700;color:var(--ink2)}
+/* 题型条（v31）：**题型名下面挂一个圆点，圆点之间用一条横线连成进度线**。
+   老师 2026-10-30：「题型一多就换行很奇怪」「这个圈圈打勾也难理解」「不应该这么割裂」。
+   原来是「一排带框的题型名」＋「另一排号码圈」，两套东西各说各话，9 个题型时还会
+   折成 8+1 两行。现在合成一条：
+   · grid-auto-flow:column + minmax(0,1fr) → 等宽列、**永远一行**；相邻列首尾相接，
+     所以每格自己画一段横线，拼起来就是一条通到底的线，不需要额外的连接元素。
+   · done 的圆点**填实**（不打勾：特需孩子认颜色比认勾子快）。
+   · 只有名字变色、不给底色边框 —— 带框就又变回「一排方盒子」。 */
+.type-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+  align-items:end;padding:2px 0 6px}
+.type-tab{display:flex;flex-direction:column;align-items:center;gap:7px;
+  border:0;background:none;padding:0;min-width:0;cursor:pointer;font:inherit;
+  color:inherit;border-radius:10px;-webkit-tap-highlight-color:transparent}
+.ts-name{font-size:16px;font-weight:700;color:var(--ink2);line-height:1.25;
+  white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* 名字颜色：练完的绿、当前这个蓝。**当前写在后面**——刚做完的那一个同时是
+   「done」和「on」，此时应该看着是「你现在在这儿」，而不是「已经过去了」。 */
+.type-tab.done .ts-name{color:var(--green)}
+.type-tab.on .ts-name{color:var(--blue)}
+.type-tab:active .ts-name{opacity:.55}
+.ts-track{position:relative;display:block;width:100%;height:20px}
+/* 轨道铺满整格；第一格切掉左半、最后一格切掉右半，线就从第一个圆点起到最后一个止 */
+.ts-track::before{content:'';position:absolute;left:0;right:0;top:9px;height:2px;
+  background:var(--line2);border-radius:2px}
+.type-tab.done .ts-track::before{background:var(--green-line)}
+.type-tab:first-child .ts-track::before{left:50%}
+.type-tab:last-child .ts-track::before{right:50%}
+.ts-dot{position:absolute;left:50%;top:0;width:20px;height:20px;margin-left:-10px;
+  box-sizing:border-box;border-radius:50%;background:var(--card);
+  border:2.5px solid var(--line2);font-style:normal}
+.type-tab.done .ts-dot{background:var(--green);border-color:var(--green)}
+.type-tab.on .ts-dot{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-bg)}
+/* 剩下几个题型：只剩一句小字说明，不再单独占一排圆点 */
+.type-prog{display:block;margin:0 0 12px;text-align:center}
+.tp-txt{font-size:14px;font-weight:700;color:var(--ink2)}
 .tp-txt.all{color:var(--green)}
 /* 结算页的完成大字 */
 .done-hero{font-size:42px;font-weight:800;color:var(--green);text-align:center;
@@ -371,21 +392,29 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   border-radius:12px;padding:8px 14px;font-size:14px;font-weight:700;min-height:40px}
 /* 表格里的操作键：7 列一行塞得下，不能按 46px 高铺开 */
 .primary.sm,.secondary.sm{padding:7px 11px;font-size:13.5px;min-height:38px;border-radius:10px}
-/* 结算页「下一个题型」：整行大按钮。必须写在这里——上面 .primary 的 padding/font-size
-   会把它压回去（同一个类优先级，靠后生效），v26 第一版就吃了这个亏。 */
 /* 结算页那句鼓励：**只是话，不是按钮**。原来套的 .feedback 有底色又有描边，
    跟下面「下一个题型」长得一样，孩子会一直戳它（老师 2026-10-29 报的原话：
    「学生本来就不认识几个字」，一戳没反应更慌）。 */
 .fb-say{font-size:21px;font-weight:700;color:var(--green);text-align:center;
   margin-top:12px;line-height:1.45}
-/* 结算页「下一个题型」：整行大按钮 + **实心深绿白字**（表面对比度和「能点」的感觉一起给），
-   上面那句鼓励是透明底纯文字，两者一眼分得开。
+/* 结算页「下一个题型」：**按内容宽度的胶囊**，不再整行拉满。
+   老师 2026-10-30：「这个方框去下一个题型很长也很生硬很奇怪啊很丑」——
+   原来 width:100% + 76px 高 + 22px 圆角，一条横贯整屏的深绿板子，跟上面
+   圆圆的百分比、星号完全不同语言。现在：圆角 999 做成胶囊、宽度收成内容宽、
+   左边 15px 小字「下一个题型」交代这是干什么的，右边大字是题型名。
    位置必须写在 .primary 之后 —— 单类选择器谁靠后谁生效，写前面会被压回 16px。 */
-.next-type{display:block;width:100%;margin:22px auto 0;font-size:24px;font-weight:800;
-  padding:22px 26px;min-height:76px;border-radius:22px;border:3px solid #245741;
-  background:var(--green);color:#fff;box-shadow:0 4px 0 #245741}
+.next-type{display:inline-flex;align-items:center;gap:10px;
+  margin:20px 0 4px;padding:14px 28px 14px 30px;min-height:62px;
+  font-size:22px;font-weight:800;border-radius:999px;border:0;
+  background:var(--green);color:#fff;box-shadow:0 4px 0 #245741;
+  max-width:100%;white-space:nowrap}
+.next-type .nt-k{font-size:15px;font-weight:700;color:rgba(255,255,255,.82);
+  letter-spacing:.02em}
+.next-type .nt-v{font-size:22px;font-weight:800;color:#fff}
+.next-type .nt-ar{width:21px;height:21px;flex:none;fill:none;stroke:#fff;
+  stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .next-type:active{transform:translateY(3px);box-shadow:0 1px 0 #245741}
-.sum-actions{margin-top:18px}
+.sum-actions{margin-top:18px;text-align:center}
 .chk-row{display:flex;gap:14px;flex-wrap:wrap}
 .chk{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;
   background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 13px;min-height:42px}
@@ -1157,6 +1186,8 @@ tr.tr-builtin td{background:#FBFAF3}
   table.grid td{padding:9px 8px}
   .td-types{max-width:170px}
   .ops .op-btn{padding:0 9px}
+  /* 题型条要一行排 9 个、等宽格子：字得跟着收一点，否则 5 个字的题型名会顶出去 */
+  .ts-name{font-size:14px}
 }
 
 @media (max-width:640px){
@@ -1178,6 +1209,15 @@ tr.tr-builtin td{background:#FBFAF3}
   .stu-av{width:76px;height:76px;font-size:34px}
   .stu-nm{font-size:18px}
   .stu-tag{font-size:11.5px;padding:3px 10px}
+  /* 题型条：9 个格子只剩 68px 宽，字收到 13px 才放得下「看拼音写字」 */
+  .ts-name{font-size:13px}
+  .ts-track{height:18px}
+  .ts-track::before{top:8px}
+  .ts-dot{width:18px;height:18px;margin-left:-9px}
+  /* 胶囊主按钮窄屏收到能放下「下一个题型 + 5 个字 + 箭头」 */
+  .next-type{padding:12px 22px 12px 24px;min-height:58px;font-size:20px;gap:8px}
+  .next-type .nt-v{font-size:20px}
+  .next-type .nt-k{font-size:13px}
   /* 今日字卡窄屏：两列、字略小，开始按钮整行（单手好按） */
   .pre-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .pre-card{min-height:152px;padding:24px 8px 18px}
@@ -1257,6 +1297,21 @@ tr.tr-builtin td{background:#FBFAF3}
   .game-ask{padding:8px 12px;gap:10px}
   .game-spk{height:50px;padding:0 13px;font-size:15px}
   .ga-word b{font-size:36px}
+}
+
+/* 小屏手机（≤660）：9 个题型挤一行，每格只剩 65px、相邻题型名几乎贴上。
+   改成三列多行 —— 每行仍是一条连着的小进度线，只是分了三段。 */
+@media (max-width:700px){
+  /* 700 以下先收字号：4 个字的题型名 52px，格宽 72px，还留得下 20px 呼吸 */
+  .ts-name{font-size:13px}
+}
+@media (max-width:660px){
+  .type-tabs{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));
+    row-gap:12px;padding-bottom:4px}
+  .ts-name{font-size:14px}
+  /* 每行第一个切左半截、每行最后一个切右半截，线才不会戳到屏幕边 */
+  .type-tabs .type-tab:nth-child(3n+1) .ts-track::before{left:50%}
+  .type-tabs .type-tab:nth-child(3n) .ts-track::before{right:50%}
 }
 </style>
 </head>

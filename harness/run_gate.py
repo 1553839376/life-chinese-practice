@@ -474,9 +474,23 @@ def gate_static(html):
     # 后来又补一刀：「学生等下在那一直点做的不错怎么办，这两个都没有区分开来」——
     # 鼓励语和主按钮长得一模一样（都有底色+描边），孩子会一直戳那句表扬。
     # 所以这里钉两件事：进度可见、鼓励语不许再长成按钮。
-    rec('G1', '顶部有题型进度（#typeProg + .tp-dot 圆点 + renderTypeProg）',
-        all(k in html for k in ['id="typeProg"', '.tp-dot', 'function renderTypeProg'])
-        and 'renderTypeProg()' in html)
+    # v31 老师 2026-10-30：「你这个题型一多就换行很奇怪啊。而且这个圈圈打勾也难理解，
+    # 能不能正在文字下面呈现一个圈圈，然后用横线连接，完成了这个圈圈就填满」——
+    # 进度原来另起一行、还是号码圈，跟题型名「很割裂」；现在并进每一个题型名下面。
+    _tabsb = html.split('function renderTypeTabs')[1].split('function renderNoType')[0] \
+        if 'function renderTypeTabs' in html else ''
+    _tabs_css = html.split('.type-tabs{')[1].split('}')[0] if '.type-tabs{' in html else ''
+    rec('G1', '题型名下面挂圆点、用横线连成一条进度线（.ts-name + .ts-track + .ts-dot）',
+        all(k in html for k in ['id="typeProg"', '.ts-dot', '.ts-track', 'function renderTypeProg'])
+        and 'ts-name' in _tabsb and 'ts-track' in _tabsb and 'ts-dot' in _tabsb
+        and 'renderTypeTabs();' in html.split('function renderTypeProg')[1][:1500],
+        '' if _tabsb else '找不到 renderTypeTabs')
+    rec('G1', '完成的圆点填满、不再往圈里打勾（孩子认颜色比认勾快）',
+        bool(_tabsb) and '✓' not in _tabsb and 'done' in _tabsb and 'sessEnsure(' in _tabsb)
+    rec('G1', '题型条等宽排一行（grid-auto-flow:column + 1fr，9 个题型也不折成 8+1）',
+        'display:grid' in _tabs_css and 'grid-auto-flow:column' in _tabs_css
+        and '1fr' in _tabs_css,
+        ('样式实测 ' + _tabs_css.replace('\n', ' ')[:110]) if _tabs_css else '找不到 .type-tabs')
     rec('G1', '结算页给「下一个题型」入口（#btnNextType + sessNext(）',
         'id="btnNextType"' in html and 'sessNext(' in html and 'sessMark(' in html)
     rsbody = html.split('function renderSummary')[1].split('function renderProgress')[0] \
@@ -494,6 +508,16 @@ def gate_static(html):
     _ord_n = html.find('.next-type{')
     rec('G1', '.next-type 写在 .primary 之后（否则实心按钮被浅底按钮盖掉）',
         _ord_p >= 0 and _ord_n > _ord_p, '下标 %d vs %d' % (_ord_p, _ord_n))
+    # v31 老师 2026-10-30：「这个方框去下一个题型很长也很生硬很奇怪啊很丑」——
+    # 原来 width:100% + 76px 高的深绿板子横贯整屏，改成按内容宽度的胶囊。
+    _nt_css = html.split('.next-type{')[1].split('}')[0] if '.next-type{' in html else ''
+    # 注意用正则判 `width:100%`：直接字符串匹配会被 `max-width:100%` 误伤（第一版就这么红的）
+    rec('G1', '「下一个题型」是按内容宽度的胶囊，不再整行拉满',
+        'inline-flex' in _nt_css and '999px' in _nt_css
+        and not re.search(r'(?<!-)\bwidth:100%', _nt_css),
+        ('样式实测 ' + _nt_css.replace('\n', ' ')[:110]) if _nt_css else '找不到 .next-type')
+    rec('G1', '胶囊里分「下一个题型」小字 + 题型名大字 + SVG 箭头',
+        all(k in rsbody for k in ['nt-k', 'nt-v', 'svg class="nt-ar"']))
 
     # v27 笔顺与描写（T-023）：用户原话「在最开始的全班都可以学习的地方应该增加一个描写，
     # 就像练习那样的。而且应该有笔顺才对。笔顺是用灰色底图汉字上的动画变红色来先呈现怎么写，

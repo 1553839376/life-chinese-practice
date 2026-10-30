@@ -121,10 +121,23 @@ function renderPlayHeader(){
   setHTML($('playAvatar'), av ? '<img src="' + esc(av) + '" alt="" width="46" height="46">' : esc((s.name || '?').slice(0, 1)));
   $('playName').textContent = s.name;
 }
+/* 题型条：**每个题型名下面挂一个圆点，圆点之间用一条横线连起来**（v31）。
+   老师 2026-10-30：「你这个题型一多就换行很奇怪啊。而且这个圈圈打勾也难理解，
+   能不能正在文字下面呈现一个圈圈，然后用横线连接，完成了这个圈圈就填满」——
+   原来进度是另起一行的号码圈，跟题型名各说各话；现在长在一起，一眼看得出
+   「哪个练完了、练到第几个」。做完的圆点**填实**（不再打勾：孩子不认勾只认颜色）。 */
 function renderTypeTabs(){
-  var s = STATE.cur, html = '', i;
+  var s = STATE.cur, sess, html = '', i, k;
+  if (!s || !isArr(s.types)){ setHTML($('typeTabs'), ''); return; }
+  sess = sessEnsure(s);
   for (i = 0; i < s.types.length; i++){
-    html += '<button type="button" class="type-tab' + (s.types[i] === STATE.curType ? ' on' : '') + '" data-type="' + esc(s.types[i]) + '">' + esc(s.types[i]) + CLOSE('button');
+    k = s.types[i];
+    html += '<button type="button" class="type-tab' +
+              (k === STATE.curType ? ' on' : '') + (sess.done[k] ? ' done' : '') +
+              '" data-type="' + esc(k) + '">' +
+              '<span class="ts-name">' + esc(k) + CLOSE('span') +
+              '<span class="ts-track"><i class="ts-dot"></i>' + CLOSE('span') +
+            CLOSE('button');
   }
   setHTML($('typeTabs'), html);
   var stage = $('stage');
@@ -242,26 +255,21 @@ function sessNext(stu){
   for (i = 0; i < t.length; i++){ if (!s.done[t[i]]) return t[i]; }
   return '';
 }
-/* 顶部那排圆点：已做完的打勾、当前这个描蓝圈、没做的留空圈 */
+/* 题型进度的文字说明（圆点已经搬到 renderTypeTabs 里，跟题型名长在一起了）。
+   这里只留一句「还剩几个」，顺手重画题型条 —— 完成一个题型时圆点要马上填实。 */
 function renderTypeProg(){
-  var box = $('typeProg'), stu = STATE.cur, s, t, i, html, left, done;
+  var box = $('typeProg'), stu = STATE.cur, t, html, left, done;
   if (!box) return;
   t = sessTypes(stu);
   if (!t.length){ box.hidden = true; setHTML(box, ''); return; }
-  s = sessEnsure(stu);
   done = sessDoneN(stu);
   left = t.length - done;
   box.hidden = false;
-  html = '<div class="tp-dots">';
-  for (i = 0; i < t.length; i++){
-    html += '<span class="tp-dot' + (s.done[t[i]] ? ' done' : '') +
-            (STATE.curType === t[i] ? ' on' : '') + '">' +
-            (s.done[t[i]] ? '✓' : (i + 1)) + CLOSE('span');
-  }
-  html += CLOSE('div') + '<span class="tp-txt' + (left ? '' : ' all') + '">' +
+  html = '<span class="tp-txt' + (left ? '' : ' all') + '">' +
     (left ? ('已完成 ' + done + ' / ' + t.length + ' 个题型，还有 ' + left + ' 个')
           : '今天的 ' + t.length + ' 个题型都练完啦') + CLOSE('span');
   setHTML(box, html);
+  renderTypeTabs();
 }
 /* 连续天数：把学生所有字最近练习的日期去重，从今天往回数。
    今天还没练也从昨天开始数——「今天还没开始」不该把昨天以前的连续记录清零，
@@ -1640,15 +1648,23 @@ function renderSummary(){
   setTimeout(function(){
     if (STATE.quiz === z) say(sayWhat);
   }, 800);
-  var btns;
+  var btns, arrow;
+  /* 箭头用 SVG 不用「→」字符：字符在不同字体里大小和基线都不一样，拼进胶囊里会歪 */
+  arrow = '<svg class="nt-ar" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+            '<path d="M4 12h14M13 6l6 6-6 6"/>' + CLOSE('svg');
+  /* 老师 2026-10-30：「这个方框去下一个题型很长也很生硬很奇怪啊很丑」——
+     原来是整行 100% 宽的深绿大板子。改成**按内容宽度的胶囊**：
+     左边小字「下一个题型」说明这是干什么的，右边大字是题型名，一眼知道去哪。 */
   if (allDone){
-    btns = '<button type="button" class="primary next-type" id="btnHome2">回我的主页</button>' +
+    btns = '<button type="button" class="primary next-type" id="btnHome2">' +
+             '<span class="nt-v">回我的主页</span>' + CLOSE('button') +
            '<div class="row" style="justify-content:center;margin-top:12px">' +
              '<button type="button" class="secondary" id="btnAgain">再练一轮</button>' +
            CLOSE('div');
   } else {
-    btns = '<button type="button" class="primary next-type" id="btnNextType">下一个题型：' +
-             esc(nextT) + ' →' + CLOSE('button') +
+    btns = '<button type="button" class="primary next-type" id="btnNextType">' +
+             '<span class="nt-k">下一个题型</span>' +
+             '<span class="nt-v">' + esc(nextT) + CLOSE('span') + arrow + CLOSE('button') +
            '<div class="row" style="justify-content:center;margin-top:12px">' +
              '<button type="button" class="secondary" id="btnAgain">这个题型再练一轮</button>' +
              '<button type="button" class="secondary" id="btnHome2">回我的主页</button>' +

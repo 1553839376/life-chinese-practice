@@ -11,6 +11,7 @@
 - 静态直链：`create_page_transaction` 返回的是 baseVersion 旧目录，新版用 `list_page_publish_artifacts.py` 取 `data.url`；给用户前 curl grep 一次 `APP_VER = 'v27'` 这类**值**（别 grep 属性组合，顺序会变）
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过
 - **git 的 `http.proxy` 每次开机都变**：先比 `env | grep -i http_proxy` 与 `git config --get http.proxy`，不一致就同步；fetch/push 一律 6~8 次重试，单发一次判「断网」必误判
+- **但 GitHub 走沙箱代理必 502**（`CONNECT tunnel failed, response 502`），重试多少次都没用。判法：`curl -o /dev/null -w %{http_code} https://github.com/` 走代理 000、`--noproxy '*'` 200 → 去掉 git 的 `http(s).proxy` 并 `env -u http_proxy -u https_proxy ... git push`。**别把这个当网络抖动**
 
 ## 二、数据结构与教学口径
 **字表**
@@ -87,6 +88,9 @@
 - 说明文字一律 11.5px 灰字 `.prog-note` 或删掉
 - **一屏只能有一个主按钮**：鼓励语用 `.fb-say`（透明底 21px 纯文字），主按钮实心深绿+白字+`0 4px 0`；**`.next-type` 必须写在 `.primary` 之后**（同优先级后写者胜，已进 G1 下标比较）
 - 题型进度：`wb2_sess_v1` = `{day,name,done}`（不进 STATE、不碰云端 schema），跨天清零、换学生换一份；全做完也要保留正确率
+- **主按钮不要整行拉满**（v31）：`width:100%` 的深绿大板子老师评「很长很生硬很丑」→ `inline-flex` + `border-radius:999px` 按内容宽度，里面小字说明 + 大字主体 + **SVG 箭头**（「→」字符各字体大小基线不同，会歪）
+- **进度条要长在被描述的东西上**（v31）：题型名下面挂圆点，每格自己画一段横线（`::before{left:0;right:0}`），格子首尾相接即连成一条；首格切左半、末格切右半。完成＝**填满**，不打勾不塞数字（孩子认颜色比认勾快）；`.on` 必须写在 `.done` **之后**（刚做完那一个同时是两个状态）
+- **「一多就折行」用等宽网格治，不是缩字号**：`grid-auto-flow:column + minmax(0,1fr)` 永不折行；窄到放不下才换 n 列（三行版要按 `3n+1`/`3n` 切线段，否则行首会留半截线戳边）
 
 **游戏美术（v9/v10）**
 - 鱼头右尾左，`fishSVG` viewBox `200×116`，身体 `cx=106 rx=54`，尾鳍 `M58 58 L14 24 Q36 58 14 92 Z`

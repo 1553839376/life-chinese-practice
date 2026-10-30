@@ -1469,10 +1469,24 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(220);
 
   const v26_prog = () => (d.getElementById('typeProg').textContent || '').replace(/\s+/g, '');
-  ok(d.querySelectorAll('#typeProg .tp-dot').length === 3, '进度条按题型数画圆点：' +
-    d.querySelectorAll('#typeProg .tp-dot').length);
+  /* v31：圆点从「另起一行的号码圈」搬到了**每个题型名下面**。
+     老师 2026-10-30：「这个圈圈打勾也难理解，能不能正在文字下面呈现一个圈圈，
+     然后用横线连接，完成了这个圈圈就填满」——先钉结构，再钉观感。 */
+  const v31_tabs = () => d.querySelectorAll('#typeTabs .type-tab');
+  ok(v31_tabs().length === 3, '题型条按题型数出条目：' + v31_tabs().length);
+  ok(d.querySelectorAll('#typeTabs .ts-dot').length === 3, '每个题型名下面都有自己的圆点：' +
+    d.querySelectorAll('#typeTabs .ts-dot').length);
+  ok(d.querySelectorAll('#typeProg .ts-dot').length === 0, '圆点不再另起一行（#typeProg 里只有一句话）');
+  const v31_first = v31_tabs()[0];
+  ok(!!(v31_first.querySelector('.ts-name') && v31_first.querySelector('.ts-track')) &&
+     v31_first.querySelector('.ts-name').nextSibling === v31_first.querySelector('.ts-track'),
+    '顺序是「文字在上、轨道在下」，圆点挂在轨道里');
+  ok(Array.from(d.querySelectorAll('#typeTabs .ts-dot')).every(x => !x.textContent.trim()),
+    '圆点是实心/空心两种，不再往里面塞数字或打勾');
+  const v31_css = w.getComputedStyle(d.getElementById('typeTabs'));
+  ok(v31_css.display === 'grid', '题型条用等宽列排成一条线（display:' + v31_css.display + '）');
   ok(v26_prog().indexOf('0/3') >= 0, '一进来写清已完成 0 / 3：' + v26_prog());
-  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 0, '还没练，一个勾都没有');
+  ok(d.querySelectorAll('#typeTabs .type-tab.done').length === 0, '还没练，一个填满的圆点都没有');
 
   click(d.getElementById('homeGo'));
   await wait(160);
@@ -1510,8 +1524,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '鼓励语没有底色：' + (v26_say.backgroundColor || '(none)'));
   ok(parseFloat(v26_nx.fontSize) > parseFloat(v26_say.fontSize),
     '按钮字比鼓励语大（' + v26_nx.fontSize + ' > ' + v26_say.fontSize + '），一眼看出哪个能点');
+  /* 老师 2026-10-30：「这个方框去下一个题型很长也很生硬很奇怪啊很丑」——
+     整行 100% 宽的深绿大板子 → 改成按内容宽度的胶囊。 */
+  ok(v26_nx.display === 'inline-flex', '主按钮收成按内容宽度（display:' + v26_nx.display + '）');
+  ok(parseFloat(v26_nx.borderRadius) >= 900, '主按钮是胶囊不是方框（圆角 ' + v26_nx.borderRadius + '）');
+  const v31_nx = d.getElementById('btnNextType');
+  ok(!!(v31_nx.querySelector('.nt-k') && v31_nx.querySelector('.nt-v')),
+    '胶囊里分两段：小字「' + (v31_nx.querySelector('.nt-k') || {}).textContent +
+    '」说干什么、大字「' + (v31_nx.querySelector('.nt-v') || {}).textContent + '」说是哪个题型');
+  ok(!!v31_nx.querySelector('svg.nt-ar'), '箭头用 SVG 画（字符「→」在不同字体里会歪）');
   ok(v26_prog().indexOf('1/3') >= 0, '做完一个，进度变 1 / 3：' + v26_prog());
-  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 1, '做完的那个打上勾');
+  ok(d.querySelectorAll('#typeTabs .type-tab.done').length === 1, '做完的那个圆点填满');
 
   click(d.getElementById('btnNextType'));
   await wait(220);
@@ -1533,7 +1556,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(!!d.getElementById('btnHome2'), '全部做完给「回我的主页」');
   ok(v26_prog().indexOf('3/3') < 0 && v26_prog().indexOf('都练完') >= 0,
     '进度条改口「都练完啦」：' + v26_prog());
-  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 3, '三个圆点全打勾');
+  ok(d.querySelectorAll('#typeTabs .type-tab.done').length === 3, '三个圆点全填满');
+  /* 全部做完时「回我的主页」也是同一个胶囊，但没有「下一个题型」那截小字 */
+  const v31_home = w.getComputedStyle(d.getElementById('btnHome2'));
+  ok(v31_home.display === 'inline-flex' && !d.getElementById('btnHome2').querySelector('.nt-k'),
+    '全部做完时的「回我的主页」同样是胶囊，且不带「下一个题型」小字');
 
   /* 进度跟着「学生 + 日期」走：换学生要从 0 开始 */
   const v26_stu2 = { id: 'local_v26b', name: '多题型二号', types: ['认读跟读', '图字配对'],
