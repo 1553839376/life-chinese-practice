@@ -431,6 +431,64 @@ def gate_static(html):
         "'square'" in _buzzbody and 'freq + (beatHz' in _buzzbody and 'synthBuzz(ctx' in sfbody,
         '' if _buzzbody else '找不到 synthBuzz')
 
+    # 语音「三处同步」（2026-10-30 加）：老师原话「最近改的很多都没有语音…你是单字组合的很奇怪」。
+    # 新题面只写进了 p5.js，没进 gen_doubao_voice.py 的 SENTS、也没进 p8.js 的 SENT_FULL，
+    # 于是 sayParts 退回逐字拼（听 / 一 / 听 / 写 / 下 / 来），而「照」「遍」两个字
+    # 根本不在字库里 —— 那两句在教室里干脆是没声音的。
+    # 这里把三份清单对齐：SENTS ↔ SENT_FULL ↔ p_voice.json，任一处漏了就红。
+    import json as _json
+    _sent_src = (BUILD / 'gen_doubao_voice.py').read_text(encoding='utf-8')
+    _sent_py = re.findall(r"\('([a-z_]+)', '([^']+)'\)", _sent_src)
+    _smap = re.findall(r"'([^']+)': '([a-z_]+)'", html.split('var SENT_FULL = {')[1]
+                       .split('};')[0]) if 'var SENT_FULL = {' in html else []
+    _sf = dict(_smap)                       # 文案 -> 键
+    # SENT_FULL 里的写法不一定带句号（'做得不错，继续加油'），运行时靠 SENT_BARE 去掉标点再对，
+    # 所以这里也按同一口径比，别拿标点差异报假红。
+    _bare = lambda s: re.sub(r'[。！？，,]', '', s)
+    _sfb = {_bare(k): v for k, v in _sf.items()}
+    _voice = _json.loads((BUILD / 'p_voice.json').read_text(encoding='utf-8'))
+    _no_clip = [k for k, _t in _sent_py if k not in _voice]
+    rec('G1', 'SENTS 每句都真录过（%d 句 ↔ p_voice.json）' % len(_sent_py), not _no_clip,
+        ('没录的键：' + ', '.join(_no_clip[:6])) if _no_clip else '')
+    _no_map = [(k, t) for k, t in _sent_py if _sfb.get(_bare(t)) != k]
+    rec('G1', 'SENTS 每句都登记进 SENT_FULL（文案→键，漏了就会退化成逐字念）',
+        not _no_map, ('没登记的：%s' % '; '.join('%s=%s' % x for x in _no_map[:4]))
+        if _no_map else '')
+    _bad_key = [k for k in _sf.values() if k not in _voice]
+    rec('G1', 'SENT_FULL 指向的键都在语音包里（别指到不存在的音频）',
+        not _bad_key, ('幽灵键：' + ', '.join(sorted(set(_bad_key))[:6])) if _bad_key else '')
+    # 代码里写死的题面句（{ t: '…' }）必须都是整句录音，不许靠字块拼
+    _asks = set(re.findall(r"\{ t: '([^']*[\u4e00-\u9fff][^']*)'", html))
+    _no_ask = sorted(a for a in _asks if a not in _sf)
+    rec('G1', '题面句都录过整句（%d 句，%s）' % (len(_asks), '全部命中' if not _no_ask else '有漏'),
+        not _no_ask, ('没录的题面：' + ' / '.join(_no_ask[:5])) if _no_ask else '')
+
+    # v26 题型进度与结算页（T-021）：用户原话「完成一个练习后应该给一个选项比较明显一点的
+    # 让学生进入下一个题型」「总的上面也应该有一个进度条…让学生理解还有几个题型没完成」。
+    # 后来又补一刀：「学生等下在那一直点做的不错怎么办，这两个都没有区分开来」——
+    # 鼓励语和主按钮长得一模一样（都有底色+描边），孩子会一直戳那句表扬。
+    # 所以这里钉两件事：进度可见、鼓励语不许再长成按钮。
+    rec('G1', '顶部有题型进度（#typeProg + .tp-dot 圆点 + renderTypeProg）',
+        all(k in html for k in ['id="typeProg"', '.tp-dot', 'function renderTypeProg'])
+        and 'renderTypeProg()' in html)
+    rec('G1', '结算页给「下一个题型」入口（#btnNextType + sessNext(）',
+        'id="btnNextType"' in html and 'sessNext(' in html and 'sessMark(' in html)
+    rsbody = html.split('function renderSummary')[1].split('function renderProgress')[0] \
+        if 'function renderSummary' in html else ''
+    rec('G1', '结算页鼓励语不当按钮（用 .fb-say，不用带底色描边的 .feedback）',
+        'class="fb-say"' in rsbody and 'class="feedback' not in rsbody,
+        '' if rsbody else '找不到 renderSummary')
+    _sayss = html.split('.fb-say')[1].split('}')[0] if '.fb-say' in html else ''
+    rec('G1', '.fb-say 是纯文字（没有 background / border，别又做成胶囊）',
+        bool(_sayss) and 'background' not in _sayss and 'border' not in _sayss,
+        ('样式实测 ' + _sayss.replace('\n', ' ')[:120]) if _sayss else '找不到 .fb-say 样式')
+    # 同优先级单类选择器，后写者胜：.next-type 必须写在 .primary 后面，
+    # 否则实心大按钮会被 .primary 的浅底小字按键压回去（v26 第一版就这么翻车）。
+    _ord_p = html.find('.primary{border')
+    _ord_n = html.find('.next-type{')
+    rec('G1', '.next-type 写在 .primary 之后（否则实心按钮被浅底按钮盖掉）',
+        _ord_p >= 0 and _ord_n > _ord_p, '下标 %d vs %d' % (_ord_p, _ord_n))
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

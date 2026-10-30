@@ -20,6 +20,11 @@
   打包：  python pack_doubao_voice.py
   换码率：DOUBAO_BR=40000 python pack_doubao_voice.py
   只打包不写盘：DOUBAO_DRYRUN=1 python pack_doubao_voice.py
+  增量补几条：DOUBAO_MERGE=1 python pack_doubao_voice.py
+      —— 只编码 p_voice.json 里还没有的键，老条目原样保留（不解码、不重编码，
+         所以老语音一个字节都不动，新句子按同一套裁剪/响度/码率参数生成）。
+         2026-10-30 加：WAV 母版只留在原来那台机器上，本机只有 p_voice.json，
+         全量重打包既不可能也没必要。
 """
 import base64
 import io
@@ -121,6 +126,16 @@ def save_m4a(a, out, bitrate=BITRATE, rate=RATE):
 def main():
     tasks = build_tasks()
     keys = [k for k, _ in tasks]
+    merge = os.environ.get('DOUBAO_MERGE') == '1'
+    voice = {}
+    if merge and os.path.exists(OUT):
+        voice = json.load(io.open(OUT, encoding='utf-8'))
+        keys = [k for k in keys if k not in voice]
+        print('增量模式：p_voice.json 已有 %d 条，本次只做 %d 条'
+              % (len(voice), len(keys)))
+        if not keys:
+            print('没有新增条目，p_voice.json 不用动')
+            return 0
     missing = [k for k in keys if not os.path.exists(os.path.join(SRC, k + '.wav'))]
     if missing:
         print('缺 %d 条源文件，先跑 gen_doubao_voice.py：%s'
@@ -154,7 +169,6 @@ def main():
     print('时长：原始 %.0f s → 裁后 %.0f s（去掉 %.0f s 静音）'
           % (before_s, after_s, before_s - after_s))
 
-    voice = {}
     total = 0
     t0 = time.time()
     for n, k in enumerate(keys, 1):
@@ -171,11 +185,12 @@ def main():
     n_han = sum(1 for k in voice if k.startswith('u'))
     n_word = sum(1 for k in voice if k.startswith('w'))
     n_sent = len(voice) - n_han - n_word
+    total_all = sum(len(v) for v in voice.values())
     print('语音 %d 条（%d 单字 + %d 整词 + %d 指令句）'
           % (len(voice), n_han, n_word, n_sent))
     print('base64 合计 %.2f MB（最小 %s=%d B，最大 %s=%d B）'
-          % (total / 1048576.0, sizes[0][1], sizes[0][0], sizes[-1][1], sizes[-1][0]))
-    print('单条平均 %.0f B（老版 2452 B）' % (total / len(voice)))
+          % (total_all / 1048576.0, sizes[0][1], sizes[0][0], sizes[-1][1], sizes[-1][0]))
+    print('单条平均 %.0f B（老版 2452 B）' % (total_all / len(voice)))
 
     if dry:
         print('DRYRUN，未写 p_voice.json')
@@ -185,12 +200,17 @@ def main():
         json.dumps(dict(sorted(voice.items())), ensure_ascii=True, separators=(',', ':')))
     print('已写 %s  %.2f MB' % (OUT, os.path.getsize(OUT) / 1048576.0))
 
-    io.open(REPORT, 'w', encoding='utf-8').write(json.dumps({
-        'voice': 'zh_female_zhixingnv_uranus_bigtts', 'speed': 0.85,
-        'bitrate': BITRATE, 'rate': RATE,
-        'count': len(voice), 'durations': {k: round(len(loaded[k]) / RATE, 3) for k in keys},
-        'db_before': {k: round(dbs[k], 1) for k in keys},
-    }, ensure_ascii=False))
+    rep = {}
+    if merge and os.path.exists(REPORT):
+        rep = json.load(io.open(REPORT, encoding='utf-8'))
+    rep.setdefault('durations', {})
+    rep.setdefault('db_before', {})
+    for k in keys:
+        rep['durations'][k] = round(len(loaded[k]) / RATE, 3)
+        rep['db_before'][k] = round(dbs[k], 1)
+    rep.update({'voice': 'zh_female_zhixingnv_uranus_bigtts', 'speed': 0.85,
+                'bitrate': BITRATE, 'rate': RATE, 'count': len(voice)})
+    io.open(REPORT, 'w', encoding='utf-8').write(json.dumps(rep, ensure_ascii=False))
     return 0
 
 

@@ -56,3 +56,13 @@ build/_tts_test/
 build/_voice_test/
 # 门禁报告是每次跑都变的临时产物
 harness/reports/
+
+# ---------- 发布校验临时件（2026-10-30 加）----------
+# 线上产物直接 curl 到 build/_pub_live.html 只为 grep 校验；_q*.html 是渲染试验页
+build/_pub_live.html
+build/_q.html
+build/_q2.html
+# 探针脚本随手 dump 的中间清单
+build/_chars.txt
+build/_words.txt
+build/_cross_*.txt

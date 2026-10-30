@@ -637,14 +637,65 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(!!v14_z && v14_z.type === '拼词语', '题型是拼词语：' + (v14_z && v14_z.type));
   ok(v14_z.qs.length === 3, '每日题量 8 个词 → 3 组：' + v14_z.qs.length);
   const v14_q = v14_z.qs[0];
-  ok(v14_q.tiles.length === 6, '一组 6 个字块：' + v14_q.tiles.length);
-  ok(v14_q.words.length === 3, '一组 3 个词：' + v14_q.words.map(x => x.w).join('/'));
-  ok(d.querySelectorAll('#stage .wb-tile').length === 6, 'DOM 里 6 个字块');
-  ok(d.querySelectorAll('#stage .wb-slot').length === 3, 'DOM 里 3 个待填词位');
+  /* 一组最多 3 个词；基础字容易撞词时只出 2 个（老师 2026-10-29：
+     「容易撞的话可以只拼两个词语，其他的就三个词」），所以按实际词数算字块数。 */
+  ok(v14_q.words.length >= 2 && v14_q.words.length <= 3,
+    '一组 2~3 个词：' + v14_q.words.map(x => x.w).join('/'));
+  ok(v14_q.tiles.length === v14_q.words.length * 2,
+    '字块数 = 词数 × 2：' + v14_q.tiles.length + ' 块 / ' + v14_q.words.length + ' 词');
+  ok(d.querySelectorAll('#stage .wb-tile').length === v14_q.words.length * 2,
+    'DOM 里字块数与词数对得上');
+  ok(d.querySelectorAll('#stage .wb-slot').length === v14_q.words.length,
+    'DOM 里词位数与词数对得上');
   ok(d.querySelectorAll('#stage .wb-tile.used').length === 0, '开局没有已用字块');
 
-  /* 组内任取两个字都不能拼成本组以外的词，否则孩子拼对了却判错 */
+  /* 组内任取两个字都不能拼成本组以外的词，否则孩子拼对了却判错。
+     词库那 969 条组词盖不住「一人」「人头」这类（组词栏没写），所以 v26 起
+     另有一张常见搭配表做第二道互斥源，下面先验表在不在、再验打分认得出来。 */
   const v14_bank = w.wordBank().byW;
+  const v14_cross = w.crossSet ? w.crossSet() : {};
+  ok(Object.keys(v14_cross).length > 1200, '常见搭配表已内置：' + Object.keys(v14_cross).length + ' 条');
+  ok(!!v14_cross['一人'] && !!v14_cross['人头'] && !!v14_cross['人大'],
+    '搭配表收着「一人 / 人头 / 人大」这类词库查不到的词');
+  /* 词的难度按「字的册次」相对学生算，不靠固定黑名单（老师 2026-10-29：
+     一年级学「一」的孩子不该碰到「统一」，六年级学「统」的孩子碰到就正好）。 */
+  const v14_s1 = w.charStage('一'), v14_s6 = w.charStage('统');
+  ok(v14_s6 > v14_s1 + 2, '「统」比「一」晚好几册：' + v14_s1 + ' → ' + v14_s6);
+  ok(w.wordFitsStu(null, true, '统', '一', v14_s1) === false,
+    '一年级孩子（字表只有「一」）不给拼「统一」');
+  ok(w.wordFitsStu(true, true, '统', '一', v14_s6) === true,
+    '六年级孩子（「统」在自己字表里）可以拼「统一」');
+  const v14_lv = w.stuStageLevel(v14_stu);
+  /* 水平取字表册次的中间值（不是最高值）：字表里混进一个超前字，不该把门槛一起抬上去 */
+  const v14_st = v14_stu.chars.map(c => w.charStage(c)).filter(k => k >= 0).sort((x, y) => x - y);
+  ok(v14_lv === v14_st[Math.floor(v14_st.length / 2)],
+    '水平取字表册次的中间值：' + v14_lv + '（字表 ' + v14_st.join(',') + '）');
+  ok(v14_z.qs.every(q => q.words.length === 2 || q.words.length === 3),
+    '每组只出 2 个或 3 个词：' + v14_z.qs.map(q => q.words.length).join('/'));
+  /* 整局扫一遍：凡是超出字表的字，册次都不许比这个学生的水平高出一截 */
+  let v14_over = '';
+  v14_z.qs.forEach(q => q.words.forEach(x => {
+    const ca = v14_stu.chars.indexOf(x.a) >= 0, cb = v14_stu.chars.indexOf(x.b) >= 0;
+    if (!w.wordFitsStu(ca, cb, x.a, x.b, v14_lv)) v14_over = x.w;
+  }));
+  ok(!v14_over, '整局没有超出学生册次的词' + (v14_over ? '：' + v14_over : ''));
+  /* 六年级反过来：一个字表里有「统」的学生，拼「统一」是合法的（不是全局封杀） */
+  const v14_lv6 = w.stuStageLevel({ chars: ['统', '系', '标', '准'] });
+  ok(v14_lv6 >= v14_s6 - 2, '六年级字表 → 水平落在六年级那一档：' + v14_lv6);
+  ok(w.wordFitsStu(true, false, '统', '一', v14_lv6) === true,
+    '六年级孩子拼「统一」，另一个字够得着 → 放行');
+  /* 目标词「工人 + 一个」→ 字块 工 人 一 个，还能拼出「一人」（词库没有、搭配表有）。
+     软冲突要认出来；而「工人 + 二个」能拼出「二人」——那是词库里的词，属硬冲突。
+     这里用写死的 byW，不依赖当时的字库状态。 */
+  const v14_pair = [{ w: '工人', a: '工', b: '人' }, { w: '一个', a: '一', b: '个' }];
+  const v14_soft = w.wbCrossScore(v14_pair, { '工人': 1, '一个': 1 }, v14_cross);
+  ok(v14_soft > 0 && v14_soft < 1000, '打分认得出本组外的「一人」（软冲突 ' + v14_soft + '）');
+  ok(w.wbCrossScore([{ w: '工人', a: '工', b: '人' }, { w: '二个', a: '二', b: '人' }],
+    { '工人': 1, '二个': 1, '二人': 1 }, v14_cross) >= 1000,
+    '拼出词库里另一个词算硬冲突，永远不接受');
+  ok(w.wbCrossScore([{ w: '一个', a: '一', b: '个' }], { '一个': 1 }, v14_cross) === 0,
+    '只有一个目标词时没有冲突');
+  ok(w.wbCrossHit(v14_pair, { '工人': 1, '一个': 1 }, v14_cross) === 'hit', '老接口 wbCrossHit 仍返回命中');
   const v14_chars = [...new Set(v14_q.words.reduce((a, x) => a.concat([x.a, x.b]), []))];
   let v14_amb = '';
   for (let i = 0; i < v14_chars.length; i++) {
@@ -654,30 +705,43 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       if (v14_bank[t] && !v14_q.words.some(x => x.w === t)) v14_amb = t;
     }
   }
-  ok(!v14_amb, '组内没有「也能拼成别的词」的歧义组合' + (v14_amb ? '：' + v14_amb : ''));
+  ok(!v14_amb, '组内没有「也能拼成别的词」的词库级歧义' + (v14_amb ? '：' + v14_amb : ''));
 
   const v14_tile = ch => [...d.querySelectorAll('#stage .wb-tile')]
     .filter(t => t.textContent === ch && !t.classList.contains('used'))[0];
   const v14_hit = (a, b) => { click(v14_tile(a)); click(v14_tile(b)); };
 
-  /* 错拼：挑一对既不是本组目标词、也不在词表里的字 */
-  let v14_wp = null;
-  for (let i = 0; i < v14_chars.length && !v14_wp; i++) {
+  /* 错拼：挑一对不是本组目标词的字。优先挑词库和搭配表里都没有的（真·不成词）；
+     挑不出来就用任意非目标词——判分只认「是不是本组目标词」，两种都走错拼分支。
+     不能因为挑不到就整段跳过（那样断言条数会随随机出题浮动，门禁基线就飘了）。 */
+  let v14_wp = null, v14_wpAny = null;
+  for (let i = 0; i < v14_chars.length; i++) {
     for (let j = i + 1; j < v14_chars.length; j++) {
       const a = v14_chars[i], b = v14_chars[j];
       if (v14_q.words.some(x => x.w === a + b || x.w === b + a)) continue;
-      if (!v14_bank[a + b] && !v14_bank[b + a]) { v14_wp = [a, b]; break; }
+      if (!v14_wpAny) v14_wpAny = [a, b];
+      if (!v14_bank[a + b] && !v14_bank[b + a] &&
+          !v14_cross[a + b] && !v14_cross[b + a]) { v14_wp = [a, b]; break; }
     }
+    if (v14_wp) break;
   }
+  v14_wp = v14_wp || v14_wpAny;
   if (v14_wp) {
+    /* 拼出来的不是本组词：抖一下、响一次错误音、退回，提示原样。
+       老师 2026-10-29 明确「拼错了就抖一下退回来就好」，别再改判分口径。 */
+    const v14_no0 = w.sfxNo;
+    let v14_noN = 0;
+    w.sfxNo = function () { v14_noN++; };
     v14_hit(v14_wp[0], v14_wp[1]);
     await wait(140);
     ok(d.querySelectorAll('#stage .wb-slot.on').length === 0,
       '拼不成词时不填词位（' + v14_wp.join('') + '）');
     ok(!!d.querySelector('#stage .wb-tile.shake'), '拼错的字块抖一下');
+    ok(v14_noN >= 1, '拼错时响一次错误音：调用 ' + v14_noN + ' 次');
     ok(d.getElementById('wbTip').textContent.indexOf('拼不成词') >= 0,
       '提示「这两个字拼不成词」：' + d.getElementById('wbTip').textContent);
     ok(v14_q.words.every((x, i) => !v14_q.done[i]), '错拼不会把词标成已完成');
+    w.sfxNo = v14_no0;
   }
 
   /* 先点第二个字再点第一个字也算对：孩子心里想的是那个词，不该纠正他的手指顺序 */
@@ -687,16 +751,20 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelectorAll('#stage .wb-slot.on').length === 1, '倒着点也算拼对：' + v14_w0);
   ok(d.querySelectorAll('#stage .wb-tile.used').length === 2, '用掉两个字块');
 
+  /* 剩下的词依次拼上，最后一次性核对词位：
+     不按词逐个 assert —— 每组 2 个词还是 3 个词是随机的，逐词断言会让总数跟着飘。 */
   for (let i = 1; i < v14_q.words.length; i++) {
     const wd = v14_q.words[i].w;
     v14_hit(wd.charAt(0), wd.charAt(1));
     await wait(170);
-    ok(d.querySelectorAll('#stage .wb-slot.on').length === i + 1,
-      '拼对第 ' + (i + 1) + ' 个词后词位填上：' + wd);
   }
-  ok(d.querySelectorAll('#stage .wb-tile.used').length === 6, '6 个字块全部用掉');
+  ok(d.querySelectorAll('#stage .wb-slot.on').length === v14_q.words.length,
+    '剩下的词依次拼上，词位全填满：' + d.querySelectorAll('#stage .wb-slot.on').length +
+    ' / ' + v14_q.words.length);
+  ok(d.querySelectorAll('#stage .wb-tile.used').length === v14_q.words.length * 2,
+    '字块全部用掉：' + d.querySelectorAll('#stage .wb-tile.used').length + ' 块');
   ok(v14_q.locked === true, '整组拼完锁住，不能再点');
-  ok(v14_z.right === 3, '本组算 3 个词对：' + v14_z.right);
+  ok(v14_z.right === v14_q.words.length, '本组按词计数：' + v14_z.right + ' / ' + v14_q.words.length);
   ok(d.getElementById('wbTip').textContent.indexOf('都拼好啦') >= 0,
     '整组完成有明确反馈：' + d.getElementById('wbTip').textContent);
 
@@ -713,12 +781,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelectorAll('#stage .wb-tile.used').length === 0, '新一组字块重置');
 
   const v14_hintBtn = d.getElementById('btnHint');
-  if (v14_hintBtn && !v14_hintBtn.disabled) {
-    click(v14_hintBtn);
-    await wait(140);
-    ok(d.querySelectorAll('#stage .wb-tile.hinted').length === 2, '提示闪一下两个能拼的字块');
-    ok(v14_z.promptUsed === 1, '提示记了一次');
-  }
+  ok(!!v14_hintBtn && !v14_hintBtn.disabled, '新一组的提示按钮可点（不能一进来就灰着）');
+  click(v14_hintBtn);
+  await wait(140);
+  ok(d.querySelectorAll('#stage .wb-tile.hinted').length === 2, '提示闪一下两个能拼的字块');
+  ok(v14_z.promptUsed === 1, '提示记了一次');
 
   /* 结算正确率按「词」算，不按组算：9 个词对 6 个 = 67% */
   let v14_allWords = 0;
@@ -1017,19 +1084,39 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.stuActive(v19_s).indexOf(v19_sec) < 0, '解锁后下一轮退出');
   ok(w.lockList(v19_s).length === 0, '解锁后锁定表清空');
 
-  /* 手动移出：空出来的名额**不许自动补**，否则这个按钮等于没做 */
+  /* 手动移出：这个字不许再被自动补回来（否则按钮等于没做），
+     空出的名额由别的待学字补上 —— 手上始终练满「在学字数」那么多。 */
   const v19_cur = w.stuActive(v19_s);
   const v19_drop = v19_cur[v19_cur.length - 1];
   ok(w.actDel(v19_s, v19_drop), '手动移出在学：' + v19_drop);
-  ok(w.stuActive(v19_s).length === 9, '移出后停在 9 个，不自动补回：' + w.stuActive(v19_s).length);
+  ok(w.offList(v19_s).indexOf(v19_drop) >= 0, '移出的字记进 off，补位时跳过');
+  ok(w.stuActive(v19_s).indexOf(v19_drop) < 0, '移出后名单里没有它');
+  ok(w.stuActive(v19_s).length === 10, '空出的名额换个字补满，仍是 10：' + w.stuActive(v19_s).length);
 
-  /* 加入：排在最前，满员拒绝；已掌握的字拉回来要自动锁定 */
-  const v19_out = v19_pool.filter(x => w.stuActive(v19_s).indexOf(x) < 0)[0];
-  ok(w.actAdd(v19_s, v19_out), '空出名额后能加入：' + v19_out);
-  ok(w.stuActive(v19_s)[0] === v19_out, '新加入的排在最前（下次先练它）');
-  ok(w.stuActive(v19_s).length === 10, '加满到 10');
-  ok(!w.actAdd(v19_s, v19_pool[v19_pool.length - 1]), '满员时拒绝加入');
-  ok(!w.actAdd(v19_s, v19_out), '已在名单里的不重复加');
+  /* 加入：排在最前，满员拒绝；手动加回来的字要从 off 里删掉 */
+  ok(!w.actAdd(v19_s, v19_pool.filter(x => w.stuActive(v19_s).indexOf(x) < 0)[0]), '满员时拒绝加入');
+  ok(w.actDel(v19_s, w.stuActive(v19_s)[0]), '再移出一个腾位子');
+  ok(w.actAdd(v19_s, v19_drop), '手动把移出的字加回来：' + v19_drop);
+  ok(w.offList(v19_s).indexOf(v19_drop) < 0, '加回来就从 off 里删掉，以后还能自动补');
+  ok(w.stuActive(v19_s)[0] === v19_drop, '新加入的排在最前（下次先练它）');
+  ok(!w.actAdd(v19_s, v19_drop), '已在名单里的不重复加');
+  /* 已掌握的字手动拉回来＝复习，要自动锁定，否则下一轮同步又判「已掌握」踢出去 */
+  ok(w.actDel(v19_s, w.stuActive(v19_s)[1]), '再腾一个位子给复习的字');
+  ok(w.actAdd(v19_s, v19_sec), '已掌握的字能手动拉回来复习：' + v19_sec);
+  ok(w.lockList(v19_s).indexOf(v19_sec) >= 0, '拉回来的已掌握字自动锁定');
+
+  /* 在学名单必须补满到上限（老师 2026-10-29 报的 bug：上限 8、字表 28、在学只剩 1）：
+     空位有三种来源 —— 学会让出、字表后来变大、上限被调大，三种都要补。 */
+  const v19_bug = { id: 'local_bug', name: '补位测试', types: ['认读跟读'],
+                    chars: [v19_pool[0]], groups: [], count: 8, status: '在读', photo: '', edited: Date.now() };
+  w.STATE.students.push(v19_bug);
+  ok(w.stuActive(v19_bug).length === 1, '字表只有 1 个字时先建名单：1');
+  v19_bug.chars = v19_pool.slice(0, 28);
+  ok(w.stuActive(v19_bug).length === 8, '字表补到 28 个字后自动补满到 8：' + w.stuActive(v19_bug).length);
+  v19_bug.count = 1;
+  ok(w.stuActive(v19_bug).length === 3, '上限调到下限 3 时收到 3：' + w.stuActive(v19_bug).length);
+  v19_bug.count = 8;
+  ok(w.stuActive(v19_bug).length === 8, '上限调回 8 能重新长回来：' + w.stuActive(v19_bug).length);
 
   /* 今日字卡 = 在学名单（v24 起先过一屏主页） */
   w.enterStudent('老生');
@@ -1192,6 +1279,142 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     (w.STATE.quiz && w.STATE.quiz.qs.length));
   w.resetQState();
   ok(w.STATE.quiz.checked === false, 'resetQState 清掉「亮过答案」，不带到下一题');
+
+  /* ================= 【26】题型进度与「下一个题型」（T-021） =================
+     老师 2026-10-29：「完成一个练习后应该给一个选项比较明显一点的让学生进入下一个题型」，
+     「总的上面也应该有一个进度条…让学生理解还有几个题型没完成」，
+     「全部题型完成后要提示已完成今天的全部练习」。 */
+  console.log('\n【26】今天的题型进度（T-021）');
+  try { w.localStorage.removeItem('wb2_sess_v1'); } catch (e) {}
+  const v26_chars = w.STATE.chars.map(c => c.w).slice(0, 10);
+  const v26_stu = { id: 'local_v26', name: '多题型', types: ['认读跟读', '图字配对', '拼词语'],
+    chars: v26_chars, groups: [], count: 6, status: '在读', photo: '', edited: Date.now() };
+  w.STATE.students = w.STATE.students.filter(s => s.id !== v26_stu.id).concat([v26_stu]);
+  w.saveSnap();
+  w.enterStudent('多题型');
+  await wait(220);
+
+  const v26_prog = () => (d.getElementById('typeProg').textContent || '').replace(/\s+/g, '');
+  ok(d.querySelectorAll('#typeProg .tp-dot').length === 3, '进度条按题型数画圆点：' +
+    d.querySelectorAll('#typeProg .tp-dot').length);
+  ok(v26_prog().indexOf('0/3') >= 0, '一进来写清已完成 0 / 3：' + v26_prog());
+  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 0, '还没练，一个勾都没有');
+
+  click(d.getElementById('homeGo'));
+  await wait(160);
+  click(d.getElementById('preGo'));
+  await wait(220);
+  ok(w.STATE.quiz && w.STATE.quiz.type === '认读跟读', '开始练习从第一个没做完的题型起：' +
+    (w.STATE.quiz && w.STATE.quiz.type));
+
+  /* 一轮做完（走到结算页）才算这个题型完成 */
+  const v26_finish = async () => {
+    const z = w.STATE.quiz;
+    z.i = z.qs.length;
+    let n = 0;
+    for (let i = 0; i < z.qs.length; i++) n += z.qs[i].words ? z.qs[i].words.length : 1;
+    z.right = n;
+    w.renderSummary();
+    await wait(90);
+  };
+  await v26_finish();
+  ok(!!d.getElementById('btnNextType'), '结算页有「下一个题型」按钮');
+  ok(d.getElementById('btnNextType').textContent.indexOf('图字配对') >= 0,
+    '按钮上直接写下一个题型是什么：' + d.getElementById('btnNextType').textContent.trim());
+  /* 老师 2026-10-30：「学生等下在那一直点做的不错怎么办，这两个都没有区分开来」
+     —— 鼓励语跟主按钮长得一样（都有底色+描边），孩子分不清哪句是能点的。 */
+  ok(!!d.querySelector('#stage .fb-say'), '鼓励语是纯文字（.fb-say），不会看着像按钮');
+  ok(!d.querySelector('#stage .feedback'), '结算页不再用 .feedback（那是带底色描边的胶囊）');
+  ok(d.querySelectorAll('#stage .next-type.primary').length === 1,
+    '整屏只有一个实心主按钮：' + d.querySelectorAll('#stage .next-type.primary').length);
+  ok(d.querySelectorAll('#stage .primary').length === 1,
+    '结算页只有这一个主按钮，其余都得是 secondary：' +
+    d.querySelectorAll('#stage .primary').length);
+  const v26_say = w.getComputedStyle(d.querySelector('#stage .fb-say'));
+  const v26_nx = w.getComputedStyle(d.querySelector('#stage .next-type'));
+  ok((v26_say.backgroundColor === '' || v26_say.backgroundColor === 'rgba(0, 0, 0, 0)'),
+    '鼓励语没有底色：' + (v26_say.backgroundColor || '(none)'));
+  ok(parseFloat(v26_nx.fontSize) > parseFloat(v26_say.fontSize),
+    '按钮字比鼓励语大（' + v26_nx.fontSize + ' > ' + v26_say.fontSize + '），一眼看出哪个能点');
+  ok(v26_prog().indexOf('1/3') >= 0, '做完一个，进度变 1 / 3：' + v26_prog());
+  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 1, '做完的那个打上勾');
+
+  click(d.getElementById('btnNextType'));
+  await wait(220);
+  ok(w.STATE.quiz && w.STATE.quiz.type === '图字配对', '点一下直接进下一个题型：' +
+    (w.STATE.quiz && w.STATE.quiz.type));
+  ok(w.STATE.curType === '图字配对', '顶部题型标签跟着切换：' + w.STATE.curType);
+
+  await v26_finish();
+  click(d.getElementById('btnNextType'));
+  await wait(220);
+  ok(w.STATE.quiz && w.STATE.quiz.type === '拼词语', '第三个题型是拼词语：' +
+    (w.STATE.quiz && w.STATE.quiz.type));
+  await v26_finish();
+
+  ok(!!d.querySelector('#stage .done-hero'), '全部做完给大提示块');
+  ok(d.querySelector('#stage .done-hero').textContent.indexOf('今天的练习全部完成') >= 0,
+    '写的是「今天的练习全部完成」：' + d.querySelector('#stage .done-hero').textContent);
+  ok(!d.getElementById('btnNextType'), '全部做完不再显示「下一个题型」');
+  ok(!!d.getElementById('btnHome2'), '全部做完给「回我的主页」');
+  ok(v26_prog().indexOf('3/3') < 0 && v26_prog().indexOf('都练完') >= 0,
+    '进度条改口「都练完啦」：' + v26_prog());
+  ok(d.querySelectorAll('#typeProg .tp-dot.done').length === 3, '三个圆点全打勾');
+
+  /* 进度跟着「学生 + 日期」走：换学生要从 0 开始 */
+  const v26_stu2 = { id: 'local_v26b', name: '多题型二号', types: ['认读跟读', '图字配对'],
+    chars: v26_chars, groups: [], count: 6, status: '在读', photo: '', edited: Date.now() };
+  w.STATE.students.push(v26_stu2);
+  ok(w.sessDoneN(v26_stu2) === 0, '换个学生，题型进度从 0 算');
+  ok(w.sessDoneN(v26_stu) === 3, '原来的学生进度还在：' + w.sessDoneN(v26_stu));
+  try { w.localStorage.removeItem('wb2_sess_v1'); } catch (e) {}
+  w.SESS.day = '2000-01-01';
+  ok(w.sessDoneN(v26_stu) === 0, '跨天自动清零');
+
+  /* ================= 【27】语音完整性（2026-10-30） =================
+     老师原话：「最近改的很多都没有语音…你是单字组合的很奇怪」。
+     真正的规矩不是「SENT_FULL 里有这一条」，而是「sayParts 拆出来只有一段、
+     而且那一段是整句录音」——只要它拆成两段以上，教室里听到的就是一个字一个字蹦。
+     这里的做法：把 8 个题型的题面、4 个游戏口令、所有反馈句都过一遍 sayParts。 */
+  console.log('\n【27】念出来的是整句，不是一个字一个字蹦');
+  const v27_one = (label, text) => {
+    const parts = w.sayParts(text) || [];
+    const whole = parts.length === 1 && String(parts[0].k).charAt(0) !== 'u';
+    ok(whole, '「' + text + '」是一整句录音（' + label + '）' +
+      (whole ? '' : '，实际拆成 ' + parts.length + ' 段：' + parts.map(p => p.k).join(',')));
+    const miss = parts.filter(p => p.k && !w.vaB64(p.k)).map(p => p.k);
+    ok(!miss.length, '「' + text + '」用到的音频都在包里' +
+      (miss.length ? '，缺 ' + miss.join(',') : ''));
+  };
+  const v27_types = ['听音找字', '找一样的字', '看拼音写字', '图字配对', '认读跟读',
+    '拼词语', '汉字听写', '描红汉字'];
+  const v27_chars = w.STATE.chars.slice(0, 24);
+  for (const t of v27_types){
+    w.STATE.students = [{ id: 'local_v27', name: '语音探针', types: [t],
+      chars: v27_chars.map(c => c.w), groups: [], count: 6, status: '在读', photo: '',
+      edited: Date.now() }];
+    w.STATE.cur = w.STATE.students[0];
+    w.saveSnap();
+    try { w.startQuiz(t); } catch (e) { ok(false, t + ' 开不了题：' + e.message); continue; }
+    const q = w.STATE.quiz && w.STATE.quiz.qs[0];
+    if (!q){ ok(false, t + ' 没出题'); continue; }
+    const asks = w.quizSay(t, q) || [];
+    for (const a of asks){
+      /* 只有「说明白」的那几句才是固定文案；字/词本身走单个录音，不在这里判 */
+      if (a.t && /[。！？]/.test(a.t)) v27_one(t, a.t);
+    }
+    if (t === '汉字听写'){
+      const wd = w.wgAnswerOf(q);
+      const parts = w.sayParts(wd) || [];
+      ok(parts.length === 1 && !!w.vaB64(parts[0].k),
+        '听写念的是「' + wd + '」整词录音，不是「' + wd.split('').join('——') + '」' +
+        (parts.length === 1 ? '' : '（拆成 ' + parts.length + ' 段）'));
+    }
+  }
+  ['把这个字戳掉。', '把这个字钓上来。', '把这个字摘下来。', '小动物要吃这个字，喂给它。']
+    .forEach(t => v27_one('游戏口令', t));
+  ['答对了！', '写好了！', '太棒了！', '做得不错，继续加油', '再来一次会更好',
+   '再试一试。', '今天的练习全部完成。'].forEach(t => v27_one('反馈', t));
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

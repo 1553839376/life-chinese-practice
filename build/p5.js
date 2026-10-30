@@ -69,6 +69,7 @@ function enterStudent(name){
   sayStop();
   renderPlayHeader();
   renderTypeTabs();
+  renderTypeProg();          /* 今天还剩几个题型，进学生就先让他看见 */
   showScreen('play');
   /* v24：先进「我的主页」——看清楚自己学到哪了、今天要练哪几个，再决定开始。
      以前直接甩一张字卡，孩子不知道自己在整个字表里的位置。 */
@@ -179,6 +180,69 @@ var STU_HOME = { name: '', list: [] };
 function dayKey(d){
   var m = d.getMonth() + 1, dd = d.getDate();
   return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+}
+/* --------------------- 今天的题型进度（T-021） ---------------------
+   用户 2026-10-29：「完成一个练习后应该给一个选项比较明显一点的让学生进入下一个题型」，
+   「总的上面也应该有一个进度条或者别的上面打勾？让学生理解还有几个题型没完成」。
+   一局仍然只练一个题型（出题逻辑不动），另记一份「今天做完了哪几个题型」：
+   按「日期 + 学生」存 localStorage，**不进 STATE**，也就碰不到云端 schema。
+   跨天自动清零；换学生自动换一份。 */
+var LS_SESS = 'wb2_sess_v1';
+var SESS = null;
+function sessEnsure(stu){
+  var day = dayKey(new Date()), nm = stu ? stu.name : '', o;
+  if (SESS && SESS.day === day && SESS.name === nm) return SESS;
+  SESS = { day: day, name: nm, done: {} };
+  try {
+    o = JSON.parse(localStorage.getItem(LS_SESS) || 'null');
+    if (o && o.day === day && o.name === nm && o.done) SESS.done = o.done;
+  } catch (e) {}
+  return SESS;
+}
+function sessSave(){
+  try { localStorage.setItem(LS_SESS, JSON.stringify(SESS)); } catch (e) {}
+}
+/* 一个题型完整做完一轮（走到结算页）才算完成；点进去没做完不算 */
+function sessMark(type){
+  if (!type) return;
+  var s = sessEnsure(STATE.cur);
+  s.done[type] = 1;
+  sessSave();
+}
+function sessTypes(stu){
+  return (stu && isArr(stu.types)) ? stu.types : [];
+}
+function sessDoneN(stu){
+  var t = sessTypes(stu), s = sessEnsure(stu), i, n = 0;
+  for (i = 0; i < t.length; i++){ if (s.done[t[i]]) n++; }
+  return n;
+}
+/* 下一个还没做完的题型；都做完了返回空串 */
+function sessNext(stu){
+  var t = sessTypes(stu), s = sessEnsure(stu), i;
+  for (i = 0; i < t.length; i++){ if (!s.done[t[i]]) return t[i]; }
+  return '';
+}
+/* 顶部那排圆点：已做完的打勾、当前这个描蓝圈、没做的留空圈 */
+function renderTypeProg(){
+  var box = $('typeProg'), stu = STATE.cur, s, t, i, html, left, done;
+  if (!box) return;
+  t = sessTypes(stu);
+  if (!t.length){ box.hidden = true; setHTML(box, ''); return; }
+  s = sessEnsure(stu);
+  done = sessDoneN(stu);
+  left = t.length - done;
+  box.hidden = false;
+  html = '<div class="tp-dots">';
+  for (i = 0; i < t.length; i++){
+    html += '<span class="tp-dot' + (s.done[t[i]] ? ' done' : '') +
+            (STATE.curType === t[i] ? ' on' : '') + '">' +
+            (s.done[t[i]] ? '✓' : (i + 1)) + CLOSE('span');
+  }
+  html += CLOSE('div') + '<span class="tp-txt' + (left ? '' : ' all') + '">' +
+    (left ? ('已完成 ' + done + ' / ' + t.length + ' 个题型，还有 ' + left + ' 个')
+          : '今天的 ' + t.length + ' 个题型都练完啦') + CLOSE('span');
+  setHTML(box, html);
 }
 /* 连续天数：把学生所有字最近练习的日期去重，从今天往回数。
    今天还没练也从昨天开始数——「今天还没开始」不该把昨天以前的连续记录清零，
@@ -385,8 +449,13 @@ function preSay(ch){
   preFootRefresh();
 }
 function preStart(){
-  if (!STATE.curType){ toast('请老师先给这位同学勾选练习题型'); return; }
-  startQuiz(STATE.curType);
+  var stu = STATE.cur;
+  /* 从「今天还没练完的第一个题型」接着往下走：孩子刚看完字卡，
+     该练的就是下一个没做完的，而不是永远从第一个题型重头来。 */
+  var t = sessNext(stu) || (stu && sessTypes(stu).length ? sessTypes(stu)[0] : STATE.curType);
+  if (!t){ toast('请老师先给这位同学勾选练习题型'); return; }
+  STATE.curType = t;
+  startQuiz(t);
 }
 
 /* ------------------------- 出题 ------------------------- */
@@ -457,8 +526,14 @@ function renderDrillBar(list){
    否则孩子拼出「大小」却判错，会以为程序坏了。 */
 var WB_PER_GROUP = 3;
 
-function wbCrossHit(words, byW){
-  var chars = [], seen = {}, i, j, k, t, isTarget;
+/* 冲突打分。两种冲突要分开算，因为它们该不该容忍完全不一样：
+     硬冲突 = 同屏字块能拼出「词库里另一个词」（大小、大河…）——v25 起就不允许，
+              孩子拼出来一定判错，所以永远不接受；
+     软冲突 = 能拼出「常见搭配表」里的词（一人 / 人头 / 人大）——它确实是词，
+              只是不在本题那三个里，孩子拼了会困惑，属于「最好避开」。
+   返回：有硬冲突 → 1000（当无穷大用）；否则返回软冲突对数（0、1、2…）。 */
+function wbCrossScore(words, byW, cross){
+  var chars = [], seen = {}, i, j, k, t, isTarget, hard = 0, soft = 0;
   for (i = 0; i < words.length; i++){
     if (!seen[words[i].a]){ seen[words[i].a] = 1; chars.push(words[i].a); }
     if (!seen[words[i].b]){ seen[words[i].b] = 1; chars.push(words[i].b); }
@@ -467,19 +542,28 @@ function wbCrossHit(words, byW){
     for (j = 0; j < chars.length; j++){
       if (i === j) continue;
       t = chars[i] + chars[j];
-      if (!byW[t]) continue;
+      if (!byW[t] && !(cross && cross[t])) continue;
       isTarget = false;
       for (k = 0; k < words.length; k++){ if (words[k].w === t) isTarget = true; }
-      if (!isTarget) return t;
+      if (isTarget) continue;
+      if (byW[t]) hard++; else soft++;
     }
   }
-  return '';
+  return hard ? 1000 : soft;
+}
+/* 老接口：只回答「这组有没有冲突」，返回空串表示没有。 */
+function wbCrossHit(words, byW, cross){
+  return wbCrossScore(words, byW, cross) ? 'hit' : '';
 }
 
 function buildWordGroups(pool, groupN, stu, focusPool){
   var bank = wordBank(true), poolMap = {}, fSet = null;
   var i, j, k, cand = [], wd, ca, cb, groups = [], cur = [], taken = {};
   var out = [], tiles, c;
+  /* 这个学生的册次水平（字表册次的中间值）：词的难度都拿它比。
+     一年级学「一」的孩子到不了「统」（六上），所以「统一」不会出现；
+     六年级学「统」的孩子本来就在那一册，出现就正常（老师 2026-10-29）。 */
+  var lv = stuStageLevel(stu);
   for (i = 0; i < pool.length; i++) poolMap[pool[i].w] = pool[i];
   if (focusPool && focusPool.length){
     fSet = {};
@@ -488,6 +572,7 @@ function buildWordGroups(pool, groupN, stu, focusPool){
   for (i = 0; i < bank.list.length; i++){
     wd = bank.list[i]; ca = poolMap[wd.a]; cb = poolMap[wd.b];
     if (!ca && !cb) continue;
+    if (!wordFitsStu(ca, cb, wd.a, wd.b, lv)) continue;
     if (fSet && !fSet[wd.a] && !fSet[wd.b]) continue;
     cand.push({
       w: wd.w, a: wd.a, b: wd.b,
@@ -501,30 +586,46 @@ function buildWordGroups(pool, groupN, stu, focusPool){
   /* 成组：每组 3 个词、6 个字块互不共用；已经在前几组出现过的字优先级往后压，
      这样 20 个字的字表能覆盖到 18 个字，而不是三组都在练同样那 6 个。
      字表只有 6 个字时不可避免地要复用，但会尽量换组合。 */
-  var allUsed = {}, usedW = {}, dead = {}, k, c2, best, bestScore, rep, sc, guard, fresh;
-  for (i = 0; i < groupN; i++){
-    cur = []; taken = {}; dead = {};      /* dead 只在本组有效，别影响下一组 */
-    guard = 0;
-    while (cur.length < WB_PER_GROUP && guard++ < 500){
-      best = null; bestScore = 1e9;
-      for (j = 0; j < cand.length; j++){
-        c2 = cand[j];
-        if (dead[c2.w]) continue;
-        if (taken[c2.a] || taken[c2.b]) continue;
-        rep = (allUsed[c2.a] ? 1 : 0) + (allUsed[c2.b] ? 1 : 0);
+  var allUsed = {}, usedW = {}, k, c2, best, bestScore, rep, sc, guard, fresh;
+  var cross = crossSet();
+  /* 凑满一组（3 个词、6 个字块互不共用）。
+     软冲突预算 K 从 0 起：先追求「一个都拼不出本组以外的词」；
+     字表太小凑不满 3 个时，把 K 放到 1、2、3 再试 —— 前一档选好的词不丢，
+     只在补进来的那个上让步。这样「避开撞词」和「一定能出题」不会互相挤掉，
+     也不会像一刀切那样，一凑不满就整组退回只查词库的老状态。 */
+  function fillGroup(){
+    var c3 = [], tk = {}, dead = {}, bv, bs, j2, x, r2, s2, g2 = 0, K = 0, sc3;
+    while (c3.length < WB_PER_GROUP){
+      if (g2++ > 600) break;
+      bv = null; bs = 1e9;
+      for (j2 = 0; j2 < cand.length; j2++){
+        x = cand[j2];
+        if (dead[x.w]) continue;
+        if (tk[x.a] || tk[x.b]) continue;
+        r2 = (allUsed[x.a] ? 1 : 0) + (allUsed[x.b] ? 1 : 0);
         /* 先保「两个字都学过」（tier 0），再尽量不重复用字（rep），
            最后才看掌握程度；前面组已经出过的词压到最低，避免整组重复 */
-        sc = (usedW[c2.w] ? 10000 : 0) + c2.tier * 100 + rep * 10 + c2.wt;
-        if (sc < bestScore){ bestScore = sc; best = c2; }
+        s2 = (usedW[x.w] ? 10000 : 0) + x.tier * 100 + r2 * 10 + x.wt;
+        if (s2 < bs){ bs = s2; bv = x; }
       }
-      if (!best) break;
-      if (wbCrossHit(cur.concat([best]), bank.byW)){
-        /* 这个词会让本组出现第二个能拼成的词，跳过它，别让孩子拼对了却判错 */
-        dead[best.w] = 1;
-        continue;
+      if (!bv){
+        /* 已经凑到 2 个词就收手：宁可这一组少一个词，也不放宽冲突。
+           老师 2026-10-29 原话「如果一些基础汉字容易撞的话，你可以只拼两个词语，
+           其他的就三个词」—— 少一个词孩子只会少做一点，撞词会让他以为程序坏了。
+           连 2 个都凑不出（字数太少）才退一步放宽，保证还能出题。 */
+        if (c3.length >= 2) break;
+        if (K < 3){ K++; dead = {}; g2 = 0; continue; }
+        break;
       }
-      cur.push(best); taken[best.a] = 1; taken[best.b] = 1;
+      sc3 = wbCrossScore(c3.concat([bv]), bank.byW, cross);
+      if (sc3 >= 1000 || sc3 > K){ dead[bv.w] = 1; continue; }   /* 硬冲突永不接受 */
+      c3.push(bv); tk[bv.a] = 1; tk[bv.b] = 1;
     }
+    return { words: c3, taken: tk };
+  }
+  for (i = 0; i < groupN; i++){
+    var got = fillGroup();
+    cur = got.words; taken = got.taken;
     fresh = 0;
     for (j = 0; j < cur.length; j++){ if (!usedW[cur[j].w]) fresh++; }
     /* 整组都是前面出过的词（字表太小、词不够用）→ 不再硬凑，少出几组比重复出题强 */
@@ -549,6 +650,10 @@ function buildWordGroups(pool, groupN, stu, focusPool){
 function startQuiz(type){
   var stu = STATE.cur;
   if (!stu) return;
+  /* 从哪进来的都把当前题型摆正：顶部标签的高亮和「第几个圆点亮着」跟着它走 */
+  if (type) STATE.curType = type;
+  renderTypeTabs();
+  renderTypeProg();
   preMode(false);            /* 开题了，老师辅助按钮放回来 */
   var pool = charsOf(stu), i;
   var focus = QUIZ_FOCUS;      /* 一次性消费：重进就回到整张字表 */
@@ -1479,30 +1584,58 @@ function renderSummary(){
   var starHTML = '';
   for (i = 0; i < stars; i++){ starHTML += '<span class="pill g" style="font-size:15px">★</span>'; }
   var msg = rate >= 90 ? '太棒了！' : (rate >= 70 ? '做得不错，继续加油' : '再来一次会更好');
-  if (rate >= 70) sfxWin(); else sfxNo();
+  /* 题型进度：走到结算页才算「这个题型今天做完了」。
+     全部做完时不管这轮正确率多少都给庆祝音 —— 今天该练的都练完了，这件事本身值得夸。 */
+  var stu = STATE.cur;
+  sessMark(z.type);
+  var nextT = sessNext(stu), allDone = !nextT, typeN = sessTypes(stu).length;
+  if (allDone) msg = '太棒了！';
+  /* 全部练完时念一句自己的话（录过整句），不然「今天练完了」这件事全靠屏幕字 */
+  var sayWhat = allDone ? '今天的练习全部完成。' : msg;
+  if (rate >= 70 || allDone) sfxWin(); else sfxNo();
   /* 先让庆祝音效放完，再报结果，别两个声音挤在一起 */
   setTimeout(function(){
-    if (STATE.quiz === z) say(msg);
+    if (STATE.quiz === z) say(sayWhat);
   }, 800);
+  var btns;
+  if (allDone){
+    btns = '<button type="button" class="primary next-type" id="btnHome2">回我的主页</button>' +
+           '<div class="row" style="justify-content:center;margin-top:12px">' +
+             '<button type="button" class="secondary" id="btnAgain">再练一轮</button>' +
+           CLOSE('div');
+  } else {
+    btns = '<button type="button" class="primary next-type" id="btnNextType">下一个题型：' +
+             esc(nextT) + ' →' + CLOSE('button') +
+           '<div class="row" style="justify-content:center;margin-top:12px">' +
+             '<button type="button" class="secondary" id="btnAgain">这个题型再练一轮</button>' +
+             '<button type="button" class="secondary" id="btnHome2">回我的主页</button>' +
+           CLOSE('div');
+  }
   var html = '<div class="q-head"><div class="q-ask">这一轮练完了</div></div>' +
-    '<div class="big-char" style="font-size:74px">' + rate + '%</div>' +
+    /* 全部做完时加一块大字提示，但**正确率照样留着** —— 只排了一个题型的学生，
+       第一次做完就等于「全部完成」，不能因此让他看不到分数（v26 第一版踩过）。 */
+    (allDone
+      ? '<div class="done-hero">今天的练习全部完成</div>' +
+        '<div class="prog-note" style="text-align:center">' + typeN + ' 个题型都练过了，真棒</div>'
+      : '') +
+    '<div class="big-char" style="font-size:' + (allDone ? '60px' : '74px') + '">' + rate + '%</div>' +
     '<div class="star-row" style="justify-content:center">' + starHTML + CLOSE('div') +
-    '<div class="feedback ok" style="justify-content:center">' + esc(msg) + CLOSE('div') +
+    /* 鼓励语用 .fb-say（透明底纯文字），不能再用 .feedback（有底色+描边，看着像按钮） */
+    '<div class="fb-say">' + esc(msg) + CLOSE('div') +
     /* 重试不扣分（结算页是给孩子的激励），但要让老师一眼看出这轮是靠试出来的 */
     (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
       z.retried + ' 题是试了再答对的</div>' : '') +
-    '<div class="row" style="justify-content:center;margin-top:18px">' +
-      '<button type="button" class="primary" id="btnAgain">再来一轮</button>' +
-      '<button type="button" class="secondary" id="btnBackTypes">换题型</button>' +
-    CLOSE('div');
+    '<div class="sum-actions">' + btns + CLOSE('div');
   $('qNow').textContent = String(done);
   setHTML($('stage'), html);
-  var a = $('btnAgain'), b = $('btnBackTypes');
+  renderTypeProg();
+  var a = $('btnAgain'), b = $('btnNextType'), c = $('btnHome2');
   if (a) a.addEventListener('click', function(){ startQuiz(STATE.quiz.type); });
   if (b) b.addEventListener('click', function(){
-    if (!STATE.cur) return;
-    if (STATE.cur.types.length > 1) toast('点上面的题型标签，就能换一种练');
-    else toast('这位同学只排了一个题型，请老师在「学生管理」里再加一个');
+    STATE.curType = nextT;
+    renderTypeTabs();
+    startQuiz(nextT);
   });
+  if (c) c.addEventListener('click', function(){ renderStuHome(); });
   syncHelpBar();
 }
