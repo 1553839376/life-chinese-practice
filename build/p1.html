@@ -713,7 +713,7 @@ tr.tr-builtin td{background:#FBFAF3}
 .sheet-eyebrow{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-right:auto}
 .sheet-x{border:1.5px solid var(--line2);background:#fff;border-radius:10px;
   padding:8px 14px;font-size:15px;font-weight:700;color:var(--ink2);min-height:40px}
-.sheet-body{display:flex;gap:18px;align-items:center;margin-bottom:16px}
+.sheet-body{display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:14px}
 .sheet-left{flex:none;width:132px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .sheet-art{width:132px;height:132px;border-radius:18px;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -728,12 +728,40 @@ tr.tr-builtin td{background:#FBFAF3}
   margin-right:8px;letter-spacing:0}
 /* 没有配图时：左边整列收掉，字居中，避免「字卡」看起来像「词卡」 */
 .sheet.no-art .sheet-right{text-align:center}
-.sheet.no-art .sheet-actions{justify-content:center}
-.sheet-right{flex:1;min-width:0}
-.sheet-char{font-size:86px;font-weight:700;line-height:1.02;letter-spacing:.04em}
+.sheet-right{flex:0 1 auto;min-width:0;text-align:center}
+/* v28：字和喇叭排一行。原来是「听一听 / 只看拼音」两个大按钮，用户说太复杂，
+   听直接收成一个喇叭；「只看拼音」整个去掉（老师用不上，孩子也不需要）。
+   描写不再占一整条横框，改成「点这个字」——汉字本身就是最大的点击目标。 */
+.sheet-hero{display:flex;align-items:center;justify-content:center;gap:12px}
+.sheet-char{font-size:86px;font-weight:700;line-height:1.02;letter-spacing:.04em;
+  cursor:pointer;border-radius:18px;padding:0 6px;
+  transition:background .12s ease,transform .08s ease}
+.sheet-char:hover{background:#F1F7F2}
+.sheet-char:active{transform:scale(.97)}
+.sheet-char:focus-visible{outline:3px solid var(--green-line);outline-offset:2px}
+.sheet-spk{flex:0 0 auto;width:48px;height:48px;border-radius:50%;cursor:pointer;padding:0;
+  background:var(--blue-bg);border:2px solid var(--blue-line);color:#2C6C90;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .08s ease,background .12s ease}
+.sheet-spk svg{width:24px;height:24px;display:block}
+.sheet-spk .spk-body{fill:currentColor}
+.sheet-spk .spk-wave{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round}
+.sheet-spk:hover{background:#D6E8F8}
+.sheet-spk:active{transform:scale(.92)}
+.sheet-spk.saying{animation:spkPulse .7s ease-out}
+@keyframes spkPulse{0%{box-shadow:0 0 0 0 rgba(44,108,144,.34)}100%{box-shadow:0 0 0 12px rgba(44,108,144,0)}}
 .sheet-py{font-size:24px;font-weight:700;color:var(--blue);margin-bottom:10px}
-.sheet-actions{display:flex;gap:10px;flex-wrap:wrap}
-.sheet-actions button{min-height:44px;padding:8px 16px;font-size:15px}
+/* 描写入口：一行小胶囊，不再是占满整条的大框 */
+.sheet-trace-hint{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  cursor:pointer;background:#F1F7F2;border:1.5px dashed var(--green-line);border-radius:999px;
+  padding:7px 15px;font-size:13.5px;font-weight:700;color:#3E6B4E;min-height:38px;
+  transition:border-color .12s ease,background .12s ease}
+.sheet-trace-hint:hover{border-style:solid;border-color:var(--green);background:#EAF4EC}
+.sheet-trace-hint:active{transform:scale(.98)}
+.sheet-trace-hint .sth-i{width:15px;height:15px;flex:0 0 auto;border-radius:4px;
+  border:1.6px solid #6E9E7D;
+  background-image:linear-gradient(#6E9E7D,#6E9E7D),linear-gradient(#6E9E7D,#6E9E7D);
+  background-size:100% 1.4px,1.4px 100%;background-position:center;background-repeat:no-repeat}
 .sheet-games{margin-top:4px}
 .sg-title{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:10px}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -747,25 +775,11 @@ tr.tr-builtin td{background:#FBFAF3}
 .sg-btn.gf:hover{border-color:#7FB8DA}
 .sg-btn.gr:hover{border-color:#9CC7AC}
 .sg-btn.ga:hover{border-color:#E2C97E}
-/* 学字卡里的「描写这个字」入口（v27）：放在玩法上面，因为「写」比「玩」更接近上课要做的事 */
-.sheet-write{margin-top:4px}
-.sheet-wbtn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
-  background:#F1F7F2;border:2px solid var(--green-line);border-radius:18px;padding:12px 16px}
-.sheet-wbtn:hover{border-color:var(--green)}
-.sheet-wbtn:active{transform:scale(.99)}
-.sheet-wbtn .sw-ico{flex:0 0 auto;width:40px;height:40px;border-radius:12px;background-color:#fff;
-  border:2px solid var(--green-line);
-  background-image:linear-gradient(var(--green-line),var(--green-line)),
-                   linear-gradient(var(--green-line),var(--green-line));
-  background-size:100% 2px,2px 100%;background-position:center;background-repeat:no-repeat}
-.sheet-wbtn .sw-txt{display:flex;flex-direction:column;gap:2px}
-.sheet-wbtn .sw-txt b{font-size:18px;font-weight:800;color:var(--ink)}
-.sheet-wbtn .sw-txt i{font-style:normal;font-size:13px;color:var(--ink3)}
 /* 描写面板（v27）：先播笔顺、再照着灰字描。z-index 压在学字卡之上、toast 之下 */
 .trace-mask{position:fixed;inset:0;z-index:70;background:rgba(20,26,32,.5);
   display:flex;align-items:center;justify-content:center;padding:12px}
-.trace-panel{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--card);
-  border-radius:24px;padding:16px 16px 18px;display:flex;flex-direction:column;
+.trace-panel{width:min(460px,100%);max-height:100%;overflow:auto;background:var(--card);
+  border-radius:24px;padding:16px 18px 18px;display:flex;flex-direction:column;
   align-items:center;gap:10px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
 .trace-head{display:flex;align-items:center;gap:10px;width:100%}
 .trace-name{flex:1;display:flex;align-items:baseline;gap:8px}
@@ -773,7 +787,7 @@ tr.tr-builtin td{background:#FBFAF3}
 .trace-name i{font-style:normal;font-size:15px;color:var(--ink3)}
 .trace-tip{margin:0;font-size:14px;color:var(--ink2);text-align:center;min-height:20px}
 /* 田字格：不用 aspect-ratio（教室平板是不是 iOS15 以上不确定），宽高都按 vw 兜住 */
-.trace-grid{position:relative;width:min(320px,72vw);height:min(320px,72vw);
+.trace-grid{position:relative;width:min(300px,68vw);height:min(300px,68vw);
   border:2px solid var(--line2);border-radius:14px;background-color:#FFFDF7;overflow:hidden;
   background-image:linear-gradient(to right,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%),
                    linear-gradient(to bottom,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%)}
@@ -1147,7 +1161,10 @@ tr.tr-builtin td{background:#FBFAF3}
   .sheet-body{gap:12px}
   .sheet-left{width:96px}
   .sheet-art,.sheet-art img{width:96px;height:96px}
-  .sheet-char{font-size:64px}
+  .sheet-char{font-size:64px;padding:0 4px}
+  .sheet-spk{width:42px;height:42px}
+  .sheet-spk svg{width:21px;height:21px}
+  .sheet-trace-hint{font-size:12.5px;padding:6px 12px;min-height:36px}
   .sheet-py{font-size:20px}
   .sg-grid{grid-template-columns:1fr}
   .feed-row{flex-direction:column;gap:6px;padding:10px}

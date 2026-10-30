@@ -1361,15 +1361,35 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '未完成的一笔只画出前半段：' + soHalf.length + ' / ' + soMu.meds[0].length);
   ok(w.soPaint(null, '木', 0, 0) === 0, '没有画布时绘制直接返回，不抛错（jsdom 就没有画布）');
 
-  /* 学字卡上的「描写这个字」→ 先播笔顺，再让人描写 */
+  /* 学字卡上的描写入口 → 先播笔顺，再让人描写 */
   const soCard = w.STATE.chars.find(c => c.w === '木');
   w.openCard(soCard);
   await wait(40);
-  ok(!!d.getElementById('sheetTrace'), '学字卡上有「描写这个字」入口');
+  /* v28：老师 2026-10-30「不需要什么只看拼音和再听一遍这些词语，
+     你直接在这个字旁边放一个喇叭的标志就好了」——两个大按钮收成一个喇叭图标。 */
+  ok(!!d.getElementById('sheetTrace'), '学字卡上有描写入口（「点这个字，看笔顺照着描」）');
+  ok(!d.getElementById('sheetRead'), '不再有「只看拼音」按钮');
+  const soSpk = d.getElementById('sheetSpeak');
+  ok(!!soSpk && soSpk.tagName === 'BUTTON' && !!soSpk.querySelector('svg'),
+    '「听」收成一个喇叭图标按钮');
+  ok(!!soSpk && soSpk.textContent.replace(/\s+/g, '') === '',
+    '喇叭按钮里没有多余文字');
   ok(!!d.getElementById('traceMask'), '页面里有描写面板');
   click(d.getElementById('sheetTrace'));
   await wait(120);
-  ok(d.getElementById('traceMask').hidden === false, '点「描写这个字」打开描写面板');
+  ok(d.getElementById('traceMask').hidden === false, '点「点这个字，看笔顺照着描」打开描写面板');
+  /* v28 节奏：老师「描写我点进去看了下，速度太快了，学生无法反应」。
+     v27 是一笔 300ms、笔间 0 停顿，4 笔字 1.2 秒就播完。 */
+  ok(w.SO.seq.length > 0, '打开后已经有逐笔序列');
+  const soWaits = w.SO.seq.map(s => s.wait);
+  const soFrames = soWaits.filter(x => x !== w.SO_GAP_MS);
+  ok(soFrames.length > 0 && soFrames.every(x => x >= 70),
+    '每一帧至少 70ms，不是一闪而过：' + soFrames[0] + 'ms');
+  const soTotal = soWaits.reduce((a, b) => a + b, 0) + w.SO_START_MS;
+  ok(soTotal >= 4000, '「木」4 笔至少要播 4 秒：' + soTotal + 'ms');
+  ok(soWaits.filter(x => x === w.SO_GAP_MS).length === w.soParse('木').strokes.length - 1,
+    '每两笔之间都有停顿：' + (w.soParse('木').strokes.length - 1) + ' 处');
+  ok(w.SO_START_MS >= 400, '打开后先停一下再动笔：' + w.SO_START_MS + 'ms');
   ok(d.getElementById('traceChar').textContent === '木', '面板上写着当前字：' +
     d.getElementById('traceChar').textContent);
   ok(!!d.getElementById('soBase') && !!d.getElementById('soInk'),
@@ -1396,6 +1416,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(40);
   ok(d.getElementById('traceMask').hidden === true, '关闭描写面板');
   ok(w.SO.playing === false, '关闭时把笔顺动画停掉，不留定时器');
+  /* 汉字本身就是入口：86px 的大字是这张卡上最大的点击目标 */
+  click(d.getElementById('sheetChar'));
+  await wait(120);
+  ok(d.getElementById('traceMask').hidden === false, '点汉字本身也能进描写');
+  w.closeTrace();
+  await wait(40);
   /* 底字没有笔顺数据的字也要能描：退回字体文字，不许给一张空白格子 */
   const soNoData = { w: '鑫', p: '', words: '', on: true };
   w.openTrace(soNoData);

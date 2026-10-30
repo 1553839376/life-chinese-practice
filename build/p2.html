@@ -108,7 +108,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v27</span>
+    <span id="appVer" class="app-ver">v28</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -331,20 +331,22 @@
         <div id="sheetArt" class="sheet-art"></div>
       </div>
       <div class="sheet-right">
-        <div id="sheetChar" class="sheet-char">—</div>
+        <div class="sheet-hero">
+          <div id="sheetChar" class="sheet-char" role="button" tabindex="0" aria-label="点这个字看笔顺">—</div>
+          <button id="sheetSpeak" class="sheet-spk" type="button" aria-label="听一听">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path class="spk-body" d="M4 9.4h3.3L12.6 5.2v13.6L7.3 14.6H4z"/>
+              <path class="spk-wave" d="M15.7 8.9a4.7 4.7 0 0 1 0 6.2"/>
+              <path class="spk-wave" d="M18.5 6.3a8.5 8.5 0 0 1 0 11.4"/>
+            </svg>
+          </button>
+        </div>
         <div id="sheetPy" class="sheet-py"></div>
         <div id="sheetWord" class="sheet-word"></div>
-        <div class="sheet-actions">
-          <button id="sheetSpeak" class="secondary" type="button">听一听</button>
-          <button id="sheetRead" class="secondary" type="button">只看拼音</button>
-        </div>
+        <button id="sheetTrace" class="sheet-trace-hint" type="button">
+          <span class="sth-i" aria-hidden="true"></span>点这个字，看笔顺照着描
+        </button>
       </div>
-    </div>
-    <div class="sheet-write">
-      <button id="sheetTrace" class="sheet-wbtn" type="button">
-        <span class="sw-ico" aria-hidden="true"></span>
-        <span class="sw-txt"><b>描写这个字</b><i>先看一遍笔顺，再照着灰字写</i></span>
-      </button>
     </div>
     <div class="sheet-games">
       <div class="sg-title">选一个玩法</div>

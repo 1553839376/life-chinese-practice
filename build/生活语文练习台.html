@@ -713,7 +713,7 @@ tr.tr-builtin td{background:#FBFAF3}
 .sheet-eyebrow{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-right:auto}
 .sheet-x{border:1.5px solid var(--line2);background:#fff;border-radius:10px;
   padding:8px 14px;font-size:15px;font-weight:700;color:var(--ink2);min-height:40px}
-.sheet-body{display:flex;gap:18px;align-items:center;margin-bottom:16px}
+.sheet-body{display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:14px}
 .sheet-left{flex:none;width:132px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .sheet-art{width:132px;height:132px;border-radius:18px;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -728,12 +728,40 @@ tr.tr-builtin td{background:#FBFAF3}
   margin-right:8px;letter-spacing:0}
 /* 没有配图时：左边整列收掉，字居中，避免「字卡」看起来像「词卡」 */
 .sheet.no-art .sheet-right{text-align:center}
-.sheet.no-art .sheet-actions{justify-content:center}
-.sheet-right{flex:1;min-width:0}
-.sheet-char{font-size:86px;font-weight:700;line-height:1.02;letter-spacing:.04em}
+.sheet-right{flex:0 1 auto;min-width:0;text-align:center}
+/* v28：字和喇叭排一行。原来是「听一听 / 只看拼音」两个大按钮，用户说太复杂，
+   听直接收成一个喇叭；「只看拼音」整个去掉（老师用不上，孩子也不需要）。
+   描写不再占一整条横框，改成「点这个字」——汉字本身就是最大的点击目标。 */
+.sheet-hero{display:flex;align-items:center;justify-content:center;gap:12px}
+.sheet-char{font-size:86px;font-weight:700;line-height:1.02;letter-spacing:.04em;
+  cursor:pointer;border-radius:18px;padding:0 6px;
+  transition:background .12s ease,transform .08s ease}
+.sheet-char:hover{background:#F1F7F2}
+.sheet-char:active{transform:scale(.97)}
+.sheet-char:focus-visible{outline:3px solid var(--green-line);outline-offset:2px}
+.sheet-spk{flex:0 0 auto;width:48px;height:48px;border-radius:50%;cursor:pointer;padding:0;
+  background:var(--blue-bg);border:2px solid var(--blue-line);color:#2C6C90;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .08s ease,background .12s ease}
+.sheet-spk svg{width:24px;height:24px;display:block}
+.sheet-spk .spk-body{fill:currentColor}
+.sheet-spk .spk-wave{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round}
+.sheet-spk:hover{background:#D6E8F8}
+.sheet-spk:active{transform:scale(.92)}
+.sheet-spk.saying{animation:spkPulse .7s ease-out}
+@keyframes spkPulse{0%{box-shadow:0 0 0 0 rgba(44,108,144,.34)}100%{box-shadow:0 0 0 12px rgba(44,108,144,0)}}
 .sheet-py{font-size:24px;font-weight:700;color:var(--blue);margin-bottom:10px}
-.sheet-actions{display:flex;gap:10px;flex-wrap:wrap}
-.sheet-actions button{min-height:44px;padding:8px 16px;font-size:15px}
+/* 描写入口：一行小胶囊，不再是占满整条的大框 */
+.sheet-trace-hint{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  cursor:pointer;background:#F1F7F2;border:1.5px dashed var(--green-line);border-radius:999px;
+  padding:7px 15px;font-size:13.5px;font-weight:700;color:#3E6B4E;min-height:38px;
+  transition:border-color .12s ease,background .12s ease}
+.sheet-trace-hint:hover{border-style:solid;border-color:var(--green);background:#EAF4EC}
+.sheet-trace-hint:active{transform:scale(.98)}
+.sheet-trace-hint .sth-i{width:15px;height:15px;flex:0 0 auto;border-radius:4px;
+  border:1.6px solid #6E9E7D;
+  background-image:linear-gradient(#6E9E7D,#6E9E7D),linear-gradient(#6E9E7D,#6E9E7D);
+  background-size:100% 1.4px,1.4px 100%;background-position:center;background-repeat:no-repeat}
 .sheet-games{margin-top:4px}
 .sg-title{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:10px}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -747,25 +775,11 @@ tr.tr-builtin td{background:#FBFAF3}
 .sg-btn.gf:hover{border-color:#7FB8DA}
 .sg-btn.gr:hover{border-color:#9CC7AC}
 .sg-btn.ga:hover{border-color:#E2C97E}
-/* 学字卡里的「描写这个字」入口（v27）：放在玩法上面，因为「写」比「玩」更接近上课要做的事 */
-.sheet-write{margin-top:4px}
-.sheet-wbtn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
-  background:#F1F7F2;border:2px solid var(--green-line);border-radius:18px;padding:12px 16px}
-.sheet-wbtn:hover{border-color:var(--green)}
-.sheet-wbtn:active{transform:scale(.99)}
-.sheet-wbtn .sw-ico{flex:0 0 auto;width:40px;height:40px;border-radius:12px;background-color:#fff;
-  border:2px solid var(--green-line);
-  background-image:linear-gradient(var(--green-line),var(--green-line)),
-                   linear-gradient(var(--green-line),var(--green-line));
-  background-size:100% 2px,2px 100%;background-position:center;background-repeat:no-repeat}
-.sheet-wbtn .sw-txt{display:flex;flex-direction:column;gap:2px}
-.sheet-wbtn .sw-txt b{font-size:18px;font-weight:800;color:var(--ink)}
-.sheet-wbtn .sw-txt i{font-style:normal;font-size:13px;color:var(--ink3)}
 /* 描写面板（v27）：先播笔顺、再照着灰字描。z-index 压在学字卡之上、toast 之下 */
 .trace-mask{position:fixed;inset:0;z-index:70;background:rgba(20,26,32,.5);
   display:flex;align-items:center;justify-content:center;padding:12px}
-.trace-panel{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--card);
-  border-radius:24px;padding:16px 16px 18px;display:flex;flex-direction:column;
+.trace-panel{width:min(460px,100%);max-height:100%;overflow:auto;background:var(--card);
+  border-radius:24px;padding:16px 18px 18px;display:flex;flex-direction:column;
   align-items:center;gap:10px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
 .trace-head{display:flex;align-items:center;gap:10px;width:100%}
 .trace-name{flex:1;display:flex;align-items:baseline;gap:8px}
@@ -773,7 +787,7 @@ tr.tr-builtin td{background:#FBFAF3}
 .trace-name i{font-style:normal;font-size:15px;color:var(--ink3)}
 .trace-tip{margin:0;font-size:14px;color:var(--ink2);text-align:center;min-height:20px}
 /* 田字格：不用 aspect-ratio（教室平板是不是 iOS15 以上不确定），宽高都按 vw 兜住 */
-.trace-grid{position:relative;width:min(320px,72vw);height:min(320px,72vw);
+.trace-grid{position:relative;width:min(300px,68vw);height:min(300px,68vw);
   border:2px solid var(--line2);border-radius:14px;background-color:#FFFDF7;overflow:hidden;
   background-image:linear-gradient(to right,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%),
                    linear-gradient(to bottom,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%)}
@@ -1147,7 +1161,10 @@ tr.tr-builtin td{background:#FBFAF3}
   .sheet-body{gap:12px}
   .sheet-left{width:96px}
   .sheet-art,.sheet-art img{width:96px;height:96px}
-  .sheet-char{font-size:64px}
+  .sheet-char{font-size:64px;padding:0 4px}
+  .sheet-spk{width:42px;height:42px}
+  .sheet-spk svg{width:21px;height:21px}
+  .sheet-trace-hint{font-size:12.5px;padding:6px 12px;min-height:36px}
   .sheet-py{font-size:20px}
   .sg-grid{grid-template-columns:1fr}
   .feed-row{flex-direction:column;gap:6px;padding:10px}
@@ -1275,7 +1292,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v27</span>
+    <span id="appVer" class="app-ver">v28</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -1498,20 +1515,22 @@ tr.tr-builtin td{background:#FBFAF3}
         <div id="sheetArt" class="sheet-art"></div>
       </div>
       <div class="sheet-right">
-        <div id="sheetChar" class="sheet-char">—</div>
+        <div class="sheet-hero">
+          <div id="sheetChar" class="sheet-char" role="button" tabindex="0" aria-label="点这个字看笔顺">—</div>
+          <button id="sheetSpeak" class="sheet-spk" type="button" aria-label="听一听">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path class="spk-body" d="M4 9.4h3.3L12.6 5.2v13.6L7.3 14.6H4z"/>
+              <path class="spk-wave" d="M15.7 8.9a4.7 4.7 0 0 1 0 6.2"/>
+              <path class="spk-wave" d="M18.5 6.3a8.5 8.5 0 0 1 0 11.4"/>
+            </svg>
+          </button>
+        </div>
         <div id="sheetPy" class="sheet-py"></div>
         <div id="sheetWord" class="sheet-word"></div>
-        <div class="sheet-actions">
-          <button id="sheetSpeak" class="secondary" type="button">听一听</button>
-          <button id="sheetRead" class="secondary" type="button">只看拼音</button>
-        </div>
+        <button id="sheetTrace" class="sheet-trace-hint" type="button">
+          <span class="sth-i" aria-hidden="true"></span>点这个字，看笔顺照着描
+        </button>
       </div>
-    </div>
-    <div class="sheet-write">
-      <button id="sheetTrace" class="sheet-wbtn" type="button">
-        <span class="sw-ico" aria-hidden="true"></span>
-        <span class="sw-txt"><b>描写这个字</b><i>先看一遍笔顺，再照着灰字写</i></span>
-      </button>
     </div>
     <div class="sheet-games">
       <div class="sg-title">选一个玩法</div>
@@ -3103,7 +3122,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v27';
+var APP_VER = 'v28';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -6951,9 +6970,15 @@ var SO = {
   ch: '', lit: 0, frac: 0, playing: false, timer: null, dpr: 1,
   step: 0, seq: []
 };
-var SO_STROKE_MS = 300;    /* 每一笔走多久 */
-var SO_GAP_MS = 120;       /* 两笔之间停一下，让孩子看清起笔位置 */
-var SO_HOLD_MS = 700;      /* 整字红着停多久，再淡回灰底等孩子描 */
+/* v28 放慢：老师反馈「速度太快了，学生无法反应」。v27 是一笔 300ms、笔间 0 停顿
+   （SO_GAP_MS 声明了却没接进 seq，一笔接一笔连着走），6 笔字 1.8 秒就播完。
+   现在：一笔 640ms（8 帧 × 80ms）、笔间停 340ms、打开后先停 600ms 让眼睛落到格子里，
+   5 笔字约 5 秒、8 笔字约 8 秒。再嫌快/慢就调这三个数，别动别处。 */
+var SO_STROKE_MS = 640;    /* 每一笔走多久 */
+var SO_GAP_MS = 340;       /* 两笔之间停一下，让孩子看清起笔位置 */
+var SO_HOLD_MS = 1100;     /* 整字红着停多久，再淡回灰底等孩子描 */
+var SO_START_MS = 600;     /* 打开后先停一下，等眼睛落到格子里再动笔 */
+var SO_FRAMES = 8;         /* 一笔分几帧长出来 */
 var SO_GEN = 0;            /* 每停/每播 +1：上一轮留下的定时器看到代数变了就自己作废 */
 
 function soHas(ch){ return !!(ch && STROKE_PACK[ch]); }
@@ -7170,27 +7195,32 @@ function traceButtons(state){
 /* 播一遍笔顺：逐笔推进，每笔内部再分 6 步，看起来是「一笔一笔长出来」 */
 function soPlay(ch){
   soStop();
-  var d = soParse(ch), total, i;
+  var d = soParse(ch), total, i, k;
   SO.ch = ch;
   SO.lit = 0;
   SO.frac = 0;
   SO.playing = true;
+  /* 先把「怎么播」的序列排好，再管画布。顺序反了会变成「没有画布就没有节奏数据」，
+     测试里（jsdom 没有 canvas）就量不到节奏，等于这条护栏形同虚设。 */
+  var seq = [];
+  total = (d && d.strokes.length) || 0;
+  for (i = 0; i < total; i++){
+    for (k = 1; k <= SO_FRAMES; k++){
+      seq.push({ lit: i, frac: k / SO_FRAMES, wait: Math.round(SO_STROKE_MS / SO_FRAMES) });
+    }
+    /* 写完一笔停一下再写下一笔：孩子要看清这一笔收在哪里、下一笔从哪里起 */
+    if (i < total - 1) seq.push({ lit: i, frac: 1, wait: SO_GAP_MS });
+  }
+  SO.seq = seq;
+  SO.step = 0;
   var ctx = soFit($('soBase'));
-  if (!ctx || !d){                     /* 没有画布或没有数据：静态灰字，直接进描写 */
+  if (!ctx || !seq.length){            /* 没有画布或没有数据：静态灰字，直接进描写 */
     SO.playing = false;
     traceTipDone();
     return;
   }
   soPaint(ctx, ch, 0, 0);
-  if (!d.strokes.length){ SO.playing = false; traceTipDone(); return; }
-  total = d.strokes.length;
-  var seq = [];
-  for (i = 0; i < total; i++){
-    for (var k = 1; k <= 6; k++) seq.push({ lit: i, frac: k / 6 });
-  }
-  SO.seq = seq;
-  SO.step = 0;
-  soTick();
+  SO.timer = setTimeout(soTick, SO_START_MS);
 }
 function soTick(){
   var ctx = soFit($('soBase')), s;
@@ -7218,7 +7248,7 @@ function soTick(){
   SO.lit = s.lit;
   SO.frac = s.frac;
   soPaint(ctx, SO.ch, s.lit, s.frac);
-  SO.timer = setTimeout(soTick, Math.round(SO_STROKE_MS / 6));
+  SO.timer = setTimeout(soTick, s.wait || Math.round(SO_STROKE_MS / SO_FRAMES));
 }
 function soStop(){
   if (SO.timer){ clearTimeout(SO.timer); SO.timer = null; }
@@ -8924,7 +8954,6 @@ function openCard(c){
   $('sheetChar').textContent = c.w;
   $('sheetChar').hidden = false;
   $('sheetPy').textContent = c.p || '';
-  $('sheetRead').textContent = '只看拼音';
   var eb = document.querySelector('.sheet-eyebrow');
   if (eb) eb.textContent = '学这个字 · ' + (c.g || '未分组');
   $('cardMask').hidden = false;
@@ -8943,11 +8972,8 @@ function closeCard(){
   CARD_CH = null;
   sayStop();
 }
-function togglePinyinOnly(){
-  var el = $('sheetChar');
-  el.hidden = !el.hidden;
-  $('sheetRead').textContent = el.hidden ? '看回汉字' : '只看拼音';
-}
+/* v28：原来有「只看拼音」按钮，老师反馈用不上、孩子也不需要，去掉；
+   想只听不看字就直接点喇叭。 */
 
 /* ============================ 音效 ============================
    tone / sfxOk / sfxNo / sfxWin 都在 p8.js（和练习台共用一套），
@@ -9637,12 +9663,25 @@ function wireLearn(){
     /* 和自动朗读一致：字 → 停一下 → 组词，避免手动点听和自动听节奏不一样 */
     if (!CARD_CH) return;
     avUnlock();
-    var wd = wordOf(CARD_CH);
+    var wd = wordOf(CARD_CH), spk = this;
     if (wd) saySeq([{ t: CARD_CH.w, gap: PACE.afterChar }, { t: wd }]);
     else saySeq([{ t: CARD_CH.w }]);
+    /* 喇叭响一下的视觉回馈：教室吵、孩子听不清时会再点，得看得出点到了 */
+    spk.classList.remove('saying');
+    void spk.offsetWidth;
+    spk.classList.add('saying');
+    setTimeout(function(){ spk.classList.remove('saying'); }, 720);
   });
-  $('sheetRead').addEventListener('click', togglePinyinOnly);
-  soWire();                        /* v27：学字卡里的「描写这个字」与笔顺面板 */
+  /* v28：汉字本身就是描写入口（点字 → 看笔顺 → 照着描），不再单开一条大横框。
+     字有 86px，是这张卡上最大的点击目标，特需孩子也不用瞄准。 */
+  $('sheetChar').addEventListener('click', function(){ openTrace(CARD_CH); });
+  $('sheetChar').addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k !== 'Enter' && k !== ' ' && k !== 'Spacebar') return;
+    ev.preventDefault();
+    openTrace(CARD_CH);
+  });
+  soWire();                        /* v27：描写入口与笔顺面板 */
   $('cardMask').addEventListener('click', function(ev){
     if (ev.target === $('cardMask')) closeCard();
   });

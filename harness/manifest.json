@@ -79,7 +79,6 @@
       "openCard",
       "cardHTML",
       "playAll",
-      "togglePinyinOnly",
       "ART_PACK",
       "CHARS",
       "STAGES"
@@ -227,7 +226,9 @@
       "traceReplay",
       "traceAgain",
       "traceNext",
-      "traceTip"
+      "traceTip",
+      "sheetSpeak",
+      "sheetChar"
     ],
     "笔顺描写": [
       "STROKE_PACK",
@@ -258,7 +259,9 @@
       "traceDoneTap",
       "traceAgainTap",
       "traceNextTap",
-      "traceClearInk"
+      "traceClearInk",
+      "SO_START_MS",
+      "SO_FRAMES"
     ]
   },
   "assets": {
@@ -306,7 +309,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 451
+      "min_cases": 460
     },
     {
       "name": "check_pair",

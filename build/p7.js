@@ -179,7 +179,6 @@ function openCard(c){
   $('sheetChar').textContent = c.w;
   $('sheetChar').hidden = false;
   $('sheetPy').textContent = c.p || '';
-  $('sheetRead').textContent = '只看拼音';
   var eb = document.querySelector('.sheet-eyebrow');
   if (eb) eb.textContent = '学这个字 · ' + (c.g || '未分组');
   $('cardMask').hidden = false;
@@ -198,11 +197,8 @@ function closeCard(){
   CARD_CH = null;
   sayStop();
 }
-function togglePinyinOnly(){
-  var el = $('sheetChar');
-  el.hidden = !el.hidden;
-  $('sheetRead').textContent = el.hidden ? '看回汉字' : '只看拼音';
-}
+/* v28：原来有「只看拼音」按钮，老师反馈用不上、孩子也不需要，去掉；
+   想只听不看字就直接点喇叭。 */
 
 /* ============================ 音效 ============================
    tone / sfxOk / sfxNo / sfxWin 都在 p8.js（和练习台共用一套），
@@ -892,12 +888,25 @@ function wireLearn(){
     /* 和自动朗读一致：字 → 停一下 → 组词，避免手动点听和自动听节奏不一样 */
     if (!CARD_CH) return;
     avUnlock();
-    var wd = wordOf(CARD_CH);
+    var wd = wordOf(CARD_CH), spk = this;
     if (wd) saySeq([{ t: CARD_CH.w, gap: PACE.afterChar }, { t: wd }]);
     else saySeq([{ t: CARD_CH.w }]);
+    /* 喇叭响一下的视觉回馈：教室吵、孩子听不清时会再点，得看得出点到了 */
+    spk.classList.remove('saying');
+    void spk.offsetWidth;
+    spk.classList.add('saying');
+    setTimeout(function(){ spk.classList.remove('saying'); }, 720);
   });
-  $('sheetRead').addEventListener('click', togglePinyinOnly);
-  soWire();                        /* v27：学字卡里的「描写这个字」与笔顺面板 */
+  /* v28：汉字本身就是描写入口（点字 → 看笔顺 → 照着描），不再单开一条大横框。
+     字有 86px，是这张卡上最大的点击目标，特需孩子也不用瞄准。 */
+  $('sheetChar').addEventListener('click', function(){ openTrace(CARD_CH); });
+  $('sheetChar').addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k !== 'Enter' && k !== ' ' && k !== 'Spacebar') return;
+    ev.preventDefault();
+    openTrace(CARD_CH);
+  });
+  soWire();                        /* v27：描写入口与笔顺面板 */
   $('cardMask').addEventListener('click', function(ev){
     if (ev.target === $('cardMask')) closeCard();
   });

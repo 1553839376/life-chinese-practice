@@ -552,6 +552,32 @@ def gate_static(html):
         'function migrateTypes' in html and 'LS_DATA_BAK_T023' in html
         and 'migrateTypes();' in html)
 
+    # v28 学字卡瘦身 + 笔顺放慢。老师 2026-10-30 三条反馈：
+    # 「不需要什么只看拼音和再听一遍这些词语，你直接在这个字旁边放一个喇叭的标志就好了」
+    # 「这个描写的位置很奇怪，这么大个框横在这也不是很好看」
+    # 「描写我点进去看了下，速度太快了，学生无法反应」
+    rec('G1', '字卡上听只剩一个喇叭（不再有「听一听 / 只看拼音」两个大按钮）',
+        'id="sheetSpeak"' in html and 'class="sheet-spk"' in html
+        and 'id="sheetRead"' not in html and 'sheet-actions' not in html)
+    # 描写入口从「占满整行的绿框」改成「汉字本身就是入口」：字有 86px，
+    # 是这张卡上最大的点击目标，特需孩子不用瞄准。别再塞回一条横框。
+    rec('G1', '汉字本身就是描写入口（点字进描写，不再有占满整行的 .sheet-wbtn）',
+        "$('sheetChar').addEventListener('click'" in html
+        and 'openTrace(CARD_CH)' in html and 'sheet-wbtn' not in html)
+    # 节奏：v27 是一笔 300ms、笔间 0 停顿（SO_GAP_MS 声明了却没接进 seq），
+    # 6 笔字 1.8 秒播完，老师反馈「学生无法反应」。这条钉住下限，别又被调回去。
+    plbody = html.split('function soPlay')[1].split('function soTick')[0] \
+        if 'function soPlay' in html else ''
+    def _so_ms(name):
+        m = re.search(r'var %s = (\d+)' % name, html)
+        return int(m.group(1)) if m else 0
+    _s, _g, _st = _so_ms('SO_STROKE_MS'), _so_ms('SO_GAP_MS'), _so_ms('SO_START_MS')
+    rec('G1', '笔顺节奏够慢（一笔 ≥500ms、笔间 ≥200ms、起手 ≥400ms，且每笔后真插了 gap 帧）',
+        _s >= 500 and _g >= 200 and _st >= 400 and 'wait: SO_GAP_MS' in plbody,
+        '一笔 %dms / 停 %dms / 起手 %dms' % (_s, _g, _st) if plbody else '找不到 soPlay')
+    rec('G1', '笔顺先停一下再动笔（soPlay 用 SO_START_MS 起手，不是立刻开画）',
+        'setTimeout(soTick, SO_START_MS)' in plbody, '' if plbody else '找不到 soPlay')
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

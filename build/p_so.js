@@ -23,9 +23,15 @@ var SO = {
   ch: '', lit: 0, frac: 0, playing: false, timer: null, dpr: 1,
   step: 0, seq: []
 };
-var SO_STROKE_MS = 300;    /* 每一笔走多久 */
-var SO_GAP_MS = 120;       /* 两笔之间停一下，让孩子看清起笔位置 */
-var SO_HOLD_MS = 700;      /* 整字红着停多久，再淡回灰底等孩子描 */
+/* v28 放慢：老师反馈「速度太快了，学生无法反应」。v27 是一笔 300ms、笔间 0 停顿
+   （SO_GAP_MS 声明了却没接进 seq，一笔接一笔连着走），6 笔字 1.8 秒就播完。
+   现在：一笔 640ms（8 帧 × 80ms）、笔间停 340ms、打开后先停 600ms 让眼睛落到格子里，
+   5 笔字约 5 秒、8 笔字约 8 秒。再嫌快/慢就调这三个数，别动别处。 */
+var SO_STROKE_MS = 640;    /* 每一笔走多久 */
+var SO_GAP_MS = 340;       /* 两笔之间停一下，让孩子看清起笔位置 */
+var SO_HOLD_MS = 1100;     /* 整字红着停多久，再淡回灰底等孩子描 */
+var SO_START_MS = 600;     /* 打开后先停一下，等眼睛落到格子里再动笔 */
+var SO_FRAMES = 8;         /* 一笔分几帧长出来 */
 var SO_GEN = 0;            /* 每停/每播 +1：上一轮留下的定时器看到代数变了就自己作废 */
 
 function soHas(ch){ return !!(ch && STROKE_PACK[ch]); }
@@ -242,27 +248,32 @@ function traceButtons(state){
 /* 播一遍笔顺：逐笔推进，每笔内部再分 6 步，看起来是「一笔一笔长出来」 */
 function soPlay(ch){
   soStop();
-  var d = soParse(ch), total, i;
+  var d = soParse(ch), total, i, k;
   SO.ch = ch;
   SO.lit = 0;
   SO.frac = 0;
   SO.playing = true;
+  /* 先把「怎么播」的序列排好，再管画布。顺序反了会变成「没有画布就没有节奏数据」，
+     测试里（jsdom 没有 canvas）就量不到节奏，等于这条护栏形同虚设。 */
+  var seq = [];
+  total = (d && d.strokes.length) || 0;
+  for (i = 0; i < total; i++){
+    for (k = 1; k <= SO_FRAMES; k++){
+      seq.push({ lit: i, frac: k / SO_FRAMES, wait: Math.round(SO_STROKE_MS / SO_FRAMES) });
+    }
+    /* 写完一笔停一下再写下一笔：孩子要看清这一笔收在哪里、下一笔从哪里起 */
+    if (i < total - 1) seq.push({ lit: i, frac: 1, wait: SO_GAP_MS });
+  }
+  SO.seq = seq;
+  SO.step = 0;
   var ctx = soFit($('soBase'));
-  if (!ctx || !d){                     /* 没有画布或没有数据：静态灰字，直接进描写 */
+  if (!ctx || !seq.length){            /* 没有画布或没有数据：静态灰字，直接进描写 */
     SO.playing = false;
     traceTipDone();
     return;
   }
   soPaint(ctx, ch, 0, 0);
-  if (!d.strokes.length){ SO.playing = false; traceTipDone(); return; }
-  total = d.strokes.length;
-  var seq = [];
-  for (i = 0; i < total; i++){
-    for (var k = 1; k <= 6; k++) seq.push({ lit: i, frac: k / 6 });
-  }
-  SO.seq = seq;
-  SO.step = 0;
-  soTick();
+  SO.timer = setTimeout(soTick, SO_START_MS);
 }
 function soTick(){
   var ctx = soFit($('soBase')), s;
@@ -290,7 +301,7 @@ function soTick(){
   SO.lit = s.lit;
   SO.frac = s.frac;
   soPaint(ctx, SO.ch, s.lit, s.frac);
-  SO.timer = setTimeout(soTick, Math.round(SO_STROKE_MS / 6));
+  SO.timer = setTimeout(soTick, s.wait || Math.round(SO_STROKE_MS / SO_FRAMES));
 }
 function soStop(){
   if (SO.timer){ clearTimeout(SO.timer); SO.timer = null; }
