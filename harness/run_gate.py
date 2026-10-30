@@ -578,6 +578,19 @@ def gate_static(html):
     rec('G1', '笔顺先停一下再动笔（soPlay 用 SO_START_MS 起手，不是立刻开画）',
         'setTimeout(soTick, SO_START_MS)' in plbody, '' if plbody else '找不到 soPlay')
 
+    # v29 学字卡重排。老师 2026-10-30 三条反馈：
+    # 「你这个拼音的位置很诡异啊，更改一下，要不你就放在汉字上面，哪有拼音字在汉字下面的」
+    # 「描红你不需要做那么多解释的字，一个图标写描一描就好了呀」
+    # 「这一小块的元素很杂乱，你再好好思考怎么去排布让页面合理舒适，主次清晰」
+    _ipy, _ich = html.find('id="sheetPy"'), html.find('id="sheetChar"')
+    rec('G1', '学字卡拼音排在汉字上面（注音在上，不再压在字底下）',
+        0 < _ipy < _ich, '拼音 @%d / 汉字 @%d' % (_ipy, _ich))
+    rec('G1', '描写入口只剩「描一描」（田字格图标 + 三个字，不再有一整行说明书）',
+        '</span>描一描' in html and '点这个字，看笔顺照着描<' not in html
+        and 'class="sth-i"' in html)
+    rec('G1', '喇叭挂在汉字右侧不参与居中（absolute + left:100%，字才落在中轴线）',
+        'position:absolute;left:100%' in html and 'translateY(-50%)' in html)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

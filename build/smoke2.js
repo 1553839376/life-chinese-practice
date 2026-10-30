@@ -1366,18 +1366,38 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.openCard(soCard);
   await wait(40);
   /* v28：老师 2026-10-30「不需要什么只看拼音和再听一遍这些词语，
-     你直接在这个字旁边放一个喇叭的标志就好了」——两个大按钮收成一个喇叭图标。 */
-  ok(!!d.getElementById('sheetTrace'), '学字卡上有描写入口（「点这个字，看笔顺照着描」）');
+     你直接在这个字旁边放一个喇叭的标志就好了」——两个大按钮收成一个喇叭图标。
+     v29：老师又说「拼音的位置很诡异啊，更改一下，要不你就放在汉字上面，
+     哪有拼音字在汉字下面的」「描红你不需要做那么多解释的字，一个图标写描一描就好了」。 */
+  ok(!!d.getElementById('sheetTrace'), '学字卡上有描写入口（图标 + 「描一描」）');
   ok(!d.getElementById('sheetRead'), '不再有「只看拼音」按钮');
   const soSpk = d.getElementById('sheetSpeak');
   ok(!!soSpk && soSpk.tagName === 'BUTTON' && !!soSpk.querySelector('svg'),
     '「听」收成一个喇叭图标按钮');
   ok(!!soSpk && soSpk.textContent.replace(/\s+/g, '') === '',
     '喇叭按钮里没有多余文字');
+  /* v29 布局：拼音上移、标签收短、主次重排 */
+  const elPy = d.getElementById('sheetPy'), elCh = d.getElementById('sheetChar');
+  const elWord = d.getElementById('sheetWord'), elTr = d.getElementById('sheetTrace');
+  ok(!!elPy && !!elCh &&
+    !!(elPy.compareDocumentPosition(elCh) & 4 /* DOCUMENT_POSITION_FOLLOWING */),
+    '拼音排在汉字前面（注音在上，不再压在字下面）');
+  ok(!!soSpk && soSpk.parentNode === elCh.parentNode,
+    '喇叭和汉字在同一个容器里（挂在字右侧，不占单独一行）');
+  ok(!!elWord && !!(elCh.compareDocumentPosition(elWord) & 4),
+    '组词排在汉字下面');
+  ok(!!elTr && !!(elWord.compareDocumentPosition(elTr) & 4),
+    '「描一描」排在组词下面，是这一块最轻的一行');
+  ok(elTr.textContent.replace(/\s+/g, '') === '描一描',
+    '描写入口只剩「描一描」三个字，不再有一整行说明书：' + elTr.textContent.trim());
+  ok(!/点这个字|照着描|笔顺/.test(elTr.textContent),
+    '描写入口里没有「点这个字，看笔顺照着描」这类解释文字');
+  ok(!!d.querySelector('.sheet-trace-hint .sth-i'),
+    '「描一描」左边有一个田字格图标');
   ok(!!d.getElementById('traceMask'), '页面里有描写面板');
   click(d.getElementById('sheetTrace'));
   await wait(120);
-  ok(d.getElementById('traceMask').hidden === false, '点「点这个字，看笔顺照着描」打开描写面板');
+  ok(d.getElementById('traceMask').hidden === false, '点「描一描」打开描写面板');
   /* v28 节奏：老师「描写我点进去看了下，速度太快了，学生无法反应」。
      v27 是一笔 300ms、笔间 0 停顿，4 笔字 1.2 秒就播完。 */
   ok(w.SO.seq.length > 0, '打开后已经有逐笔序列');

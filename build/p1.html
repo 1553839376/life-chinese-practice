@@ -707,61 +707,71 @@ tr.tr-builtin td{background:#FBFAF3}
   display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:100%;max-width:620px;max-height:92vh;overflow-y:auto;background:var(--card);
   border-radius:26px 26px 0 0;padding:16px 20px 26px;box-shadow:0 -8px 30px rgba(0,0,0,.18);
+  scrollbar-gutter:stable both-edges;   /* 滚动条不占右侧空间，字才真正落在中轴线上 */
   animation:sheetUp .2s ease-out}
 @keyframes sheetUp{from{transform:translateY(28px);opacity:.6}to{transform:translateY(0);opacity:1}}
 .sheet-head{display:flex;align-items:center;margin-bottom:10px}
 .sheet-eyebrow{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-right:auto}
 .sheet-x{border:1.5px solid var(--line2);background:#fff;border-radius:10px;
   padding:8px 14px;font-size:15px;font-weight:700;color:var(--ink2);min-height:40px}
-.sheet-body{display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:14px}
+.sheet-body{display:flex;gap:18px;align-items:center;justify-content:center;margin-bottom:18px}
 .sheet-left{flex:none;width:132px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .sheet-art{width:132px;height:132px;border-radius:18px;background:var(--blue-bg);
   display:flex;align-items:center;justify-content:center;overflow:hidden}
 .sheet-art:empty{display:none}
 .sheet-art svg{width:124px;height:124px}
 .sheet-art img{width:132px;height:132px;object-fit:contain;display:block;border-radius:18px}
-.sheet-word{font-size:22px;font-weight:700;color:var(--ink2);letter-spacing:1px;
-  line-height:1.3;margin:2px 0 10px}
-.sheet-word:empty{display:none}
-.sheet-word i{font-style:normal;color:var(--red)}
-.sheet-word .lb{font-size:13px;font-weight:700;color:var(--ink3);
-  margin-right:8px;letter-spacing:0}
-/* 没有配图时：左边整列收掉，字居中，避免「字卡」看起来像「词卡」 */
+/* 学字卡右列（v29）：拼音在上 → 汉字 → 组词 → 描一描。
+   拼音本来就在字的前面念，放在字上面才是孩子熟悉的注音顺序；
+   原来拼音压在汉字下面、组词又压在拼音下面，三行字挤在一起分不出主次。 */
+.sheet-right{flex:0 1 auto;min-width:0;text-align:center;
+  display:flex;flex-direction:column;align-items:center}
 .sheet.no-art .sheet-right{text-align:center}
-.sheet-right{flex:0 1 auto;min-width:0;text-align:center}
-/* v28：字和喇叭排一行。原来是「听一听 / 只看拼音」两个大按钮，用户说太复杂，
-   听直接收成一个喇叭；「只看拼音」整个去掉（老师用不上，孩子也不需要）。
-   描写不再占一整条横框，改成「点这个字」——汉字本身就是最大的点击目标。 */
-.sheet-hero{display:flex;align-items:center;justify-content:center;gap:12px}
+.sheet-py{font-size:20px;font-weight:700;color:var(--blue);letter-spacing:.09em;
+  line-height:1.25;margin:0 0 6px}
+.sheet-py:empty{display:none}
+/* 汉字 + 喇叭：汉字永远压在卡片中轴线上，喇叭挂在它右侧外面，
+   不参与居中计算——否则「字 + 喇叭」整体居中会把字推偏左。 */
+.sheet-hero{position:relative;display:flex;align-items:center;justify-content:center}
 .sheet-char{font-size:86px;font-weight:700;line-height:1.02;letter-spacing:.04em;
   cursor:pointer;border-radius:18px;padding:0 6px;
   transition:background .12s ease,transform .08s ease}
 .sheet-char:hover{background:#F1F7F2}
 .sheet-char:active{transform:scale(.97)}
 .sheet-char:focus-visible{outline:3px solid var(--green-line);outline-offset:2px}
-.sheet-spk{flex:0 0 auto;width:48px;height:48px;border-radius:50%;cursor:pointer;padding:0;
-  background:var(--blue-bg);border:2px solid var(--blue-line);color:#2C6C90;
+.sheet-spk{position:absolute;left:100%;top:50%;margin-left:2px;
+  width:44px;height:44px;border-radius:50%;cursor:pointer;padding:0;
+  transform:translateY(-50%);
+  background:var(--blue-bg);border:1.5px solid var(--blue-line);color:#2C6C90;
   display:flex;align-items:center;justify-content:center;
   transition:transform .08s ease,background .12s ease}
-.sheet-spk svg{width:24px;height:24px;display:block}
+.sheet-spk svg{width:22px;height:22px;display:block}
 .sheet-spk .spk-body{fill:currentColor}
 .sheet-spk .spk-wave{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round}
 .sheet-spk:hover{background:#D6E8F8}
-.sheet-spk:active{transform:scale(.92)}
+.sheet-spk:active{transform:translateY(-50%) scale(.92)}
 .sheet-spk.saying{animation:spkPulse .7s ease-out}
 @keyframes spkPulse{0%{box-shadow:0 0 0 0 rgba(44,108,144,.34)}100%{box-shadow:0 0 0 12px rgba(44,108,144,0)}}
-.sheet-py{font-size:24px;font-weight:700;color:var(--blue);margin-bottom:10px}
-/* 描写入口：一行小胶囊，不再是占满整条的大框 */
-.sheet-trace-hint{display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  cursor:pointer;background:#F1F7F2;border:1.5px dashed var(--green-line);border-radius:999px;
-  padding:7px 15px;font-size:13.5px;font-weight:700;color:#3E6B4E;min-height:38px;
-  transition:border-color .12s ease,background .12s ease}
-.sheet-trace-hint:hover{border-style:solid;border-color:var(--green);background:#EAF4EC}
+.sheet-word{font-size:22px;font-weight:700;color:var(--ink2);letter-spacing:1px;
+  line-height:1.3;margin:10px 0 15px}
+.sheet-word:empty{display:none}
+.sheet-word i{font-style:normal;color:var(--red)}
+.sheet-word .lb{font-size:12.5px;font-weight:700;color:var(--ink3);
+  margin-right:7px;letter-spacing:0}
+/* 描写入口（v29）：只剩「田字格图标 + 描一描」。
+   原来那句「点这个字，看笔顺照着描」是给大人看的说明书，
+   对着孩子念叨一整行，反而比字还吵。 */
+.sheet-trace-hint{display:inline-flex;align-items:center;gap:8px;
+  cursor:pointer;background:#fff;border:1.5px solid var(--green-line);border-radius:999px;
+  padding:7px 18px 7px 14px;font-size:14.5px;font-weight:800;color:var(--green);min-height:40px;
+  transition:border-color .12s ease,background .12s ease,transform .08s ease}
+.sheet-trace-hint:hover{border-color:var(--green);background:#F1F7F2}
 .sheet-trace-hint:active{transform:scale(.98)}
-.sheet-trace-hint .sth-i{width:15px;height:15px;flex:0 0 auto;border-radius:4px;
-  border:1.6px solid #6E9E7D;
-  background-image:linear-gradient(#6E9E7D,#6E9E7D),linear-gradient(#6E9E7D,#6E9E7D);
-  background-size:100% 1.4px,1.4px 100%;background-position:center;background-repeat:no-repeat}
+.sheet-trace-hint .sth-i{width:17px;height:17px;flex:0 0 auto;border-radius:4px;
+  border:1.7px solid var(--green-line);
+  background-image:linear-gradient(var(--green-line),var(--green-line)),
+                   linear-gradient(var(--green-line),var(--green-line));
+  background-size:100% 1.5px,1.5px 100%;background-position:center;background-repeat:no-repeat}
 .sheet-games{margin-top:4px}
 .sg-title{font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-bottom:10px}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1162,10 +1172,11 @@ tr.tr-builtin td{background:#FBFAF3}
   .sheet-left{width:96px}
   .sheet-art,.sheet-art img{width:96px;height:96px}
   .sheet-char{font-size:64px;padding:0 4px}
-  .sheet-spk{width:42px;height:42px}
-  .sheet-spk svg{width:21px;height:21px}
-  .sheet-trace-hint{font-size:12.5px;padding:6px 12px;min-height:36px}
-  .sheet-py{font-size:20px}
+  .sheet-spk{width:38px;height:38px;margin-left:2px}
+  .sheet-spk svg{width:19px;height:19px}
+  .sheet-trace-hint{font-size:13.5px;padding:6px 15px 6px 12px;min-height:38px;gap:7px}
+  .sheet-trace-hint .sth-i{width:15px;height:15px}
+  .sheet-py{font-size:18px}
   .sg-grid{grid-template-columns:1fr}
   .feed-row{flex-direction:column;gap:6px;padding:10px}
   .feed-animal{flex-direction:row;gap:10px;padding:6px 12px;border-radius:18px}
