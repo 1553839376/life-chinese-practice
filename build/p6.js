@@ -1423,6 +1423,7 @@ function boot(){
   repairCharWords();              /* 字库组词栏被弄丢时按内置字表补回，否则词库会是空表 */
   migrateStuChars();              /* 老学生只有「字组」，展开成显式字表并写回 */
   migrateCap();                   /* 每日题量收紧到 3–10，并给每个学生补上在学名单 */
+  migrateTypes();                 /* v27 听写拆成两个：老学生补上「词语听写」，接住原来练的词 */
   renderPick();
   renderLearn();
   showScreen('learn');

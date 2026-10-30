@@ -108,7 +108,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v26</span>
+    <span id="appVer" class="app-ver">v27</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -340,6 +340,12 @@
         </div>
       </div>
     </div>
+    <div class="sheet-write">
+      <button id="sheetTrace" class="sheet-wbtn" type="button">
+        <span class="sw-ico" aria-hidden="true"></span>
+        <span class="sw-txt"><b>描写这个字</b><i>先看一遍笔顺，再照着灰字写</i></span>
+      </button>
+    </div>
     <div class="sheet-games">
       <div class="sg-title">选一个玩法</div>
       <div class="sg-grid">
@@ -356,6 +362,27 @@
           <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="traceMask" class="trace-mask" hidden>
+  <div class="trace-panel" role="dialog" aria-modal="true">
+    <div class="trace-head">
+      <span class="trace-name"><b id="traceChar">—</b><i id="tracePy"></i></span>
+      <button id="traceClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
+    </div>
+    <p class="trace-tip" id="traceTip">看一遍笔顺</p>
+    <div class="trace-grid" id="traceGrid">
+      <canvas id="soBase"></canvas>
+      <span id="soGhost" class="so-ghost" hidden></span>
+      <canvas id="soInk"></canvas>
+    </div>
+    <div class="trace-foot">
+      <button id="traceReplay" class="secondary" type="button">再看一遍</button>
+      <button id="traceAgain" class="ghost-btn" type="button" hidden>擦掉重写</button>
+      <button id="traceDone" class="wg-main" type="button">写好了</button>
+      <button id="traceNext" class="secondary" type="button" hidden>下一个字</button>
     </div>
   </div>
 </div>

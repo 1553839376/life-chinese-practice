@@ -735,10 +735,17 @@ function startQuiz(type){
   }
   STATE.quiz = { type: type,
                  qs: isWriteType(type)
-                   ? buildWriteQuestions(tp, total, stu, isFocus ? tp : null)
+                   ? buildWriteQuestions(type, tp, total, stu, isFocus ? tp : null)
                    : buildQuestions(pool, total, stu, isFocus ? tp : null),
                  i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
                  missed: 0, wrongLogged: false, retried: 0 };
+  if (!STATE.quiz.qs.length){
+    /* 词语听写最容易撞上这种：字表里的字在组词栏里一个词都没有 */
+    setHTML($('stage'), '<div class="empty-tip">这位同学的字表还凑不出词语。请老师在「学哪些字」里多加几个字，或者到「词库」里给这些字补几个词。</div>');
+    STATE.quiz = null;
+    $('qNow').textContent = '0'; $('qTotal').textContent = '0';
+    return;
+  }
   $('qTotal').textContent = String(STATE.quiz.qs.length);
   if (isDrill){
     var ws = [];
@@ -786,8 +793,8 @@ function renderStage(){
   var body = '', opts = '', i;
 
   if (type === '拼词语'){ renderWordBuild(q, head); return; }
-  /* 手写题型（v25）：没有选项，自己一套渲染 */
-  if (type === '汉字听写'){ renderDictation(q, head); return; }
+  /* 手写题型（v25，v27 把听写拆成单字 / 词语两个）：没有选项，自己一套渲染 */
+  if (isDictation(type)){ renderDictation(q, head); return; }
   if (type === '描红汉字'){ renderTrace(q, head); return; }
 
   if (type === '听音找字'){
@@ -1009,15 +1016,28 @@ function writeWordOf(c){
   if (w && w.length >= 1 && w.length <= 4 && w.indexOf(c.w) >= 0) return w;
   return '';
 }
-function wgAnswerOf(q){
+function wgAnswerOf(q, type){
   if (!q) return '';
-  if (STATE.quiz && STATE.quiz.type === '汉字听写') return q.text || q.target.w;
+  /* 只听单字的题型（汉字听写 / 描红）答案永远是那一个字；只有词语听写要拼整词。
+     type 可以不传：默认读当前题型，测试里直接传更省事。 */
+  var t = type || (STATE.quiz && STATE.quiz.type);
+  if (writesWord(t)) return q.text || q.target.w;
   return q.target.w;
 }
-function buildWriteQuestions(pool, n, stu, focusPool){
-  var targets = pickTargets(focusPool || pool, n, stu), qs = [], i;
+/* 出题：汉字听写一个字一题；词语听写只从「组词栏里查得到词」的字里挑，
+   挑不出词就不出这道题（宁可少一个题型，也不要名字叫词语听写、实际写单字）。 */
+function buildWriteQuestions(type, pool, n, stu, focusPool){
+  var src = focusPool || pool, cand = [], targets, qs = [], i, w;
+  if (writesWord(type)){
+    for (i = 0; i < src.length; i++){
+      w = writeWordOf(src[i]);
+      if (w && w.length >= 2 && w.length <= 4) cand.push(src[i]);
+    }
+    src = cand;
+  }
+  targets = pickTargets(src, n, stu);
   for (i = 0; i < targets.length; i++){
-    qs.push({ target: targets[i], text: writeWordOf(targets[i]) });
+    qs.push({ target: targets[i], text: writesWord(type) ? writeWordOf(targets[i]) : '' });
   }
   return qs;
 }
@@ -1075,7 +1095,8 @@ function wgBindOne(b){
   var cv = b.cv;
   if (!cv || !cv.addEventListener) return;
   cv.addEventListener('pointerdown', function(ev){
-    if (STATE.quiz && STATE.quiz.answered) return;
+    /* free = 不属于练习的方框（认字乐园里的描写）：那里没有 STATE.quiz，也不该被它挡住 */
+    if (!b.free && STATE.quiz && STATE.quiz.answered) return;
     b.cur = [wgPoint(b, ev)];
     b.strokes.push(b.cur);
     if (cv.setPointerCapture && ev.pointerId !== undefined){
@@ -1354,8 +1375,9 @@ function bindStage(){
 function readTarget(){
   var q = curQ();
   if (!q) return;
-  /* 听写要听的是「词」，不是那个字：念成单字，孩子就不知道要写两个格子 */
-  var txt = (STATE.quiz && STATE.quiz.type === '汉字听写') ? wgAnswerOf(q) : q.target.w;
+  /* 词语听写要听的是「词」，不是那个字：念成单字，孩子就不知道要写两个格子。
+     汉字听写反过来——只听一个字，念成词就等于给了额外提示。 */
+  var txt = writesWord(STATE.quiz && STATE.quiz.type) ? wgAnswerOf(q) : q.target.w;
   var ok = speak(txt);
   readHint($('pyHint'), ok, q.target.p || txt);
 }
@@ -1383,10 +1405,12 @@ function quizSay(type, q){
   if (type === '认读跟读'){
     return [{ t: w, gap: PACE.afterChar }, { t: w }];
   }
-  /* 听写：说明 + 停一拍 + 念那个词。这个词就是题目本身，必须念；
-     念完要停够（afterAsk），孩子得听完才知道有几个字要写。 */
-  if (type === '汉字听写'){
-    return [{ t: '听一听，写下来。', gap: PACE.afterAsk }, { t: wgAnswerOf(q) }];
+  /* 听写：说明 + 停一拍 + 念那个词/字。这个词就是题目本身，必须念；
+     念完要停够（afterAsk），孩子得听完才知道有几个字要写。
+     两个听写共用同一句题面语音：新加一句就要动 SENTS / p_voice / SENT_FULL 三处，
+     而这句「听一听，写下来。」对单字和词语都成立，没必要为它多一条音频。 */
+  if (isDictation(type)){
+    return [{ t: '听一听，写下来。', gap: PACE.afterAsk }, { t: wgAnswerOf(q, type) }];
   }
   /* 描红：字已经摆在屏幕上了，念一遍是帮他认，不是给答案 */
   if (type === '描红汉字'){

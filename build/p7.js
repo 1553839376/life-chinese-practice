@@ -897,11 +897,14 @@ function wireLearn(){
     else saySeq([{ t: CARD_CH.w }]);
   });
   $('sheetRead').addEventListener('click', togglePinyinOnly);
+  soWire();                        /* v27：学字卡里的「描写这个字」与笔顺面板 */
   $('cardMask').addEventListener('click', function(ev){
     if (ev.target === $('cardMask')) closeCard();
   });
   document.addEventListener('keydown', function(ev){
     if (ev.key !== 'Escape') return;
+    /* 描写面板压在学字卡上面，Esc 要一层一层退 */
+    if ($('traceMask') && !$('traceMask').hidden){ closeTrace(); return; }
     if (!$('cardMask').hidden){ closeCard(); return; }
     if (STATE.phase === 'game') quitGame(true);
   });

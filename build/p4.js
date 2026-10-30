@@ -10,10 +10,10 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v26';
+var APP_VER = 'v27';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
-                  '汉字听写', '描红汉字'];
+                  '汉字听写', '词语听写', '描红汉字'];
 var TYPE_DESC = {
   '听音找字': '点喇叭听读音，再点出对应的字',
   '找一样的字': '看上面这个字，在下面找出一样的',
@@ -21,12 +21,18 @@ var TYPE_DESC = {
   '图字配对': '把图拖到对的字上，也可以直接点字',
   '看拼音写字': '看拼音，点出对应的字',
   '拼词语': '把下面的字两两拼起来，拼成词语',
-  '汉字听写': '听一个词，在方框里写下来',
+  '汉字听写': '听一个字，在一个方框里写下来',
+  '词语听写': '听一个词，一个字写一格',
   '描红汉字': '照着浅灰色的字，一笔一笔描一遍'
 };
 /* 手写题型（v25）：答案不在屏幕上（听写）或已经给在屏幕上（描红），所以没有选项可点，
-   出题也不该要求「凑够 4 个字」。这两条判断散在 startQuiz / renderStage 里会分叉，统一放这里。 */
-var WRITE_TYPES = ['汉字听写', '描红汉字'];
+   出题也不该要求「凑够 4 个字」。这两条判断散在 startQuiz / renderStage 里会分叉，统一放这里。
+   v27 把听写拆成两个：汉字听写只听单字、词语听写听整词（原来那个叫「汉字听写」，
+   实际听的是词，老师 2026-10-30 指出该分开）。 */
+var WRITE_TYPES = ['汉字听写', '词语听写', '描红汉字'];
+/* 听写「一个词」还是「一个字」：只有词语听写要拼整词，其余（汉字听写、描红）都只针对单字。 */
+function writesWord(t){ return t === '词语听写'; }
+function isDictation(t){ return t === '汉字听写' || t === '词语听写'; }
 var WRITE_MAX = 6;   /* 写字比点选慢一倍，一次最多写 6 个，再多孩子坐不住 */
 function isWriteType(t){ return WRITE_TYPES.indexOf(t) >= 0; }
 
@@ -993,6 +999,34 @@ function migrateCap(){
       var raw = localStorage.getItem(LS_DATA);
       if (raw) localStorage.setItem(LS_DATA_BAK_T009, raw);
       localStorage.setItem(LS_MIG_T009, '1');
+    }
+  } catch (e) {}
+  saveSnap();
+  return changed;
+}
+/* 听写拆成两个题型（v27）：老学生的「汉字听写」以前听的是词，语义变了，
+   所以给他补上「词语听写」，把原来练的东西接住。老师可以随时取消勾选。 */
+var LS_DATA_BAK_T023 = 'wb2_data_v1.bak-T023';
+var LS_MIG_T023 = 'wb2_mig_t023';
+function migrateTypes(){
+  var i, s, t, at, changed = 0;
+  for (i = 0; i < STATE.students.length; i++){
+    s = STATE.students[i];
+    if (!s || !isArr(s.types)) continue;
+    if (s.types.indexOf('汉字听写') < 0) continue;
+    if (s.types.indexOf('词语听写') >= 0) continue;
+    at = s.types.indexOf('汉字听写') + 1;
+    t = s.types.slice(0, at);
+    t.push('词语听写');
+    s.types = t.concat(s.types.slice(at));
+    changed++;
+  }
+  if (!changed) return 0;
+  try {
+    if (localStorage.getItem(LS_MIG_T023) !== '1'){
+      var raw = localStorage.getItem(LS_DATA);
+      if (raw) localStorage.setItem(LS_DATA_BAK_T023, raw);
+      localStorage.setItem(LS_MIG_T023, '1');
     }
   } catch (e) {}
   saveSnap();

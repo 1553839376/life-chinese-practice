@@ -279,10 +279,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(120);
   ok(d.getElementById('stuForm').hidden === false, '新增表单展开');
   const typeBoxes = [...d.querySelectorAll('#fStuTypes input[data-t]')].map(x => x.value);
-  /* v25 起 8 个（原 6 个 + 汉字听写 / 描红汉字） */
-  ok(typeBoxes.length === 8, '题型复选框 8 个：' + typeBoxes.length);
+  /* v27 起 9 个（原 6 个 + 汉字听写 / 词语听写 / 描红汉字） */
+  ok(typeBoxes.length === 9, '题型复选框 9 个：' + typeBoxes.length);
   ok(typeBoxes.indexOf('拼词语') >= 0, '题型里能勾「拼词语」');
-  ok(typeBoxes.indexOf('汉字听写') >= 0 && typeBoxes.indexOf('描红汉字') >= 0,
+  ok(typeBoxes.indexOf('汉字听写') >= 0 && typeBoxes.indexOf('词语听写') >= 0 &&
+     typeBoxes.indexOf('描红汉字') >= 0,
     'v25 两个手写题型在老师端可勾：' + typeBoxes.join('/'));
   d.getElementById('fStuName').value = '小安';
   const box = d.querySelectorAll('#fStuTypes input[data-t]')[0];
@@ -1146,11 +1147,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.stuActive(v19_s).length === 5, '改上限后立即收到 5：' + w.stuActive(v19_s).length);
   ok(w.STATE.students[1].count === 3, '改一个人的上限不影响别人');
 
-  console.log('\n【25】手写题型：汉字听写 / 描红汉字（v25）');
-  ok(w.TYPE_ORDER.length === 8 && w.TYPE_ORDER.indexOf('汉字听写') >= 0 && w.TYPE_ORDER.indexOf('描红汉字') >= 0,
-    '题型扩到 8 个，两个手写题型在列：' + w.TYPE_ORDER.join('/'));
-  ok(w.isWriteType('汉字听写') && w.isWriteType('描红汉字') && !w.isWriteType('听音找字'),
-    'isWriteType 只认这两个手写题型');
+  console.log('\n【25】手写题型：汉字听写 / 词语听写 / 描红汉字（v25，v27 拆开两个听写）');
+  ok(w.TYPE_ORDER.length === 9 && w.TYPE_ORDER.indexOf('汉字听写') >= 0 &&
+     w.TYPE_ORDER.indexOf('词语听写') >= 0 && w.TYPE_ORDER.indexOf('描红汉字') >= 0,
+    '题型扩到 9 个，两个听写 + 描红都在列：' + w.TYPE_ORDER.join('/'));
+  ok(w.isWriteType('汉字听写') && w.isWriteType('词语听写') && w.isWriteType('描红汉字') &&
+     !w.isWriteType('听音找字'), 'isWriteType 认这三个手写题型');
+  ok(!w.writesWord('汉字听写') && w.writesWord('词语听写') &&
+     w.isDictation('汉字听写') && w.isDictation('词语听写') && !w.isDictation('描红汉字'),
+    '「听单字」和「听词」分得开：writesWord 只对词语听写为真');
   ok(w.WRITE_MAX === 6, '手写一次最多 6 个（写字比点选慢）：' + w.WRITE_MAX);
 
   /* 每个字都给一个词：听写要念词，「字库组词栏为空」会静默退回单字，测不出两格 */
@@ -1175,14 +1180,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.STATE.quiz.qs.length === 6, '字数 10 个时听写也只出 6 题：' + w.STATE.quiz.qs.length);
   ok(d.querySelectorAll('#stage .wg-box').length >= 1, '听写出了方框');
 
-  /* 固定成两字词，方框数必须跟着词的字数走（不能一律一个格子） */
+  /* 汉字听写：只听一个字，所以永远只有一个格子（v27 起「两字词两格」归词语听写） */
   w.STATE.quiz.qs = [{ target: w.STATE.chars[0], text: '小手' }];
   w.STATE.quiz.i = 0;
   w.renderStage();
   await wait(50);
-  ok(d.querySelectorAll('#stage .wg-box').length === 2, '两字词给两个方框：' +
+  ok(d.querySelectorAll('#stage .wg-box').length === 1, '汉字听写只给一个方框：' +
     d.querySelectorAll('#stage .wg-box').length);
-  ok(d.querySelectorAll('#stage .wg-box canvas').length === 2, '每个方框各有一块画布');
+  ok(d.querySelectorAll('#stage .wg-box canvas').length === 1, '方框里有画布');
   ok(Array.from(d.querySelectorAll('#stage .wg-ans')).every(x => !x.textContent),
     '答案一开始不写在页面上（要先自己写）');
   ok(!d.querySelector('#stage .wg-box.reveal'), '一开始不亮答案');
@@ -1200,7 +1205,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(40);
   ok(!!d.querySelector('#stage .wg-box.reveal'), '写完点「写好了」把答案亮出来');
   ok(d.querySelector('#stage .wg-ans').textContent === '小',
-    '亮出来的就是这个词的第一个字：' + d.querySelector('#stage .wg-ans').textContent);
+    '亮出来的就是这个字：' + d.querySelector('#stage .wg-ans').textContent);
   ok(w.STATE.quiz.answered === false, '亮答案不等于判对，还要人对一下');
   ok(!!d.querySelector('#stage [data-wg-act="ok"]') && !!d.querySelector('#stage [data-wg-act="miss"]'),
     '亮完答案给「写对了 / 没写好」两个按钮');
@@ -1236,9 +1241,59 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     w.STATE.logs['听写生|小'].wrong);
   ok(w.STATE.quiz.answered === false, '「没写好」不结束这题');
 
-  /* 听写念的是词，不是单字 —— 念成单字孩子不知道要写两格 */
-  const v25_say = w.quizSay('汉字听写', { target: { w: '小', p: 'xiao' }, text: '小手' });
-  ok(v25_say[v25_say.length - 1].t === '小手', '听写念的是词：' + v25_say[v25_say.length - 1].t);
+  /* 两个听写念的东西必须不一样：词语听写念整词（否则孩子不知道要写几格），
+     汉字听写只念单字（念成词就等于替他把题目说完了） */
+  const v27_sayC = w.quizSay('汉字听写', { target: { w: '小', p: 'xiao' }, text: '小手' });
+  ok(v27_sayC[v27_sayC.length - 1].t === '小', '汉字听写只听单字：' + v27_sayC[v27_sayC.length - 1].t);
+  const v27_sayW = w.quizSay('词语听写', { target: { w: '小', p: 'xiao' }, text: '小手' });
+  ok(v27_sayW[v27_sayW.length - 1].t === '小手', '词语听写念整词：' + v27_sayW[v27_sayW.length - 1].t);
+  ok(w.quizSentence('汉字听写', { target: { w: '小', p: 'xiao' }, text: '小手' }) !==
+     w.quizSentence('词语听写', { target: { w: '小', p: 'xiao' }, text: '小手' }),
+    '两个听写的整句题面不是同一句（念的字不一样）');
+
+  /* 词语听写：一个字一格，答案就是那个词 */
+  w.startQuiz('词语听写');
+  await wait(60);
+  ok(w.STATE.quiz && w.STATE.quiz.type === '词语听写', 'startQuiz 进得去词语听写');
+  const v27_wq = w.STATE.quiz.qs[0];
+  ok(!!v27_wq && typeof v27_wq.text === 'string' && v27_wq.text.length >= 2,
+    '词语听写每题都带一个两字以上的词：' + (v27_wq && v27_wq.text));
+  ok(v27_wq.text.indexOf(v27_wq.target.w) >= 0, '这个词里确实含目标字：' + v27_wq.text);
+  ok(w.wgAnswerOf(v27_wq, '词语听写') === v27_wq.text &&
+     w.wgAnswerOf(v27_wq, '汉字听写') === v27_wq.target.w,
+    '同一个问题：词语听写答案是整词、汉字听写答案是单字');
+  w.STATE.quiz.qs = [{ target: w.STATE.chars[0], text: '小手' }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+  ok(d.querySelectorAll('#stage .wg-box').length === 2, '两字词给两个方框：' +
+    d.querySelectorAll('#stage .wg-box').length);
+  ok(d.querySelectorAll('#stage .wg-box canvas').length === 2, '两个方框各有一块画布');
+
+  /* 组词栏一个词都没有时，宁可不出题，也不要名字叫词语听写、实际写单字 */
+  const v27_nw = { w: '山', p: '', words: '', on: true };
+  const v27_saved = w.STATE.chars;
+  w.STATE.chars = [v27_nw, { w: '水', p: '', words: '', on: true }];
+  const v27_stu = { id: 'local_v27n', name: '没词生', types: ['词语听写'],
+    chars: ['山', '水'], groups: [], count: 10, status: '在读', photo: '' };
+  w.STATE.cur = v27_stu;
+  w.preReset('没词生');
+  w.startQuiz('词语听写');
+  await wait(50);
+  ok(!w.STATE.quiz && /凑不出词语/.test(d.getElementById('stage').textContent),
+    '凑不出词时明确说原因，不出空题');
+  w.STATE.chars = v27_saved;
+  w.STATE.cur = v25_stu;
+  w.preReset('听写生');
+
+  /* 老学生的「汉字听写」以前听的是词：升级后自动补上词语听写，把原来练的东西接住 */
+  const v27_old = { id: 'local_v27o', name: '老听写生', types: ['听音找字', '汉字听写'],
+    chars: ['山'], groups: [], count: 6, status: '在读', photo: '' };
+  w.STATE.students.push(v27_old);
+  w.migrateTypes();
+  ok(v27_old.types.join('/') === '听音找字/汉字听写/词语听写',
+    '老学生自动补上「词语听写」，位置紧跟汉字听写：' + v27_old.types.join('/'));
+  ok(w.migrateTypes() === 0, '再跑一次不重复补（幂等）');
 
   /* 老师「提示一下」= 亮答案，并记一次辅助 */
   w.startQuiz('汉字听写');
@@ -1279,6 +1334,75 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     (w.STATE.quiz && w.STATE.quiz.qs.length));
   w.resetQState();
   ok(w.STATE.quiz.checked === false, 'resetQState 清掉「亮过答案」，不带到下一题');
+
+  /* ================= 【25b】笔顺与描写（v27，T-023） =================
+     老师 2026-10-30：「在最开始的全班都可以学习的地方应该增加一个描写，就像练习那样的。
+     而且应该有笔顺才对。笔顺是用灰色底图汉字上的动画变红色来先呈现怎么写，再让学生描写。」 */
+  console.log('\n【25b】笔顺与描写（v27）');
+  ok(w.STROKE_N === 561, '笔顺数据覆盖字库全部不重复字：' + w.STROKE_N);
+  const soKeys = Object.keys(w.STROKE_PACK);
+  ok(soKeys.length === 561 && soKeys.every(k => k.length === 1),
+    '笔顺袋里 561 个键，每个都是单个汉字');
+  ok(typeof w.STROKE_PACK['一'] === 'string' && w.STROKE_PACK['一'].length > 4,
+    '「一」的笔顺数据在包里');
+  const so1 = w.soParse('一');
+  ok(so1 && so1.strokes.length === 1 && so1.meds.length === 1, '「一」解析出 1 笔');
+  ok(so1.meds[0].length >= 2, '笔迹有起点和终点：' + so1.meds[0].length + ' 个点');
+  const soMu = w.soParse('木');
+  ok(soMu && soMu.strokes.length === 4, '「木」解析出 4 笔：' + (soMu && soMu.strokes.length));
+  ok(soMu.strokes.every(st => st[0][0] === 'M'), '每一笔都从 M（起笔）开始');
+  ok(w.soParse('木') === soMu, '同一个字解析结果有缓存（不重复解）');
+  ok(w.soHas('木') && !w.soHas('鑫'), 'soHas 只认字库里有的字');
+  ok(w.soParse('鑫') === null, '没有数据的字返回 null，不抛错');
+  ok(soKeys.indexOf('鑫') < 0, '字库外的字不进包（产物体积有限，只做字库这一批）');
+  /* 逐笔推进：第 1 笔走一半时，不能把第 2 笔也画上 */
+  const soHalf = w.soTrace(soMu.meds[0], 0.5);
+  ok(soHalf.length >= 2 && soHalf.length < soMu.meds[0].length + 1,
+    '未完成的一笔只画出前半段：' + soHalf.length + ' / ' + soMu.meds[0].length);
+  ok(w.soPaint(null, '木', 0, 0) === 0, '没有画布时绘制直接返回，不抛错（jsdom 就没有画布）');
+
+  /* 学字卡上的「描写这个字」→ 先播笔顺，再让人描写 */
+  const soCard = w.STATE.chars.find(c => c.w === '木');
+  w.openCard(soCard);
+  await wait(40);
+  ok(!!d.getElementById('sheetTrace'), '学字卡上有「描写这个字」入口');
+  ok(!!d.getElementById('traceMask'), '页面里有描写面板');
+  click(d.getElementById('sheetTrace'));
+  await wait(120);
+  ok(d.getElementById('traceMask').hidden === false, '点「描写这个字」打开描写面板');
+  ok(d.getElementById('traceChar').textContent === '木', '面板上写着当前字：' +
+    d.getElementById('traceChar').textContent);
+  ok(!!d.getElementById('soBase') && !!d.getElementById('soInk'),
+    '一块画布画灰底和红色笔顺，另一块专门收笔迹（分开才不会互相擦掉）');
+  ok(d.getElementById('traceReplay').hidden === false, '有「再看一遍」');
+  ok(d.getElementById('traceDone').hidden === false, '有「写好了」');
+  ok(d.getElementById('traceNext').hidden === true, '还没写完时不出「下一个字」');
+  /* jsdom 量不到宽高，笔迹层不会被建出来：这里手动补一个，测按钮行为 */
+  if (!w.TRACE.box) w.TRACE.box = { cv: null, ctx: null, strokes: [], cur: null,
+    w: 0, h: 0, free: true };
+  click(d.getElementById('traceDone'));
+  await wait(40);
+  ok(w.TRACE.state === 'demo', '空格子点「写好了」不算写完，只提醒');
+  w.TRACE.box.strokes.push([{ x: 5, y: 5 }, { x: 20, y: 20 }]);
+  click(d.getElementById('traceDone'));
+  await wait(40);
+  ok(w.TRACE.state === 'done', '有笔迹再点「写好了」就完成');
+  ok(d.getElementById('traceAgain').hidden === false && d.getElementById('traceNext').hidden === false,
+    '写完给「擦掉重写」和「下一个字」');
+  click(d.getElementById('traceAgain'));
+  await wait(40);
+  ok(w.TRACE.box.strokes.length === 0, '「擦掉重写」把笔迹清空');
+  click(d.getElementById('traceClose'));
+  await wait(40);
+  ok(d.getElementById('traceMask').hidden === true, '关闭描写面板');
+  ok(w.SO.playing === false, '关闭时把笔顺动画停掉，不留定时器');
+  /* 底字没有笔顺数据的字也要能描：退回字体文字，不许给一张空白格子 */
+  const soNoData = { w: '鑫', p: '', words: '', on: true };
+  w.openTrace(soNoData);
+  await wait(60);
+  ok(d.getElementById('soGhost').hidden === false, '没有笔顺数据的字退回字体灰字，照样能描');
+  ok(d.getElementById('soGhost').textContent === '鑫', '退回的灰字就是目标字');
+  w.closeTrace();
 
   /* ================= 【26】题型进度与「下一个题型」（T-021） =================
      老师 2026-10-29：「完成一个练习后应该给一个选项比较明显一点的让学生进入下一个题型」，
@@ -1387,7 +1511,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       (miss.length ? '，缺 ' + miss.join(',') : ''));
   };
   const v27_types = ['听音找字', '找一样的字', '看拼音写字', '图字配对', '认读跟读',
-    '拼词语', '汉字听写', '描红汉字'];
+    '拼词语', '汉字听写', '词语听写', '描红汉字'];
   const v27_chars = w.STATE.chars.slice(0, 24);
   for (const t of v27_types){
     w.STATE.students = [{ id: 'local_v27', name: '语音探针', types: [t],
@@ -1403,8 +1527,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       /* 只有「说明白」的那几句才是固定文案；字/词本身走单个录音，不在这里判 */
       if (a.t && /[。！？]/.test(a.t)) v27_one(t, a.t);
     }
-    if (t === '汉字听写'){
-      const wd = w.wgAnswerOf(q);
+    if (w.isDictation(t)){
+      const wd = w.wgAnswerOf(q, t);
       const parts = w.sayParts(wd) || [];
       ok(parts.length === 1 && !!w.vaB64(parts[0].k),
         '听写念的是「' + wd + '」整词录音，不是「' + wd.split('').join('——') + '」' +

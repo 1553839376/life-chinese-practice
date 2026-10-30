@@ -83,8 +83,10 @@ def _find_node_path(node_bin):
 NODE = _find_node()
 NODE_PATH = _find_node_path(NODE)
 
-PARTS = ['p1.html', 'p2.html', 'p_open.txt', 'p_sfx.js', 'p_art.js', 'lib.js',
-         'p4.js', 'p8.js', 'p5.js', 'p6.js', 'p7.js', 'p_close.txt']
+PARTS = ['p1.html', 'p2.html', 'p_open.txt', 'p_sfx.js', 'p_art.js', 'p_stroke.js',
+         'lib.js', 'p4.js', 'p8.js', 'p5.js', 'p_so.js', 'p6.js', 'p7.js', 'p_close.txt']
+# v27 起多了两个分片：p_stroke.js（561 字笔顺数据，558 KB）与 p_so.js（笔顺动画 + 描写界面）。
+# 少任何一个，产物照样能打开（脚本报 ReferenceError 后整页死在 boot），所以必须在这里卡住。
 # 语音是 JSON 分片（v8 起惰性解析），不算在 12 段里，但构建同样必需。
 # 2026-10-23 修正：这里原来写着 p_voice.js（旧格式），本机因为那文件还在所以一直"通过"，
 # 直到在全新 clone 上跑门禁才暴露——旧文件不入库，检查就红了。
@@ -121,7 +123,8 @@ def gate_build(do_build=True):
     missing = [p for p in PARTS if not (BUILD / p).exists()]
     if not (BUILD / VOICE_PART).exists():
         missing.append(VOICE_PART)
-    rec('G0', '12 个分片齐全', not missing, '缺：' + ','.join(missing) if missing else '12/12')
+    rec('G0', '%d 个分片齐全' % (len(PARTS) + 1), not missing,
+        '缺：' + ','.join(missing) if missing else '%d/%d' % (len(PARTS) + 1, len(PARTS) + 1))
 
     prod = ROOT / MANIFEST['product']
     if not rec('G0', '产物存在', prod.exists(), str(prod)):
@@ -144,6 +147,9 @@ def asset_counts():
         text = read(ROOT / cfg['file'])
         if cfg['file'].endswith('.json'):
             out[key] = len(json.loads(text))          # 语音包是纯 JSON
+        elif key == 'stroke_chars':
+            m = re.search(r'var STROKE_PACK = (\{.*?\});', text, re.S)
+            out[key] = len(json.loads(m.group(1))) if m else 0
         elif key == 'chars':
             out[key] = count_lines_matching(text, r"^\{c:'")
         elif key == 'stages':
@@ -488,6 +494,63 @@ def gate_static(html):
     _ord_n = html.find('.next-type{')
     rec('G1', '.next-type 写在 .primary 之后（否则实心按钮被浅底按钮盖掉）',
         _ord_p >= 0 and _ord_n > _ord_p, '下标 %d vs %d' % (_ord_p, _ord_n))
+
+    # v27 笔顺与描写（T-023）：用户原话「在最开始的全班都可以学习的地方应该增加一个描写，
+    # 就像练习那样的。而且应该有笔顺才对。笔顺是用灰色底图汉字上的动画变红色来先呈现怎么写，
+    # 再让学生描写」。这里钉六件事：数据在、坐标没翻错、三层画法没被简化、逐笔推进、播完淡回灰、入口在。
+    rec('G1', '笔顺数据与查表函数在（STROKE_PACK / soHas / soParse）',
+        all(k in html for k in ['STROKE_PACK', 'function soHas', 'function soParse']))
+    # y 轴：hanzi-writer 的数据 y 朝上、canvas y 朝下。写成 900 − y 才正。
+    # 踩过：第一版按 y 直接画，截「上」时长横跑到最上面，整个字上下颠倒。
+    # jsdom 没有 canvas，测试测不出来，只能靠这条静态护栏钉住公式。
+    ftbody = html.split('function soFit')[1].split('function openTrace')[0] \
+        if 'function soFit' in html else ''
+    rec('G1', '笔顺坐标系把 y 翻过来（soFit 体内 -dpr * h / 1024 与 SO_BASE 平移）',
+        '-dpr * h / 1024' in ftbody and 'SO_BASE' in ftbody,
+        '' if ftbody else '找不到 soFit')
+    # 三层画法：灰底整字 → 已写完的填红 → 当前笔裁剪到自己轮廓再画粗线。
+    # 少了第三层的裁剪，红色会糊到相邻笔画上（「大」的撇捺直接连成一片）。
+    ptbody = html.split('function soPaint')[1].split('function soFit')[0] \
+        if 'function soPaint' in html else ''
+    rec('G1', '三层画法没被简化（soPaint 体内有灰底 / 填红 / clip 当前笔）',
+        'SO_GRAY' in ptbody and 'SO_RED' in ptbody and 'ctx.clip(paths[lit])' in ptbody
+        and 'lineWidth = 300' in ptbody,
+        '' if ptbody else '找不到 soPaint')
+    tkbody = html.split('function soTick')[1].split('function soStop')[0] \
+        if 'function soTick' in html else ''
+    rec('G1', '笔顺是逐笔长出来的（soTick 每帧画 s.lit / s.frac，不是整字闪烁）',
+        'soPaint(ctx, SO.ch, s.lit, s.frac)' in tkbody,
+        '' if tkbody else '找不到 soTick')
+    # 播完留一帧整字红，再淡回灰底——提示语写的是「照着灰字描一遍」，
+    # 底字要是红的就自相矛盾，孩子也无从下笔。
+    rec('G1', '播完淡回灰底再让孩子描（soTick 收尾有 SO_HOLD_MS 与重画灰字）',
+        'SO_HOLD_MS' in tkbody and 'soPaint(c2, SO.ch, 0, 0)' in tkbody
+        and 'gen !== SO_GEN' in tkbody,
+        '' if tkbody else '找不到 soTick')
+    rec('G1', '学字卡上有描写入口（#sheetTrace / #traceMask / soWire 已绑）',
+        all(k in html for k in ['id="sheetTrace"', 'id="traceMask"', 'id="soBase"',
+                                'id="soInk"', 'function soWire'])
+        and 'soWire();' in html)
+    # 描写页没有学生档案、也没有手写识别，所以不能判分、不能写学习记录。
+    # 一旦有人「顺手」加个 gradeAnswer / saveSnap，进度就会出现凭空的「已掌握」。
+    tdbody = html.split('function traceDoneTap')[1].split('function traceAgainTap')[0] \
+        if 'function traceDoneTap' in html else ''
+    rec('G1', '描写不判分、不写学习记录（traceDoneTap 体内无 gradeAnswer / logs / saveSnap）',
+        bool(tdbody) and 'gradeAnswer' not in tdbody and 'saveSnap' not in tdbody
+        and 'getLog' not in tdbody, '' if tdbody else '找不到 traceDoneTap')
+    # 听写拆成两个（v27）：汉字听写只听单字、词语听写听整词。
+    # 老师原话「上次让你增加了汉字听写，但是你是词语听写，我建议可以分开来」。
+    rec('G1', '听写分成单字 / 词语两个题型（writesWord 只认词语听写，renderStage 走 isDictation）',
+        "function writesWord(t){ return t === '词语听写'; }" in html
+        and 'function isDictation' in html and 'isDictation(type)' in html)
+    bwbody = html.split('function buildWriteQuestions')[1].split('function wgSize')[0] \
+        if 'function buildWriteQuestions' in html else ''
+    rec('G1', '词语听写先筛出真有词的字（buildWriteQuestions 体内 writeWordOf 且长度 2~4）',
+        'writeWordOf' in bwbody and 'w.length >= 2' in bwbody,
+        '' if bwbody else '找不到 buildWriteQuestions')
+    rec('G1', '老学生的题型会自动补上词语听写（migrateTypes + T023 备份 + boot 里调用）',
+        'function migrateTypes' in html and 'LS_DATA_BAK_T023' in html
+        and 'migrateTypes();' in html)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

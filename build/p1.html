@@ -747,6 +747,44 @@ tr.tr-builtin td{background:#FBFAF3}
 .sg-btn.gf:hover{border-color:#7FB8DA}
 .sg-btn.gr:hover{border-color:#9CC7AC}
 .sg-btn.ga:hover{border-color:#E2C97E}
+/* 学字卡里的「描写这个字」入口（v27）：放在玩法上面，因为「写」比「玩」更接近上课要做的事 */
+.sheet-write{margin-top:4px}
+.sheet-wbtn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
+  background:#F1F7F2;border:2px solid var(--green-line);border-radius:18px;padding:12px 16px}
+.sheet-wbtn:hover{border-color:var(--green)}
+.sheet-wbtn:active{transform:scale(.99)}
+.sheet-wbtn .sw-ico{flex:0 0 auto;width:40px;height:40px;border-radius:12px;background-color:#fff;
+  border:2px solid var(--green-line);
+  background-image:linear-gradient(var(--green-line),var(--green-line)),
+                   linear-gradient(var(--green-line),var(--green-line));
+  background-size:100% 2px,2px 100%;background-position:center;background-repeat:no-repeat}
+.sheet-wbtn .sw-txt{display:flex;flex-direction:column;gap:2px}
+.sheet-wbtn .sw-txt b{font-size:18px;font-weight:800;color:var(--ink)}
+.sheet-wbtn .sw-txt i{font-style:normal;font-size:13px;color:var(--ink3)}
+/* 描写面板（v27）：先播笔顺、再照着灰字描。z-index 压在学字卡之上、toast 之下 */
+.trace-mask{position:fixed;inset:0;z-index:70;background:rgba(20,26,32,.5);
+  display:flex;align-items:center;justify-content:center;padding:12px}
+.trace-panel{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--card);
+  border-radius:24px;padding:16px 16px 18px;display:flex;flex-direction:column;
+  align-items:center;gap:10px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
+.trace-head{display:flex;align-items:center;gap:10px;width:100%}
+.trace-name{flex:1;display:flex;align-items:baseline;gap:8px}
+.trace-name b{font-size:26px;color:var(--ink)}
+.trace-name i{font-style:normal;font-size:15px;color:var(--ink3)}
+.trace-tip{margin:0;font-size:14px;color:var(--ink2);text-align:center;min-height:20px}
+/* 田字格：不用 aspect-ratio（教室平板是不是 iOS15 以上不确定），宽高都按 vw 兜住 */
+.trace-grid{position:relative;width:min(320px,72vw);height:min(320px,72vw);
+  border:2px solid var(--line2);border-radius:14px;background-color:#FFFDF7;overflow:hidden;
+  background-image:linear-gradient(to right,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%),
+                   linear-gradient(to bottom,transparent 49.6%,#EADFC7 49.6%,#EADFC7 50.4%,transparent 50.4%)}
+.trace-grid canvas{position:absolute;inset:0;display:block;touch-action:none}
+#soBase{z-index:1}
+#soInk{z-index:2}
+.so-ghost{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;
+  align-items:center;justify-content:center;font-family:"KaiTi","STKaiti","Kaiti SC",serif;
+  font-size:min(240px,54vw);line-height:1;color:#DCD4BE}
+.trace-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.trace-foot .wg-main{min-width:min(200px,50vw)}
 .sg-ico{width:34px;height:34px;border-radius:50%;margin-bottom:4px}
 .sg-ico.bub{background:radial-gradient(circle at 32% 28%,#fff 0%,#DCEFFC 40%,#B9DCF6 100%);
   border:2px solid #9CC2E4}

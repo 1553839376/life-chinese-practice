@@ -13,8 +13,8 @@ import io, os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 HEAD = ['p1.html', 'p2.html']
-TAIL = ['p_open.txt', 'p_sfx.js', 'p_art.js', 'lib.js', 'p4.js',
-        'p8.js', 'p5.js', 'p6.js', 'p7.js', 'p_close.txt']
+TAIL = ['p_open.txt', 'p_sfx.js', 'p_art.js', 'p_stroke.js', 'lib.js', 'p4.js',
+        'p8.js', 'p5.js', 'p_so.js', 'p6.js', 'p7.js', 'p_close.txt']
 VOICE = 'p_voice.json'
 OUT = '生活语文练习台.html'
 

@@ -169,7 +169,11 @@
       "sessDoneN",
       "sessNext",
       "sessTypes",
-      "renderTypeProg"
+      "renderTypeProg",
+      "writesWord",
+      "isDictation",
+      "migrateTypes",
+      "LS_DATA_BAK_T023"
     ],
     "老师端": [
       "openTeacher",
@@ -213,7 +217,48 @@
       "progFocus",
       "drillBar",
       "btnProfDrill",
-      "wbTip"
+      "wbTip",
+      "sheetTrace",
+      "traceMask",
+      "traceGrid",
+      "soBase",
+      "soInk",
+      "traceDone",
+      "traceReplay",
+      "traceAgain",
+      "traceNext",
+      "traceTip"
+    ],
+    "笔顺描写": [
+      "STROKE_PACK",
+      "STROKE_N",
+      "SO",
+      "SO_BASE",
+      "SO_GRAY",
+      "SO_RED",
+      "SO_HOLD_MS",
+      "SO_GEN",
+      "soHas",
+      "soParse",
+      "soPath",
+      "soPaths",
+      "soTrace",
+      "soPaint",
+      "soFit",
+      "soPlay",
+      "soTick",
+      "soStop",
+      "soWire",
+      "TRACE",
+      "openTrace",
+      "closeTrace",
+      "traceLayout",
+      "traceButtons",
+      "traceTipDone",
+      "traceDoneTap",
+      "traceAgainTap",
+      "traceNextTap",
+      "traceClearInk"
     ]
   },
   "assets": {
@@ -236,6 +281,10 @@
     "stages": {
       "file": "build/lib.js",
       "min": 22
+    },
+    "stroke_chars": {
+      "file": "build/p_stroke.js",
+      "min": 561
     }
   },
   "tests": [
@@ -257,7 +306,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 407
+      "min_cases": 451
     },
     {
       "name": "check_pair",
