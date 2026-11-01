@@ -9,6 +9,9 @@
 - 发布：`create_page_transaction` →（curl 取基线，**urllib 走代理必 502**）→ `build/upload_curl.py`（**别用 `upload_page_artifact.py`**）→ commit → publish。后两步随机 `TEMPORARY_ERROR`，**循环重试 1~6 次、10~12s 退避**；`download_page_artifacts.py` 也会偶发失败，别单发一次判死
 - **线上产物不能字节比对**：平台注入 `data-page-node-id` 并重排属性（大 ~20 KB 正常）→ 抽出 `<style>` 与各 `<script>` 逐块比，**两边都要过滤空块**（线上多一个空 `inject.js`，只滤一侧会索引错位）
 - 静态直链：`create_page_transaction` 返回的是 baseVersion 旧目录，新版用 `list_page_publish_artifacts.py` 取 `data.url`；给用户前 curl grep 一次 `APP_VER = 'v27'` 这类**值**（别 grep 属性组合，顺序会变）
+- **角标连 `>v31<` 都抓不到**：平台往 `<span id="appVer">` 里插了一条 `<!--pnid:…-->`，实际是 `appVer":<!--pnid:…-->v31</span>`。核版本只认 `APP_VER` 的值，或抓 `appVer` 附近文本
+- 同一页两个入口（`index.html` + 中文名）都要传；线上两份 **md5 不同是正常的**（每个路径的 pnid 不同），只要大小与版本一致
+- 核对发布态真伪用 `download_page_artifacts.py --source publish`（走 curl 打 workbuddy.link 会 502）；线上比本地大 ~24 KB 也是注入注释 + 属性重排，别当上传错
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过
 - **git 的 `http.proxy` 每次开机都变**：先比 `env | grep -i http_proxy` 与 `git config --get http.proxy`，不一致就同步；fetch/push 一律 6~8 次重试，单发一次判「断网」必误判
 - **但 GitHub 走沙箱代理必 502**（`CONNECT tunnel failed, response 502`），重试多少次都没用。判法：`curl -o /dev/null -w %{http_code} https://github.com/` 走代理 000、`--noproxy '*'` 200 → 去掉 git 的 `http(s).proxy` 并 `env -u http_proxy -u https_proxy ... git push`。**别把这个当网络抖动**
