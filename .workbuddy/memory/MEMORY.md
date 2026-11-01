@@ -15,6 +15,7 @@
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过
 - **git 的 `http.proxy` 每次开机都变**：先比 `env | grep -i http_proxy` 与 `git config --get http.proxy`，不一致就同步；fetch/push 一律 6~8 次重试，单发一次判「断网」必误判
 - **但 GitHub 走沙箱代理必 502**（`CONNECT tunnel failed, response 502`），重试多少次都没用。判法：`curl -o /dev/null -w %{http_code} https://github.com/` 走代理 000、`--noproxy '*'` 200 → 去掉 git 的 `http(s).proxy` 并 `env -u http_proxy -u https_proxy ... git push`。**别把这个当网络抖动**
+- 直连也会偶发 `Failed to connect to github.com port 443` 或 `HTTP2 framing layer` 错误：加 `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25` 一次就过（2026-11-01 实测 4 次失败后 3 秒成功）。**别在同一档参数上死磕 6 次**
 
 ## 二、数据结构与教学口径
 **字表**
