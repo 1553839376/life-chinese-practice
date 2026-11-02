@@ -32,10 +32,8 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .ghost-btn{border:1.5px solid var(--line2);background:var(--card);border-radius:12px;
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
-/* v32：按钮里带图标（橡皮擦）。线稿图标跟着按钮文字的颜色走，
-   with-ico 把按钮改成横排 flex，图标与文字间距 7px、纵向居中——
-   注意不要直接给 .ghost-btn 加 flex，它还有一堆纯文字按钮。 */
-.ghost-btn.with-ico{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+/* 按钮里的线稿图标（v32 的橡皮擦）：跟着按钮文字的颜色走，纵向居中。
+   v33 起由 .hw-btn 统一提供 flex 排版与 7px 间距，不再需要 with-ico 这个补丁类。 */
 .ico-i{width:17px;height:17px;display:block;flex:none;fill:none;stroke:currentColor;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
@@ -331,16 +329,41 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .wg-box.reveal .wg-ans{opacity:.45}
 .wg-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
   touch-action:none;cursor:crosshair}
-.wg-tools{display:flex;justify-content:center;gap:12px;margin-top:12px;flex-wrap:wrap}
-.wg-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;flex-wrap:wrap}
-.wg-tip{font-size:13px;color:var(--ink3)}
-/* 手写题的主按钮：和跟读页「读完啦，下一个」同一套绿底立体样式 */
-.wg-main{min-height:64px;min-width:min(280px,70vw);padding:0 34px;border:none;border-radius:20px;
-  background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;font-size:21px;font-weight:900;
-  letter-spacing:.02em;touch-action:manipulation;
-  box-shadow:0 5px 0 #1F7A42,0 12px 20px rgba(34,122,67,.22);
-  transition:transform .1s ease,box-shadow .1s ease}
-.wg-main:active{transform:translateY(3px);box-shadow:0 2px 0 #1F7A42,0 6px 12px rgba(34,122,67,.2)}
+/* ---------- 手写操作条 .hw-acts（v33）----------
+   乐园的描写屏、练习里的听写/描红共用这一条：一行三个按钮、等高 56、同圆角 16、
+   同一个橡皮擦图标。之前是**三套**东西——乐园用 .secondary，「擦掉」用 .ghost-btn，
+   主按钮用 64px 的 .wg-main——老师 2026-11-02 截了两张图问「这再看一遍和擦掉的
+   文本框为什么还搞的不一样」。练习页还多一句 13px 小字挂在大绿按钮右边（「写完点
+   这里…」），大按钮被这行字挤得整体偏左，看着是歪的，已改成按钮上方一句居中小字。 */
+.hw-tip{margin:16px 0 0;font-size:14px;font-weight:700;color:var(--ink3);text-align:center}
+.hw-tip + .hw-acts{margin-top:12px}
+.hw-acts{display:flex;align-items:center;justify-content:center;gap:12px;
+  flex-wrap:wrap;margin-top:16px}
+.hw-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:56px;padding:0 22px;border:1.5px solid var(--line2);border-radius:16px;
+  background:#fff;color:var(--ink2);font-size:17px;font-weight:800;white-space:nowrap;
+  touch-action:manipulation;cursor:pointer;
+  /* 和绿色主按钮同一套「实体键」语言：底下垫一道 3px 实色，按下去才沉。
+     白色按钮要是纯平的，挨着绿按钮会像两个不同产品拼起来的。 */
+  box-shadow:0 3px 0 #E9E1CD;
+  transition:transform .08s ease,background .12s ease,box-shadow .08s ease}
+.hw-btn:active{background:#F0EADC;transform:translateY(3px);box-shadow:0 1px 0 #E9E1CD}
+/* 主按钮：绿底白字 + 一道实心投影（不是模糊阴影）。宽度只比旁边那个宽一圈，
+   够显眼了；铺满整行会变成 v31 之前那块「很长很生硬」的板子。 */
+.hw-btn.main{min-width:min(150px,40vw);padding:0 26px;border:none;border-radius:16px;
+  background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;font-size:20px;
+  letter-spacing:.02em;box-shadow:0 4px 0 #1F7A42,0 10px 16px rgba(34,122,67,.18)}
+.hw-btn.main:active{transform:translateY(3px);
+  box-shadow:0 1px 0 #1F7A42,0 5px 10px rgba(34,122,67,.16)}
+/* 手机竖屏：三个按钮要挤进描写弹窗（内宽约 320px）——收字号和左右留白，
+   再不济才折成两行；宁可折行，也不要把「擦掉」挤到看不见。 */
+@media (max-width:520px){
+  .hw-acts{gap:8px;margin-top:14px}
+  .hw-btn{min-height:50px;padding:0 14px;font-size:15px;gap:6px;border-radius:14px}
+  .hw-btn.main{min-width:118px;padding:0 18px;font-size:18px}
+  .hw-tip{font-size:13px;margin-top:12px}
+  .ico-i{width:15px;height:15px}
+}
 
 /* 跟读的大按钮：孩子不认字，按钮要有分量、要明确指向「下一步」 */
 .read-actions{display:flex;flex-direction:column;align-items:center;gap:10px;margin:20px 0 6px}
@@ -897,8 +920,8 @@ tr.tr-builtin td{background:#FBFAF3}
 .so-ghost{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;
   align-items:center;justify-content:center;font-family:"KaiTi","STKaiti","Kaiti SC",serif;
   font-size:min(240px,54vw);line-height:1;color:#DCD4BE}
-.trace-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
-.trace-foot .wg-main{min-width:min(200px,50vw)}
+/* 描写弹窗里的操作条：面板本身 gap 10，再叠 16 就太散 */
+.trace-panel .hw-acts{margin-top:2px}
 .sg-ico{width:34px;height:34px;border-radius:50%;margin-bottom:4px}
 .sg-ico.bub{background:radial-gradient(circle at 32% 28%,#fff 0%,#DCEFFC 40%,#B9DCF6 100%);
   border:2px solid #9CC2E4}
@@ -1254,8 +1277,6 @@ tr.tr-builtin td{background:#FBFAF3}
   .pgc{min-height:52px;font-size:24px}
   .prof-acts button{flex:1 1 100%}
   .big-char{font-size:104px}
-  /* 手写题型：窄屏把提示字收掉，方框尺寸由 wgLayout() 按行宽重算 */
-  .wg-tip{display:none}
   .opt{min-height:104px;font-size:52px}
   /* 词库表窄屏：先砍掉「释义/例句」「图示」两列，剩下的 5 列刚好塞下，不至于横滚到看不见按钮 */
   #tpWord table.grid th:nth-child(4),#tpWord table.grid td:nth-child(4),

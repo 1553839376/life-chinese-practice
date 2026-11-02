@@ -241,14 +241,14 @@ function traceLayout(){
 
 function traceButtons(state){
   var replay = $('traceReplay'), done = $('traceDone'), again = $('traceAgain'),
-      next = $('traceNext'), tx = $('traceAgainTx');
+      next = $('traceNext');
   if (!replay) return;
   replay.hidden = false;
   done.hidden = (state === 'done');
   /* v32：「擦掉」随时可用（老师 2026-11-02：「没有擦掉，只有写完才能擦掉」）。
-     写完那一刻文案改成「擦掉重写」，其余时候就是「擦掉」。 */
+     v33：文案就固定是「擦掉」——之前写完那一刻会变成「擦掉重写」，而练习页写
+     「擦掉重写」、描红写「擦掉重描」，同一件事三种说法，老师截图问过「为什么不一样」。 */
   if (again) again.hidden = false;
-  if (tx) tx.textContent = (state === 'done') ? '擦掉重写' : '擦掉';
   if (next) next.hidden = (state !== 'done');
 }
 

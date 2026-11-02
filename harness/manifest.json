@@ -174,7 +174,9 @@
       "migrateTypes",
       "LS_DATA_BAK_T023",
       "SCROLL_MEM",
-      "renderPick"
+      "renderPick",
+      "hwFootHTML",
+      "wgFoot"
     ],
     "老师端": [
       "openTeacher",
@@ -321,7 +323,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 508
+      "min_cases": 516
     },
     {
       "name": "check_pair",

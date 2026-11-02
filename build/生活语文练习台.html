@@ -32,10 +32,8 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .ghost-btn{border:1.5px solid var(--line2);background:var(--card);border-radius:12px;
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
-/* v32：按钮里带图标（橡皮擦）。线稿图标跟着按钮文字的颜色走，
-   with-ico 把按钮改成横排 flex，图标与文字间距 7px、纵向居中——
-   注意不要直接给 .ghost-btn 加 flex，它还有一堆纯文字按钮。 */
-.ghost-btn.with-ico{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+/* 按钮里的线稿图标（v32 的橡皮擦）：跟着按钮文字的颜色走，纵向居中。
+   v33 起由 .hw-btn 统一提供 flex 排版与 7px 间距，不再需要 with-ico 这个补丁类。 */
 .ico-i{width:17px;height:17px;display:block;flex:none;fill:none;stroke:currentColor;
   stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
@@ -331,16 +329,41 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .wg-box.reveal .wg-ans{opacity:.45}
 .wg-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
   touch-action:none;cursor:crosshair}
-.wg-tools{display:flex;justify-content:center;gap:12px;margin-top:12px;flex-wrap:wrap}
-.wg-foot{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;flex-wrap:wrap}
-.wg-tip{font-size:13px;color:var(--ink3)}
-/* 手写题的主按钮：和跟读页「读完啦，下一个」同一套绿底立体样式 */
-.wg-main{min-height:64px;min-width:min(280px,70vw);padding:0 34px;border:none;border-radius:20px;
-  background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;font-size:21px;font-weight:900;
-  letter-spacing:.02em;touch-action:manipulation;
-  box-shadow:0 5px 0 #1F7A42,0 12px 20px rgba(34,122,67,.22);
-  transition:transform .1s ease,box-shadow .1s ease}
-.wg-main:active{transform:translateY(3px);box-shadow:0 2px 0 #1F7A42,0 6px 12px rgba(34,122,67,.2)}
+/* ---------- 手写操作条 .hw-acts（v33）----------
+   乐园的描写屏、练习里的听写/描红共用这一条：一行三个按钮、等高 56、同圆角 16、
+   同一个橡皮擦图标。之前是**三套**东西——乐园用 .secondary，「擦掉」用 .ghost-btn，
+   主按钮用 64px 的 .wg-main——老师 2026-11-02 截了两张图问「这再看一遍和擦掉的
+   文本框为什么还搞的不一样」。练习页还多一句 13px 小字挂在大绿按钮右边（「写完点
+   这里…」），大按钮被这行字挤得整体偏左，看着是歪的，已改成按钮上方一句居中小字。 */
+.hw-tip{margin:16px 0 0;font-size:14px;font-weight:700;color:var(--ink3);text-align:center}
+.hw-tip + .hw-acts{margin-top:12px}
+.hw-acts{display:flex;align-items:center;justify-content:center;gap:12px;
+  flex-wrap:wrap;margin-top:16px}
+.hw-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:56px;padding:0 22px;border:1.5px solid var(--line2);border-radius:16px;
+  background:#fff;color:var(--ink2);font-size:17px;font-weight:800;white-space:nowrap;
+  touch-action:manipulation;cursor:pointer;
+  /* 和绿色主按钮同一套「实体键」语言：底下垫一道 3px 实色，按下去才沉。
+     白色按钮要是纯平的，挨着绿按钮会像两个不同产品拼起来的。 */
+  box-shadow:0 3px 0 #E9E1CD;
+  transition:transform .08s ease,background .12s ease,box-shadow .08s ease}
+.hw-btn:active{background:#F0EADC;transform:translateY(3px);box-shadow:0 1px 0 #E9E1CD}
+/* 主按钮：绿底白字 + 一道实心投影（不是模糊阴影）。宽度只比旁边那个宽一圈，
+   够显眼了；铺满整行会变成 v31 之前那块「很长很生硬」的板子。 */
+.hw-btn.main{min-width:min(150px,40vw);padding:0 26px;border:none;border-radius:16px;
+  background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;font-size:20px;
+  letter-spacing:.02em;box-shadow:0 4px 0 #1F7A42,0 10px 16px rgba(34,122,67,.18)}
+.hw-btn.main:active{transform:translateY(3px);
+  box-shadow:0 1px 0 #1F7A42,0 5px 10px rgba(34,122,67,.16)}
+/* 手机竖屏：三个按钮要挤进描写弹窗（内宽约 320px）——收字号和左右留白，
+   再不济才折成两行；宁可折行，也不要把「擦掉」挤到看不见。 */
+@media (max-width:520px){
+  .hw-acts{gap:8px;margin-top:14px}
+  .hw-btn{min-height:50px;padding:0 14px;font-size:15px;gap:6px;border-radius:14px}
+  .hw-btn.main{min-width:118px;padding:0 18px;font-size:18px}
+  .hw-tip{font-size:13px;margin-top:12px}
+  .ico-i{width:15px;height:15px}
+}
 
 /* 跟读的大按钮：孩子不认字，按钮要有分量、要明确指向「下一步」 */
 .read-actions{display:flex;flex-direction:column;align-items:center;gap:10px;margin:20px 0 6px}
@@ -897,8 +920,8 @@ tr.tr-builtin td{background:#FBFAF3}
 .so-ghost{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;
   align-items:center;justify-content:center;font-family:"KaiTi","STKaiti","Kaiti SC",serif;
   font-size:min(240px,54vw);line-height:1;color:#DCD4BE}
-.trace-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
-.trace-foot .wg-main{min-width:min(200px,50vw)}
+/* 描写弹窗里的操作条：面板本身 gap 10，再叠 16 就太散 */
+.trace-panel .hw-acts{margin-top:2px}
 .sg-ico{width:34px;height:34px;border-radius:50%;margin-bottom:4px}
 .sg-ico.bub{background:radial-gradient(circle at 32% 28%,#fff 0%,#DCEFFC 40%,#B9DCF6 100%);
   border:2px solid #9CC2E4}
@@ -1254,8 +1277,6 @@ tr.tr-builtin td{background:#FBFAF3}
   .pgc{min-height:52px;font-size:24px}
   .prof-acts button{flex:1 1 100%}
   .big-char{font-size:104px}
-  /* 手写题型：窄屏把提示字收掉，方框尺寸由 wgLayout() 按行宽重算 */
-  .wg-tip{display:none}
   .opt{min-height:104px;font-size:52px}
   /* 词库表窄屏：先砍掉「释义/例句」「图示」两列，剩下的 5 列刚好塞下，不至于横滚到看不见按钮 */
   #tpWord table.grid th:nth-child(4),#tpWord table.grid td:nth-child(4),
@@ -1432,7 +1453,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v32</span>
+    <span id="appVer" class="app-ver">v33</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -1722,11 +1743,12 @@ tr.tr-builtin td{background:#FBFAF3}
       <span id="soGhost" class="so-ghost" hidden></span>
       <canvas id="soInk"></canvas>
     </div>
-    <div class="trace-foot">
-      <button id="traceReplay" class="secondary" type="button">再看一遍</button>
+    <div class="hw-acts">
+      <button id="traceReplay" class="hw-btn" type="button">再看一遍</button>
       <!-- v32：擦掉按钮**一直显示**（原来只在写完才出现，孩子以为写错了没法改）。
-           图标是橡皮擦，文字在「擦掉 / 擦掉重写」之间由 traceButtons() 切。 -->
-      <button id="traceAgain" class="ghost-btn with-ico" type="button" aria-label="擦掉重写">
+           v33：文案固定「擦掉」，和练习里的听写/描红同一个词、同一套 .hw-btn 尺寸 ——
+           原来这里写「擦掉」、练习里写「擦掉重写」、描红又写「擦掉重描」，三种说法同一件事。 -->
+      <button id="traceAgain" class="hw-btn" type="button" aria-label="擦掉">
         <svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <g transform="rotate(-40 12 12)">
             <rect x="4" y="8.5" width="16" height="7" rx="2"/>
@@ -1734,8 +1756,8 @@ tr.tr-builtin td{background:#FBFAF3}
           </g>
         </svg><span id="traceAgainTx">擦掉</span>
       </button>
-      <button id="traceDone" class="wg-main" type="button">写好了</button>
-      <button id="traceNext" class="secondary" type="button" hidden>下一个字</button>
+      <button id="traceDone" class="hw-btn main" type="button">写好了</button>
+      <button id="traceNext" class="hw-btn main" type="button" hidden>下一个字</button>
     </div>
   </div>
 </div>
@@ -3289,7 +3311,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v32';
+var APP_VER = 'v33';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -6671,23 +6693,29 @@ function wgBoxHTML(i, ghost){
   CLOSE('div');
 }
 
+/* 手写操作条（v33）：一行三个按钮，乐园的描写屏用的是同一套 .hw-btn。
+   之前这里分两行——一个 64px 的大绿按钮，右边挂一句 13px 小字，下面再一排小白按钮；
+   大按钮被那行字挤得整体偏左，老师 2026-11-02 截图说「乱七八糟的很丑」。
+   现在说明单独一行居中（读起来像写字区的提示），按钮等高同圆角。 */
+function hwFootHTML(mainTxt, tip){
+  return (tip ? '<p class="hw-tip">' + esc(tip) + '</p>' : '') +
+    '<div class="hw-acts">' +
+      '<button type="button" class="hw-btn" data-wg-act="say">再听一遍</button>' +
+      '<button type="button" class="hw-btn" data-wg-act="clear">' + ICO_ERASE + '擦掉</button>' +
+      '<button type="button" class="hw-btn main" data-wg-act="done">' + esc(mainTxt) + '</button>' +
+    CLOSE('div');
+}
+
 /* ------------------------- 渲染 ------------------------- */
 function renderDictation(q, head){
   var word = wgAnswerOf(q), i, boxes = '';
   for (i = 0; i < word.length && i < 4; i++) boxes += wgBoxHTML(i, '');
   /* 说明不在这块里再写一遍：顶部 q-ask 已经是 TYPE_DESC 那句，重复两遍孩子只会更乱。
-     顺序是「方框 → 写好了 → 擦掉/再听」：主按钮贴着写字区，辅助操作放它下面。 */
+     顺序是「方框 → 一句提示 → 一排按钮」：擦掉和再听和「写好了」并排，
+     主按钮在最后一个（乐园也是这个顺序，两个界面手指记住的位置一样）。 */
   setHTML($('stage'), head +
     '<div class="wg-row" id="wgRow">' + boxes + CLOSE('div') +
-    '<div class="wg-foot" id="wgFoot">' +
-      '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
-      '<span class="wg-tip">写完点这里，我们一起看对不对</span>' +
-    CLOSE('div') +
-    '<div class="wg-tools">' +
-      '<button type="button" class="ghost-btn" data-wg-act="say" id="wgPlay">再听一遍</button>' +
-      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
-        ICO_ERASE + '擦掉重写</button>' +
-    CLOSE('div'));
+    '<div id="wgFoot">' + hwFootHTML('写好了', '写完点这里，我们一起看对不对') + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -6697,14 +6725,7 @@ function renderDictation(q, head){
 function renderTrace(q, head){
   setHTML($('stage'), head +
     '<div class="wg-row" id="wgRow">' + wgBoxHTML(0, q.target.w) + CLOSE('div') +
-    '<div class="wg-foot" id="wgFoot">' +
-      '<button type="button" class="wg-main" data-wg-act="done">描完了</button>' +
-    CLOSE('div') +
-    '<div class="wg-tools">' +
-      '<button type="button" class="ghost-btn" data-wg-act="say">念一遍这个字</button>' +
-      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
-        ICO_ERASE + '擦掉重描</button>' +
-    CLOSE('div'));
+    '<div id="wgFoot">' + hwFootHTML('写好了', '') + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -6748,12 +6769,7 @@ function wgHideAns(){
   }
 }
 function wgFootWrite(){
-  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
-    '<span class="wg-tip">慢一点，一笔一笔写</span>');
-}
-function wgToolsShow(on){
-  var el = document.querySelector('#stage .wg-tools');
-  if (el) el.hidden = !on;
+  setHTML($('wgFoot'), hwFootHTML('写好了', '慢一点，一笔一笔写'));
 }
 function wgDone(){
   var q = curQ();
@@ -6763,10 +6779,13 @@ function wgDone(){
   /* 听写：这一下只「亮答案」，不判分 —— 判分要靠人看一眼 */
   STATE.quiz.checked = true;
   wgReveal();
-  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="ok">写对了</button>' +
-    '<button type="button" class="ghost-btn" data-wg-act="miss">没写好，重写</button>');
-  /* 「擦掉重写」在这一步收起来：下面已经有「没写好，重写」了，两个重写并排会点错 */
-  wgToolsShow(false);
+  /* 「擦掉」「再听一遍」在这一步收起来：下面已经有「没写好，重写」了，
+     两个重写并排会点错（v33 起整条一起换掉，不再单独藏那一排）。 */
+  setHTML($('wgFoot'),
+    '<div class="hw-acts">' +
+      '<button type="button" class="hw-btn main" data-wg-act="ok">写对了</button>' +
+      '<button type="button" class="hw-btn" data-wg-act="miss">没写好，重写</button>' +
+    CLOSE('div'));
   sfxPop();
   toast('对照一下，写对了吗');
 }
@@ -6780,8 +6799,9 @@ function wgMiss(){
   sfxNo();
   wgClear();
   wgHideAns();
+  /* 整条操作条一起重建：v33 起「擦掉/再听」和「写好了」是同一条里的三个按钮，
+     不再有另外一排需要单独显示回来。 */
   wgFootWrite();
-  wgToolsShow(true);
   STATE.quiz.checked = false;
   toast('再写一次，慢慢来');
   /* 等错误音过去再念，两个声音不叠在一起 */
@@ -7401,14 +7421,14 @@ function traceLayout(){
 
 function traceButtons(state){
   var replay = $('traceReplay'), done = $('traceDone'), again = $('traceAgain'),
-      next = $('traceNext'), tx = $('traceAgainTx');
+      next = $('traceNext');
   if (!replay) return;
   replay.hidden = false;
   done.hidden = (state === 'done');
   /* v32：「擦掉」随时可用（老师 2026-11-02：「没有擦掉，只有写完才能擦掉」）。
-     写完那一刻文案改成「擦掉重写」，其余时候就是「擦掉」。 */
+     v33：文案就固定是「擦掉」——之前写完那一刻会变成「擦掉重写」，而练习页写
+     「擦掉重写」、描红写「擦掉重描」，同一件事三种说法，老师截图问过「为什么不一样」。 */
   if (again) again.hidden = false;
-  if (tx) tx.textContent = (state === 'done') ? '擦掉重写' : '擦掉';
   if (next) next.hidden = (state !== 'done');
 }
 

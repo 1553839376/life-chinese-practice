@@ -557,11 +557,11 @@ def gate_static(html):
         and 'soWire();' in html)
     # v32：描写屏的「擦掉」一直可用 + 带橡皮擦图标。老师 2026-11-02
     # 「学生认字乐园里的字的描红，没有擦掉，只有写完才能擦掉，我建议放一个橡皮擦的按钮」。
+    # v33：文案固定「擦掉」—— 之前写完会变成「擦掉重写」，练习里又是另一种说法。
     _tb = html.split('function traceButtons')[1].split('function soPlay')[0] \
         if 'function traceButtons' in html else ''
-    rec('G1', '描写屏「擦掉」随时可用（traceButtons 里 again 不随状态隐藏，文案在擦掉/擦掉重写之间切）',
-        bool(_tb) and 'again.hidden = false' in _tb and 'traceAgainTx' in _tb
-        and "'擦掉重写'" in _tb and "'擦掉'" in _tb,
+    rec('G1', '描写屏「擦掉」随时可用且文案固定（traceButtons 里 again 不随状态隐藏、不改字）',
+        bool(_tb) and 'again.hidden = false' in _tb and 'textContent' not in _tb,
         '' if _tb else '找不到 traceButtons')
     # 笔迹层是同一块 canvas + 同一份 strokes 数组：换字不清就会把上一字的字
     # 「带」到新字上（老师 2026-11-02 报的 bug）。清屏必须在改字之前。
@@ -571,10 +571,32 @@ def gate_static(html):
         bool(_ot) and 'traceClearInk();' in _ot
         and _ot.find('traceClearInk();') < _ot.find("$('traceChar')"),
         '' if _ot else '找不到 openTrace')
-    rec('G1', '橡皮擦图标：#traceAgain 与两个手写题按钮都用 .ico-i（ICO_ERASE 定义在 p5）',
-        'var ICO_ERASE' in html and 'id="traceAgain" class="ghost-btn with-ico"' in html
-        and html.count('ICO_ERASE + \'擦掉') >= 2 and html.count('class="ico-i"') >= 2
-        and '.ico-i{width:17px' in html and '.ghost-btn.with-ico{' in html)
+    # v33：乐园描写屏和练习里的听写/描红共用一套 .hw-btn。老师 2026-11-02 截了两张图：
+    # 「乱七八糟的很丑」「这再看一遍和擦掉的文本框为什么还搞的不一样」——
+    # 根子是三套按钮（.secondary / .ghost-btn / 64px 的 .wg-main）同时用在两个界面上。
+    _hw = html.split('.hw-btn{')[1].split('}')[0] if '.hw-btn{' in html else ''
+    _hwmain = html.split('.hw-btn.main{')[1].split('}')[0] if '.hw-btn.main{' in html else ''
+    rec('G1', '手写操作条只有一套按钮（.hw-btn 等高 56 / 圆角 16 / 垫 3px 实色，主按钮 .main 也 16）',
+        bool(_hw) and bool(_hwmain) and 'min-height:56px' in _hw
+        and 'border-radius:16px' in _hw and 'border-radius:16px' in _hwmain
+        and 'box-shadow:0 3px 0' in _hw,
+        (_hw.replace('\n', ' ')[:110] if _hw else '找不到 .hw-btn'))
+    # 判「旧类名有没有被用起来」，不去判注释——注释里写着历史原因，是故意留的
+    rec('G1', '旧的三套手写按钮已清掉（没有 .wg-main / .wg-tools / .wg-tip / .trace-foot）',
+        all(k not in html for k in ['class="wg-main"', '.wg-main{', 'class="wg-tools"',
+                                   '.wg-tools{', 'class="wg-tip"', '.wg-tip{',
+                                   '.trace-foot{']))
+    rec('G1', '「擦掉」三处同一个词（没有再出现「擦掉重写 / 擦掉重描」）',
+        "ICO_ERASE + '擦掉</button>'" in html
+        and "'擦掉重写'" not in html and '>擦掉重写<' not in html
+        and "'擦掉重描'" not in html and '>擦掉重描<' not in html
+        and '<span id="traceAgainTx">擦掉</span>' in html)
+    rec('G1', '橡皮擦图标：乐园 #traceAgain 与两个手写题按钮都用 .ico-i（ICO_ERASE 在 p5）',
+        'var ICO_ERASE' in html and 'id="traceAgain" class="hw-btn"' in html
+        and html.count('ICO_ERASE') >= 2 and html.count('class="ico-i"') >= 2
+        and '.ico-i{width:17px' in html)
+    rec('G1', '练习页那句说明单独一行（.hw-tip），不和主按钮挤在同一行',
+        '<p class="hw-tip">' in html and '.hw-tip + .hw-acts{' in html)
     # 描写页没有学生档案、也没有手写识别，所以不能判分、不能写学习记录。
     # 一旦有人「顺手」加个 gradeAnswer / saveSnap，进度就会出现凭空的「已掌握」。
     tdbody = html.split('function traceDoneTap')[1].split('function traceAgainTap')[0] \

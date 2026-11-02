@@ -1196,11 +1196,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '答案一开始不写在页面上（要先自己写）');
   ok(!d.querySelector('#stage .wg-box.reveal'), '一开始不亮答案');
   /* v32：手写题的「擦掉」前面加一个橡皮擦图标 —— 老师 2026-11-02
-     「学生练习里的描红和听写都最好把擦掉前面加一个橡皮擦的标志便于理解」 */
+     「学生练习里的描红和听写都最好把擦掉前面加一个橡皮擦的标志便于理解」
+     v33：图标、文案、按钮尺寸和乐园描写屏统一（老师截图问「为什么还搞的不一样」） */
   ok(!!d.querySelector('#stage [data-wg-act="clear"] svg.ico-i'),
-    '听写的「擦掉重写」前面有橡皮擦图标');
-  ok(/擦掉重写/.test(d.querySelector('#stage [data-wg-act="clear"]').textContent),
-    '图标不顶掉文字，仍写着「擦掉重写」');
+    '听写的「擦掉」前面有橡皮擦图标');
+  ok(d.querySelector('#stage [data-wg-act="clear"]').textContent.trim() === '擦掉',
+    '图标不顶掉文字，文字就写「擦掉」：' +
+    d.querySelector('#stage [data-wg-act="clear"]').textContent.trim());
+  /* 一行三个按钮：再听 / 擦掉 / 写好了。v32 之前是「大绿按钮 + 右边一句小字」一行、
+     下面再一排小白按钮一行，老师 2026-11-02 截图说「乱七八糟的很丑」。 */
+  const v33_row = d.querySelector('#stage .hw-acts');
+  ok(!!v33_row && v33_row.querySelectorAll('.hw-btn').length === 3,
+    '三个操作在同一行：' + (v33_row ? v33_row.querySelectorAll('.hw-btn').length : '没有 .hw-acts'));
+  ok(!!v33_row && !v33_row.querySelector('.hw-tip'),
+    '那句「写完点这里…」不在按钮行里挂着（会把这行挤歪），单独成行');
+  ok(!!d.querySelector('#stage .hw-tip'), '说明单独一行居中显示');
+  ok(!d.querySelector('#stage .wg-tools') && !d.querySelector('#stage .wg-main'),
+    '旧的两排按钮（.wg-tools / .wg-main）已经没有了');
 
   /* 没写就点「写好了」：只提醒，不判分、不记错 */
   click(d.querySelector('#stage [data-wg-act="done"]'));
@@ -1321,8 +1333,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const v25_gch = v25_ghost.textContent;
   ok(v25_gch === w.STATE.quiz.qs[0].target.w, '底字就是目标字：' + v25_gch);
   ok(!!d.querySelector('#stage [data-wg-act="clear"] svg.ico-i') &&
-     /擦掉重描/.test(d.querySelector('#stage [data-wg-act="clear"]').textContent),
-    '描红的「擦掉重描」同样带橡皮擦图标');
+     d.querySelector('#stage [data-wg-act="clear"]').textContent.trim() === '擦掉',
+    '描红的「擦掉」同一个图标、同一个词（原来叫「擦掉重描」）');
+  /* v33：描红的主按钮也改叫「写好了」—— 和乐园描写屏一致，别再让孩子记两个词 */
+  ok(d.querySelector('#stage [data-wg-act="done"]').textContent.trim() === '写好了',
+    '描红的主按钮和乐园写的一样：' + d.querySelector('#stage [data-wg-act="done"]').textContent.trim());
   const v25_b4 = w.STATE.logs['听写生|' + v25_gch] || { alone: 0, hinted: 0, n: 0 };
   const v25_a0 = v25_b4.alone || 0, v25_h0 = v25_b4.hinted || 0;
   w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }, { x: 20, y: 20 }]);
@@ -1436,6 +1451,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('traceAgainTx').textContent === '擦掉',
     '没写完时按钮写「擦掉」：' + d.getElementById('traceAgainTx').textContent);
   ok(!!d.querySelector('#traceAgain svg.ico-i'), '「擦掉」按钮前有橡皮擦图标');
+  /* v33：乐园这一排和练习里的听写/描红是同一套 .hw-btn（老师 2026-11-02
+     「这再看一遍和擦掉的文本框为什么还搞的不一样」）——同样一行三个、一个主按钮 */
+  const v33_trow = d.querySelector('#traceMask .hw-acts');
+  const v33_tvis = v33_trow ? Array.from(v33_trow.querySelectorAll('.hw-btn'))
+    .filter(b => !b.hidden) : [];
+  ok(v33_tvis.length === 3, '描写屏一行三个按钮（第 4 个「下一个字」写完才出）：' +
+    v33_tvis.length);
+  ok(!!v33_trow && v33_trow.querySelectorAll('.hw-btn.main').length === 2,
+    '描写屏里「写好了 / 下一个字」共用一个主按钮样式（同一时刻只显示一个）');
+  ok(!d.querySelector('#traceMask .ghost-btn') && !d.querySelector('#traceMask .secondary'),
+    '描写屏不再混用 .ghost-btn / .secondary（两套边和圆角）');
   /* jsdom 量不到宽高，笔迹层不会被建出来：这里手动补一个，测按钮行为 */
   if (!w.TRACE.box) w.TRACE.box = { cv: null, ctx: null, strokes: [], cur: null,
     w: 0, h: 0, free: true };
@@ -1447,12 +1473,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(40);
   ok(w.TRACE.state === 'done', '有笔迹再点「写好了」就完成');
   ok(d.getElementById('traceAgain').hidden === false && d.getElementById('traceNext').hidden === false,
-    '写完给「擦掉重写」和「下一个字」');
-  ok(d.getElementById('traceAgainTx').textContent === '擦掉重写',
-    '写完文案改成「擦掉重写」：' + d.getElementById('traceAgainTx').textContent);
+    '写完给「擦掉」和「下一个字」');
+  ok(d.getElementById('traceAgainTx').textContent === '擦掉',
+    '写完文案**不变**，还是「擦掉」：' + d.getElementById('traceAgainTx').textContent);
   click(d.getElementById('traceAgain'));
   await wait(40);
-  ok(w.TRACE.box.strokes.length === 0, '「擦掉重写」把笔迹清空');
+  ok(w.TRACE.box.strokes.length === 0, '「擦掉」把笔迹清空');
   /* v32 修 bug：在一个字上写了没擦，点开另一个字必须是一张白纸。
      老师 2026-11-02：「我在一个汉字描红写了字，没擦掉，这个就会出现在我点开另一个汉字的画布」。
      根因是笔迹层一直是同一块 canvas + 同一份 strokes 数组，openTrace 没清就沿用上一字。 */
@@ -1462,7 +1488,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.TRACE.box.strokes.length === 0, '换一个字，上一字的笔迹被清空（v32）');
   ok(d.getElementById('traceChar').textContent === '林', '面板换成新的字：' +
     d.getElementById('traceChar').textContent);
-  ok(d.getElementById('traceAgainTx').textContent === '擦掉', '换字后按钮回到「擦掉」');
+  ok(d.getElementById('traceAgainTx').textContent === '擦掉', '换字后文案仍是「擦掉」');
   click(d.getElementById('traceAgain'));
   await wait(40);
   ok(/还没有字/.test(d.getElementById('traceTip').textContent),

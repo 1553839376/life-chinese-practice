@@ -1222,23 +1222,29 @@ function wgBoxHTML(i, ghost){
   CLOSE('div');
 }
 
+/* 手写操作条（v33）：一行三个按钮，乐园的描写屏用的是同一套 .hw-btn。
+   之前这里分两行——一个 64px 的大绿按钮，右边挂一句 13px 小字，下面再一排小白按钮；
+   大按钮被那行字挤得整体偏左，老师 2026-11-02 截图说「乱七八糟的很丑」。
+   现在说明单独一行居中（读起来像写字区的提示），按钮等高同圆角。 */
+function hwFootHTML(mainTxt, tip){
+  return (tip ? '<p class="hw-tip">' + esc(tip) + '</p>' : '') +
+    '<div class="hw-acts">' +
+      '<button type="button" class="hw-btn" data-wg-act="say">再听一遍</button>' +
+      '<button type="button" class="hw-btn" data-wg-act="clear">' + ICO_ERASE + '擦掉</button>' +
+      '<button type="button" class="hw-btn main" data-wg-act="done">' + esc(mainTxt) + '</button>' +
+    CLOSE('div');
+}
+
 /* ------------------------- 渲染 ------------------------- */
 function renderDictation(q, head){
   var word = wgAnswerOf(q), i, boxes = '';
   for (i = 0; i < word.length && i < 4; i++) boxes += wgBoxHTML(i, '');
   /* 说明不在这块里再写一遍：顶部 q-ask 已经是 TYPE_DESC 那句，重复两遍孩子只会更乱。
-     顺序是「方框 → 写好了 → 擦掉/再听」：主按钮贴着写字区，辅助操作放它下面。 */
+     顺序是「方框 → 一句提示 → 一排按钮」：擦掉和再听和「写好了」并排，
+     主按钮在最后一个（乐园也是这个顺序，两个界面手指记住的位置一样）。 */
   setHTML($('stage'), head +
     '<div class="wg-row" id="wgRow">' + boxes + CLOSE('div') +
-    '<div class="wg-foot" id="wgFoot">' +
-      '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
-      '<span class="wg-tip">写完点这里，我们一起看对不对</span>' +
-    CLOSE('div') +
-    '<div class="wg-tools">' +
-      '<button type="button" class="ghost-btn" data-wg-act="say" id="wgPlay">再听一遍</button>' +
-      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
-        ICO_ERASE + '擦掉重写</button>' +
-    CLOSE('div'));
+    '<div id="wgFoot">' + hwFootHTML('写好了', '写完点这里，我们一起看对不对') + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -1248,14 +1254,7 @@ function renderDictation(q, head){
 function renderTrace(q, head){
   setHTML($('stage'), head +
     '<div class="wg-row" id="wgRow">' + wgBoxHTML(0, q.target.w) + CLOSE('div') +
-    '<div class="wg-foot" id="wgFoot">' +
-      '<button type="button" class="wg-main" data-wg-act="done">描完了</button>' +
-    CLOSE('div') +
-    '<div class="wg-tools">' +
-      '<button type="button" class="ghost-btn" data-wg-act="say">念一遍这个字</button>' +
-      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
-        ICO_ERASE + '擦掉重描</button>' +
-    CLOSE('div'));
+    '<div id="wgFoot">' + hwFootHTML('写好了', '') + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -1299,12 +1298,7 @@ function wgHideAns(){
   }
 }
 function wgFootWrite(){
-  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="done">写好了</button>' +
-    '<span class="wg-tip">慢一点，一笔一笔写</span>');
-}
-function wgToolsShow(on){
-  var el = document.querySelector('#stage .wg-tools');
-  if (el) el.hidden = !on;
+  setHTML($('wgFoot'), hwFootHTML('写好了', '慢一点，一笔一笔写'));
 }
 function wgDone(){
   var q = curQ();
@@ -1314,10 +1308,13 @@ function wgDone(){
   /* 听写：这一下只「亮答案」，不判分 —— 判分要靠人看一眼 */
   STATE.quiz.checked = true;
   wgReveal();
-  setHTML($('wgFoot'), '<button type="button" class="wg-main" data-wg-act="ok">写对了</button>' +
-    '<button type="button" class="ghost-btn" data-wg-act="miss">没写好，重写</button>');
-  /* 「擦掉重写」在这一步收起来：下面已经有「没写好，重写」了，两个重写并排会点错 */
-  wgToolsShow(false);
+  /* 「擦掉」「再听一遍」在这一步收起来：下面已经有「没写好，重写」了，
+     两个重写并排会点错（v33 起整条一起换掉，不再单独藏那一排）。 */
+  setHTML($('wgFoot'),
+    '<div class="hw-acts">' +
+      '<button type="button" class="hw-btn main" data-wg-act="ok">写对了</button>' +
+      '<button type="button" class="hw-btn" data-wg-act="miss">没写好，重写</button>' +
+    CLOSE('div'));
   sfxPop();
   toast('对照一下，写对了吗');
 }
@@ -1331,8 +1328,9 @@ function wgMiss(){
   sfxNo();
   wgClear();
   wgHideAns();
+  /* 整条操作条一起重建：v33 起「擦掉/再听」和「写好了」是同一条里的三个按钮，
+     不再有另外一排需要单独显示回来。 */
   wgFootWrite();
-  wgToolsShow(true);
   STATE.quiz.checked = false;
   toast('再写一次，慢慢来');
   /* 等错误音过去再念，两个声音不叠在一起 */
