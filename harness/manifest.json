@@ -238,7 +238,8 @@
       "tpProf",
       "profPickGrid",
       "profPickEmpty",
-      "profPick"
+      "profPick",
+      "traceAgainTx"
     ],
     "笔顺描写": [
       "STROKE_PACK",
@@ -271,7 +272,8 @@
       "traceNextTap",
       "traceClearInk",
       "SO_START_MS",
-      "SO_FRAMES"
+      "SO_FRAMES",
+      "ICO_ERASE"
     ]
   },
   "assets": {
@@ -319,7 +321,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 497
+      "min_cases": 508
     },
     {
       "name": "check_pair",

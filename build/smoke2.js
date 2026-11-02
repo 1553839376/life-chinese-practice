@@ -1195,6 +1195,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(Array.from(d.querySelectorAll('#stage .wg-ans')).every(x => !x.textContent),
     '答案一开始不写在页面上（要先自己写）');
   ok(!d.querySelector('#stage .wg-box.reveal'), '一开始不亮答案');
+  /* v32：手写题的「擦掉」前面加一个橡皮擦图标 —— 老师 2026-11-02
+     「学生练习里的描红和听写都最好把擦掉前面加一个橡皮擦的标志便于理解」 */
+  ok(!!d.querySelector('#stage [data-wg-act="clear"] svg.ico-i'),
+    '听写的「擦掉重写」前面有橡皮擦图标');
+  ok(/擦掉重写/.test(d.querySelector('#stage [data-wg-act="clear"]').textContent),
+    '图标不顶掉文字，仍写着「擦掉重写」');
 
   /* 没写就点「写好了」：只提醒，不判分、不记错 */
   click(d.querySelector('#stage [data-wg-act="done"]'));
@@ -1314,6 +1320,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelectorAll('#stage .wg-box').length === 1, '描红一次只描一个字');
   const v25_gch = v25_ghost.textContent;
   ok(v25_gch === w.STATE.quiz.qs[0].target.w, '底字就是目标字：' + v25_gch);
+  ok(!!d.querySelector('#stage [data-wg-act="clear"] svg.ico-i') &&
+     /擦掉重描/.test(d.querySelector('#stage [data-wg-act="clear"]').textContent),
+    '描红的「擦掉重描」同样带橡皮擦图标');
   const v25_b4 = w.STATE.logs['听写生|' + v25_gch] || { alone: 0, hinted: 0, n: 0 };
   const v25_a0 = v25_b4.alone || 0, v25_h0 = v25_b4.hinted || 0;
   w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }, { x: 20, y: 20 }]);
@@ -1421,6 +1430,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('traceReplay').hidden === false, '有「再看一遍」');
   ok(d.getElementById('traceDone').hidden === false, '有「写好了」');
   ok(d.getElementById('traceNext').hidden === true, '还没写完时不出「下一个字」');
+  /* v32：擦掉按钮不再等「写好了」才出现 —— 老师 2026-11-02
+     「学生认字乐园里的字的描红，没有擦掉，只有写完才能擦掉，我建议放一个橡皮擦的按钮」 */
+  ok(d.getElementById('traceAgain').hidden === false, '还没写完也能点「擦掉」');
+  ok(d.getElementById('traceAgainTx').textContent === '擦掉',
+    '没写完时按钮写「擦掉」：' + d.getElementById('traceAgainTx').textContent);
+  ok(!!d.querySelector('#traceAgain svg.ico-i'), '「擦掉」按钮前有橡皮擦图标');
   /* jsdom 量不到宽高，笔迹层不会被建出来：这里手动补一个，测按钮行为 */
   if (!w.TRACE.box) w.TRACE.box = { cv: null, ctx: null, strokes: [], cur: null,
     w: 0, h: 0, free: true };
@@ -1433,9 +1448,26 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.TRACE.state === 'done', '有笔迹再点「写好了」就完成');
   ok(d.getElementById('traceAgain').hidden === false && d.getElementById('traceNext').hidden === false,
     '写完给「擦掉重写」和「下一个字」');
+  ok(d.getElementById('traceAgainTx').textContent === '擦掉重写',
+    '写完文案改成「擦掉重写」：' + d.getElementById('traceAgainTx').textContent);
   click(d.getElementById('traceAgain'));
   await wait(40);
   ok(w.TRACE.box.strokes.length === 0, '「擦掉重写」把笔迹清空');
+  /* v32 修 bug：在一个字上写了没擦，点开另一个字必须是一张白纸。
+     老师 2026-11-02：「我在一个汉字描红写了字，没擦掉，这个就会出现在我点开另一个汉字的画布」。
+     根因是笔迹层一直是同一块 canvas + 同一份 strokes 数组，openTrace 没清就沿用上一字。 */
+  w.TRACE.box.strokes.push([{ x: 3, y: 3 }, { x: 40, y: 40 }]);
+  w.openTrace({ w: '林', p: 'lín', words: '', on: true });
+  await wait(60);
+  ok(w.TRACE.box.strokes.length === 0, '换一个字，上一字的笔迹被清空（v32）');
+  ok(d.getElementById('traceChar').textContent === '林', '面板换成新的字：' +
+    d.getElementById('traceChar').textContent);
+  ok(d.getElementById('traceAgainTx').textContent === '擦掉', '换字后按钮回到「擦掉」');
+  click(d.getElementById('traceAgain'));
+  await wait(40);
+  ok(/还没有字/.test(d.getElementById('traceTip').textContent),
+    '空格子点「擦掉」不说「擦掉了」，改成「还没有字」：' +
+    d.getElementById('traceTip').textContent);
   click(d.getElementById('traceClose'));
   await wait(40);
   ok(d.getElementById('traceMask').hidden === true, '关闭描写面板');

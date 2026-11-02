@@ -108,7 +108,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v31</span>
+    <span id="appVer" class="app-ver">v32</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -400,7 +400,16 @@
     </div>
     <div class="trace-foot">
       <button id="traceReplay" class="secondary" type="button">再看一遍</button>
-      <button id="traceAgain" class="ghost-btn" type="button" hidden>擦掉重写</button>
+      <!-- v32：擦掉按钮**一直显示**（原来只在写完才出现，孩子以为写错了没法改）。
+           图标是橡皮擦，文字在「擦掉 / 擦掉重写」之间由 traceButtons() 切。 -->
+      <button id="traceAgain" class="ghost-btn with-ico" type="button" aria-label="擦掉重写">
+        <svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <g transform="rotate(-40 12 12)">
+            <rect x="4" y="8.5" width="16" height="7" rx="2"/>
+            <path d="M9.5 8.5v7"/>
+          </g>
+        </svg><span id="traceAgainTx">擦掉</span>
+      </button>
       <button id="traceDone" class="wg-main" type="button">写好了</button>
       <button id="traceNext" class="secondary" type="button" hidden>下一个字</button>
     </div>

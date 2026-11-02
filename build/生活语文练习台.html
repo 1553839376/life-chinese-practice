@@ -32,6 +32,12 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .ghost-btn{border:1.5px solid var(--line2);background:var(--card);border-radius:12px;
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
+/* v32：按钮里带图标（橡皮擦）。线稿图标跟着按钮文字的颜色走，
+   with-ico 把按钮改成横排 flex，图标与文字间距 7px、纵向居中——
+   注意不要直接给 .ghost-btn 加 flex，它还有一堆纯文字按钮。 */
+.ghost-btn.with-ico{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.ico-i{width:17px;height:17px;display:block;flex:none;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
 /* 选人卡（v30 重排）：原来卡片里塞着「9 个题型」的完整清单，折成五行走廊，
    一个字都没对上——孩子只需要认脸，老师只需要知道「他能不能练」。
@@ -1426,7 +1432,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v31</span>
+    <span id="appVer" class="app-ver">v32</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -1718,7 +1724,16 @@ tr.tr-builtin td{background:#FBFAF3}
     </div>
     <div class="trace-foot">
       <button id="traceReplay" class="secondary" type="button">再看一遍</button>
-      <button id="traceAgain" class="ghost-btn" type="button" hidden>擦掉重写</button>
+      <!-- v32：擦掉按钮**一直显示**（原来只在写完才出现，孩子以为写错了没法改）。
+           图标是橡皮擦，文字在「擦掉 / 擦掉重写」之间由 traceButtons() 切。 -->
+      <button id="traceAgain" class="ghost-btn with-ico" type="button" aria-label="擦掉重写">
+        <svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <g transform="rotate(-40 12 12)">
+            <rect x="4" y="8.5" width="16" height="7" rx="2"/>
+            <path d="M9.5 8.5v7"/>
+          </g>
+        </svg><span id="traceAgainTx">擦掉</span>
+      </button>
       <button id="traceDone" class="wg-main" type="button">写好了</button>
       <button id="traceNext" class="secondary" type="button" hidden>下一个字</button>
     </div>
@@ -3274,7 +3289,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v31';
+var APP_VER = 'v32';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -5449,6 +5464,15 @@ function copyArr(a){
   return out;
 }
 
+/* v32：手写题的「擦掉」前面配一个橡皮擦图标（老师 2026-11-02：「把擦掉前面加一个橡皮擦的标志
+   便于理解」）。和 `#traceAgain` 里那份是同一个图形——改一处要同步另一处（G1 有护栏盯着）。
+   画法：一个倾 40° 的圆角矩形当橡皮，中间一道竖线当套箍；线稿风格，跟着按钮文字颜色走。 */
+var ICO_ERASE = '<svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+  '<g transform="rotate(-40 12 12)">' +
+    '<rect x="4" y="8.5" width="16" height="7" rx="2"/>' +
+    '<path d="M9.5 8.5v7"/>' +
+  '</g></svg>';
+
 /* ------------------------- 视图切换 ------------------------- */
 /* v30：每屏记住自己滚到哪儿，回来时原样回去。
    老师原话：「练完回到乐园会回到最上面，没有保持刚刚那个汉字的位置，
@@ -6661,7 +6685,8 @@ function renderDictation(q, head){
     CLOSE('div') +
     '<div class="wg-tools">' +
       '<button type="button" class="ghost-btn" data-wg-act="say" id="wgPlay">再听一遍</button>' +
-      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重写</button>' +
+      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
+        ICO_ERASE + '擦掉重写</button>' +
     CLOSE('div'));
   resetQState();
   bindStage();
@@ -6677,7 +6702,8 @@ function renderTrace(q, head){
     CLOSE('div') +
     '<div class="wg-tools">' +
       '<button type="button" class="ghost-btn" data-wg-act="say">念一遍这个字</button>' +
-      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重描</button>' +
+      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
+        ICO_ERASE + '擦掉重描</button>' +
     CLOSE('div'));
   resetQState();
   bindStage();
@@ -7322,6 +7348,10 @@ function openTrace(c){
   TRACE.c = c;
   TRACE.state = 'demo';
   TRACE.done = false;
+  /* v32 修：换字必须先把上一字的笔迹清掉。笔迹层是同一个 canvas、同一份 strokes 数组，
+     不清就会「上一个人写的字跟着跑到这个字上面」（老师 2026-11-02 报的就是这个）。
+     **要在改字之前清**：清完重绘的是空白，随后 soPlay 重画灰底，不会闪出上一字的残影。 */
+  traceClearInk();
   $('traceChar').textContent = c.w;
   $('tracePy').textContent = c.p || '';
   $('traceMask').hidden = false;
@@ -7371,11 +7401,14 @@ function traceLayout(){
 
 function traceButtons(state){
   var replay = $('traceReplay'), done = $('traceDone'), again = $('traceAgain'),
-      next = $('traceNext');
+      next = $('traceNext'), tx = $('traceAgainTx');
   if (!replay) return;
   replay.hidden = false;
   done.hidden = (state === 'done');
-  again.hidden = (state !== 'done');
+  /* v32：「擦掉」随时可用（老师 2026-11-02：「没有擦掉，只有写完才能擦掉」）。
+     写完那一刻文案改成「擦掉重写」，其余时候就是「擦掉」。 */
+  if (again) again.hidden = false;
+  if (tx) tx.textContent = (state === 'done') ? '擦掉重写' : '擦掉';
   if (next) next.hidden = (state !== 'done');
 }
 
@@ -7465,9 +7498,16 @@ function traceDoneTap(){
   traceButtons('done');
 }
 function traceAgainTap(){
+  /* 空格子点「擦掉」别说「擦掉了」——那里本来就没东西可擦，一句「直接写就好」更对 */
+  var had = !!(TRACE.box && TRACE.box.strokes && TRACE.box.strokes.length);
   TRACE.state = 'trace';
   traceClearInk();
-  setHTML($('traceTip'), '擦掉了，慢慢再来一遍。');
+  if (had){
+    setHTML($('traceTip'), '擦掉了，慢慢再来一遍。');
+  } else {
+    sfxTap();
+    setHTML($('traceTip'), '格子里还没有字，直接写就好。');
+  }
   traceButtons('trace');
 }
 function traceNextTap(){

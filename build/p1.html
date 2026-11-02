@@ -32,6 +32,12 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 .ghost-btn{border:1.5px solid var(--line2);background:var(--card);border-radius:12px;
   padding:10px 16px;font-size:15px;font-weight:700;color:var(--ink2);min-height:44px}
 .ghost-btn:active{background:#F0EADC}
+/* v32：按钮里带图标（橡皮擦）。线稿图标跟着按钮文字的颜色走，
+   with-ico 把按钮改成横排 flex，图标与文字间距 7px、纵向居中——
+   注意不要直接给 .ghost-btn 加 flex，它还有一堆纯文字按钮。 */
+.ghost-btn.with-ico{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.ico-i{width:17px;height:17px;display:block;flex:none;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pick-hint{margin:14px 2px 16px;font-size:17px;color:var(--ink2)}
 /* 选人卡（v30 重排）：原来卡片里塞着「9 个题型」的完整清单，折成五行走廊，
    一个字都没对上——孩子只需要认脸，老师只需要知道「他能不能练」。

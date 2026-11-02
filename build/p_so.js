@@ -188,6 +188,10 @@ function openTrace(c){
   TRACE.c = c;
   TRACE.state = 'demo';
   TRACE.done = false;
+  /* v32 修：换字必须先把上一字的笔迹清掉。笔迹层是同一个 canvas、同一份 strokes 数组，
+     不清就会「上一个人写的字跟着跑到这个字上面」（老师 2026-11-02 报的就是这个）。
+     **要在改字之前清**：清完重绘的是空白，随后 soPlay 重画灰底，不会闪出上一字的残影。 */
+  traceClearInk();
   $('traceChar').textContent = c.w;
   $('tracePy').textContent = c.p || '';
   $('traceMask').hidden = false;
@@ -237,11 +241,14 @@ function traceLayout(){
 
 function traceButtons(state){
   var replay = $('traceReplay'), done = $('traceDone'), again = $('traceAgain'),
-      next = $('traceNext');
+      next = $('traceNext'), tx = $('traceAgainTx');
   if (!replay) return;
   replay.hidden = false;
   done.hidden = (state === 'done');
-  again.hidden = (state !== 'done');
+  /* v32：「擦掉」随时可用（老师 2026-11-02：「没有擦掉，只有写完才能擦掉」）。
+     写完那一刻文案改成「擦掉重写」，其余时候就是「擦掉」。 */
+  if (again) again.hidden = false;
+  if (tx) tx.textContent = (state === 'done') ? '擦掉重写' : '擦掉';
   if (next) next.hidden = (state !== 'done');
 }
 
@@ -331,9 +338,16 @@ function traceDoneTap(){
   traceButtons('done');
 }
 function traceAgainTap(){
+  /* 空格子点「擦掉」别说「擦掉了」——那里本来就没东西可擦，一句「直接写就好」更对 */
+  var had = !!(TRACE.box && TRACE.box.strokes && TRACE.box.strokes.length);
   TRACE.state = 'trace';
   traceClearInk();
-  setHTML($('traceTip'), '擦掉了，慢慢再来一遍。');
+  if (had){
+    setHTML($('traceTip'), '擦掉了，慢慢再来一遍。');
+  } else {
+    sfxTap();
+    setHTML($('traceTip'), '格子里还没有字，直接写就好。');
+  }
   traceButtons('trace');
 }
 function traceNextTap(){

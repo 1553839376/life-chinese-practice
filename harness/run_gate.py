@@ -555,6 +555,26 @@ def gate_static(html):
         all(k in html for k in ['id="sheetTrace"', 'id="traceMask"', 'id="soBase"',
                                 'id="soInk"', 'function soWire'])
         and 'soWire();' in html)
+    # v32：描写屏的「擦掉」一直可用 + 带橡皮擦图标。老师 2026-11-02
+    # 「学生认字乐园里的字的描红，没有擦掉，只有写完才能擦掉，我建议放一个橡皮擦的按钮」。
+    _tb = html.split('function traceButtons')[1].split('function soPlay')[0] \
+        if 'function traceButtons' in html else ''
+    rec('G1', '描写屏「擦掉」随时可用（traceButtons 里 again 不随状态隐藏，文案在擦掉/擦掉重写之间切）',
+        bool(_tb) and 'again.hidden = false' in _tb and 'traceAgainTx' in _tb
+        and "'擦掉重写'" in _tb and "'擦掉'" in _tb,
+        '' if _tb else '找不到 traceButtons')
+    # 笔迹层是同一块 canvas + 同一份 strokes 数组：换字不清就会把上一字的字
+    # 「带」到新字上（老师 2026-11-02 报的 bug）。清屏必须在改字之前。
+    _ot = html.split('function openTrace')[1].split('function traceLayout')[0] \
+        if 'function openTrace' in html else ''
+    rec('G1', '换一个字就重置画布（openTrace 体内先 traceClearInk 再改字）',
+        bool(_ot) and 'traceClearInk();' in _ot
+        and _ot.find('traceClearInk();') < _ot.find("$('traceChar')"),
+        '' if _ot else '找不到 openTrace')
+    rec('G1', '橡皮擦图标：#traceAgain 与两个手写题按钮都用 .ico-i（ICO_ERASE 定义在 p5）',
+        'var ICO_ERASE' in html and 'id="traceAgain" class="ghost-btn with-ico"' in html
+        and html.count('ICO_ERASE + \'擦掉') >= 2 and html.count('class="ico-i"') >= 2
+        and '.ico-i{width:17px' in html and '.ghost-btn.with-ico{' in html)
     # 描写页没有学生档案、也没有手写识别，所以不能判分、不能写学习记录。
     # 一旦有人「顺手」加个 gradeAnswer / saveSnap，进度就会出现凭空的「已掌握」。
     tdbody = html.split('function traceDoneTap')[1].split('function traceAgainTap')[0] \

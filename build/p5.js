@@ -15,6 +15,15 @@ function copyArr(a){
   return out;
 }
 
+/* v32：手写题的「擦掉」前面配一个橡皮擦图标（老师 2026-11-02：「把擦掉前面加一个橡皮擦的标志
+   便于理解」）。和 `#traceAgain` 里那份是同一个图形——改一处要同步另一处（G1 有护栏盯着）。
+   画法：一个倾 40° 的圆角矩形当橡皮，中间一道竖线当套箍；线稿风格，跟着按钮文字颜色走。 */
+var ICO_ERASE = '<svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+  '<g transform="rotate(-40 12 12)">' +
+    '<rect x="4" y="8.5" width="16" height="7" rx="2"/>' +
+    '<path d="M9.5 8.5v7"/>' +
+  '</g></svg>';
+
 /* ------------------------- 视图切换 ------------------------- */
 /* v30：每屏记住自己滚到哪儿，回来时原样回去。
    老师原话：「练完回到乐园会回到最上面，没有保持刚刚那个汉字的位置，
@@ -1227,7 +1236,8 @@ function renderDictation(q, head){
     CLOSE('div') +
     '<div class="wg-tools">' +
       '<button type="button" class="ghost-btn" data-wg-act="say" id="wgPlay">再听一遍</button>' +
-      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重写</button>' +
+      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
+        ICO_ERASE + '擦掉重写</button>' +
     CLOSE('div'));
   resetQState();
   bindStage();
@@ -1243,7 +1253,8 @@ function renderTrace(q, head){
     CLOSE('div') +
     '<div class="wg-tools">' +
       '<button type="button" class="ghost-btn" data-wg-act="say">念一遍这个字</button>' +
-      '<button type="button" class="ghost-btn" data-wg-act="clear">擦掉重描</button>' +
+      '<button type="button" class="ghost-btn with-ico" data-wg-act="clear">' +
+        ICO_ERASE + '擦掉重描</button>' +
     CLOSE('div'));
   resetQState();
   bindStage();

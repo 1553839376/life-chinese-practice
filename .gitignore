@@ -67,7 +67,7 @@ build/_chars.txt
 build/_words.txt
 build/_cross_*.txt
 
-# ---------- 视觉探针的中间件（2026-10-30 加）----------
-# 预览图是给人看的，重跑 build/_probe_v31.py 就能再生成；_v31_*.html 是注入了假数据的临时页
+# ---------- 视觉探针的中间件（2026-10-30 加，2026-11-02 改成通配）----------
+# 预览图是给人看的，重跑 build/_probe_v3?.py 就能再生成；_v3?_*.html 是注入了假数据的临时页
 build/预览-*.png
-build/_v31_*.html
+build/_v3[0-9]_*.html
