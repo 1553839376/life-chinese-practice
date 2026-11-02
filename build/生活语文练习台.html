@@ -793,11 +793,63 @@ tr.tr-builtin td{background:#FBFAF3}
 .stage-chip.on b{color:var(--green)}
 .stage-chip:active{transform:scale(.97)}
 
-.learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px}
+.learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px;flex-wrap:wrap}
 .learn-count{font-size:14px;color:var(--ink3);font-weight:700;margin-right:auto}
 .play-all{border:2px solid var(--amber-line);background:var(--amber-bg);color:var(--amber);
   border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px}
 .play-all:active{transform:scale(.97)}
+
+/* ---------- 先选游戏再选字（v35 / T-030） ---------- */
+.pick-game{border:2px solid var(--blue-line);background:var(--blue-bg);color:var(--blue);
+  border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px;
+  white-space:nowrap;flex:none}
+.pick-game:active{transform:scale(.97)}
+.gp-mask{position:fixed;inset:0;z-index:68;background:rgba(20,26,32,.5);
+  display:flex;align-items:center;justify-content:center;padding:14px}
+.gp-box{width:min(520px,100%);max-height:100%;overflow:auto;background:var(--card);
+  border-radius:24px;padding:16px 18px 18px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
+.gp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.gp-eyebrow{flex:1;font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em}
+.gp-tip{margin:0 0 12px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.gp-tip b{color:var(--ink);font-weight:800}
+
+/* 选字态：字卡左下角一个圆圈勾选框（空圈＝可点，填绿＝已选）。
+   不隐藏「有图」小点（.ch-dot 在右上角），两者不打架。 */
+.ch-card.sel{border-color:var(--green);background:var(--green-bg)}
+.ch-card.sel .ch-big{color:var(--green)}
+.ch-ck{position:absolute;left:7px;top:7px;width:22px;height:22px;border-radius:50%;
+  background:#fff;border:2px solid var(--line2);box-sizing:border-box}
+.ch-card.sel .ch-ck{background:var(--green);border-color:var(--green)}
+.ch-card.sel .ch-ck::after{content:'';position:absolute;left:6px;top:3px;width:7px;height:11px;
+  border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(42deg)}
+
+/* 选字时底部常驻操作条 */
+.pick-bar{position:fixed;left:0;right:0;bottom:0;z-index:66;background:var(--card);
+  border-top:1.5px solid var(--line);box-shadow:0 -8px 24px rgba(20,26,32,.12);
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.pb-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pb-num{font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pb-hint{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.pb-acts{display:flex;gap:9px;flex:none}
+.pb-cancel{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);border-radius:13px;
+  padding:0 16px;height:48px;font-size:15px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
+.pb-start{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
+  border-radius:13px;padding:0 20px;height:48px;font-size:16px;font-weight:800;
+  box-shadow:0 3px 0 #1F7A42}
+.pb-start[disabled]{background:#E7E1D2;color:#A9A292;box-shadow:0 3px 0 #DAD2C0}
+body.picking #scrLearn{padding-bottom:96px}
+@media(max-width:430px){
+  .pb-hint{display:none}
+  .pb-start{padding:0 16px}
+  /* 手机上一个入口按钮就 120px，加上字数统计一行放不下：让统计独占一行，
+     两个按钮各占一半把整行铺满（左对齐留半截空当更难看）。 */
+  .learn-bar{gap:9px}
+  .learn-count{flex:1 1 100%;margin-right:0}
+  .pick-game,.play-all{flex:1 1 0;min-width:0;padding:10px 8px;font-size:15px}
+}
 
 /* ---------- 字卡网格 ---------- */
 .grp{margin-bottom:16px}
@@ -1381,6 +1433,7 @@ tr.tr-builtin td{background:#FBFAF3}
 
   <div class="learn-bar">
     <span id="learnCount" class="learn-count">—</span>
+    <button id="btnPickGame" class="pick-game" type="button">先选游戏</button>
     <button id="btnPlayAll" class="play-all" type="button">全班一起玩</button>
   </div>
 
@@ -1455,7 +1508,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v34</span>
+    <span id="appVer" class="app-ver">v35</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -1730,6 +1783,45 @@ tr.tr-builtin td{background:#FBFAF3}
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- v35：先选游戏、再挑一批字（T-030）。老师转达同事的意见：有时要先定玩法，
+     再挑几个字专门练。选字态复用乐园自己的字格（册次筛选和搜索都还能用），
+     不另做一份字表——多教一套筛选手势只会更乱。 -->
+<div id="gpMask" class="gp-mask" hidden>
+  <div class="gp-box" role="dialog" aria-modal="true" aria-labelledby="gpTitle">
+    <div class="gp-head">
+      <span id="gpTitle" class="gp-eyebrow">第一步 · 先选一个玩法</span>
+      <button id="gpClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
+    </div>
+    <p class="gp-tip">选好玩法，下一步在字表里挑要练的字。<b>可以一次挑好几个字。</b></p>
+    <div class="sg-grid">
+      <button class="sg-btn gb" data-gp="bubble" type="button">
+        <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
+      </button>
+      <button class="sg-btn gf" data-gp="fish" type="button">
+        <span class="sg-ico fis"></span><span class="sg-nm">钓鱼</span><span class="sg-d">小鱼游过去，钓起这个字</span>
+      </button>
+      <button class="sg-btn gr" data-gp="fruit" type="button">
+        <span class="sg-ico fru"></span><span class="sg-nm">摘果子</span><span class="sg-d">果树上挂着字，摘下它</span>
+      </button>
+      <button class="sg-btn ga" data-gp="feed" type="button">
+        <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 选字时底部常驻：选了几个、开始、取消（窄屏也不至于要把页面滚到底才找得到） -->
+<div id="pickBar" class="pick-bar" hidden>
+  <div class="pb-info">
+    <span id="pickNum" class="pb-num">还没选字</span>
+    <span id="pickHint" class="pb-hint">点字卡就能选上，可以选好几个</span>
+  </div>
+  <div class="pb-acts">
+    <button id="pickCancel" class="pb-cancel" type="button">取消</button>
+    <button id="pickStart" class="pb-start" type="button" disabled>开始练习</button>
   </div>
 </div>
 
@@ -3313,7 +3405,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v34';
+var APP_VER = 'v35';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -5505,6 +5597,9 @@ var ICO_ERASE = '<svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focus
 var SCROLL_MEM = {};
 function showScreen(name){
   var prev = STATE.phase;
+  /* v35：离开认字乐园就退出「选字」态，否则底部那条操作条会飘到别的屏上
+     （进了老师端还压着一条「开始练习」，看着像坏了）。 */
+  if (name !== 'learn' && typeof PICK !== 'undefined' && PICK.on) pickEnd();
   if (prev && prev !== name){
     SCROLL_MEM[prev] = window.pageYOffset ||
       (document.documentElement && document.documentElement.scrollTop) ||
@@ -9153,6 +9248,8 @@ var LEARN = {
   list: []
 };
 var CARD_CH = null;
+/* v35：先选游戏再选字（T-030）。on = 正在挑字；kind = 已选的玩法；list = 挑中的字（按 w 去重） */
+var PICK = { on: false, kind: '', list: [] };
 
 /* ============================ 册次 ============================ */
 function stageShort(g){
@@ -9214,7 +9311,11 @@ function renderStageChips(groups){
 }
 
 function cardHTML(c, i){
-  return '<button type="button" class="ch-card" data-i="' + i + '">' +
+  /* v35：选字态下每张卡多一个圆圈勾选框，已选的加 .sel（边框和字都变绿） */
+  var sel = PICK.on && pickIdx(c) >= 0;
+  return '<button type="button" class="ch-card' + (sel ? ' sel' : '') + '" data-i="' + i + '"' +
+    (PICK.on ? ' aria-pressed="' + (sel ? 'true' : 'false') + '"' : '') + '>' +
+    (PICK.on ? '<span class="ch-ck" aria-hidden="true"></span>' : '') +
     (hasArt(c) ? '<span class="ch-dot"></span>' : '') +
     '<span class="ch-big">' + esc(c.w) + '</span>' +
     '<span class="ch-py">' + esc(c.p || '') + '</span>' +
@@ -9951,6 +10052,82 @@ function playAll(){
   startGame('random', shuffleArr(src).slice(0, 8));
   toast('从「' + ((src[0] && src[0].g) || '当前字表') + '」抽了 8 个字');
 }
+/* ==================== 先选游戏、再挑一批字（v35 / T-030） ====================
+   老师转达同事的意见：「能否先选择游戏再去选练哪个字……这个字可以选很多个字，
+   让学生针对性做这些字的练习」。
+   原来只有一条路：点一个字 → 学字卡里挑玩法 → 一次玩一个字。想练 6 个字得点 6 遍，
+   而且顺序只能跟着册次走。
+   现在这条路的入口在乐园顶部：选玩法 → 字格进入「多选」态（册次筛选、搜索照旧能用，
+   跨册次挑也认）→ 底部条上「开始练习」。**选字态复用同一张字格**，不另做一份字表：
+   老师已经会用册次和搜索筛，再教一套只会更乱。
+   ======================================================================== */
+function pickIdx(c){
+  var i;
+  for (i = 0; i < PICK.list.length; i++) if (PICK.list[i].w === c.w) return i;
+  return -1;
+}
+function gpOpen(){
+  $('gpMask').hidden = false;
+  if ($('gpClose')) $('gpClose').focus();
+}
+function gpClose(){
+  $('gpMask').hidden = true;
+}
+/* 只收拾状态、不画界面：startGame 会接管屏幕，多画一次反而闪 */
+function pickEnd(){
+  PICK.on = false;
+  PICK.kind = '';
+  PICK.list = [];
+  document.body.classList.remove('picking');
+  $('pickBar').hidden = true;
+  if ($('btnPickGame')) $('btnPickGame').hidden = false;
+  if ($('btnPlayAll')) $('btnPlayAll').hidden = false;
+}
+function pickBegin(kind){
+  if (!GAME_NAMES[kind]) return;
+  gpClose();
+  PICK.on = true;
+  PICK.kind = kind;
+  PICK.list = [];
+  document.body.classList.add('picking');
+  $('pickBar').hidden = false;
+  /* 顶上那两个按钮让位给底部条：同一时刻只留一套「下一步」 */
+  if ($('btnPickGame')) $('btnPickGame').hidden = true;
+  if ($('btnPlayAll')) $('btnPlayAll').hidden = true;
+  renderLearn();
+  renderPickBar();
+  /* 换模式回到字表顶上：勾选框长在字卡上，得让人看见它 */
+  window.scrollTo(0, 0);
+}
+function pickCancel(){
+  pickEnd();
+  renderLearn();
+}
+function renderPickBar(){
+  var n = PICK.list.length, nm = GAME_NAMES[PICK.kind] || '游戏';
+  if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
+  if ($('pickHint')) $('pickHint').textContent = n
+    ? '再点一下能取消，换册次还能接着挑'
+    : '点字卡就能选上，可以选好几个';
+  if ($('pickStart')){
+    $('pickStart').disabled = !n;
+    $('pickStart').textContent = n ? ('开始练习（' + n + '）') : '开始练习';
+  }
+}
+function pickToggle(c){
+  if (!c) return;
+  var i = pickIdx(c);
+  if (i >= 0) PICK.list.splice(i, 1); else PICK.list.push(c);
+  renderPickBar();
+}
+function pickStart(){
+  if (!PICK.list.length){ toast('先点几个字，再开始'); return; }
+  var kind = PICK.kind, chars = PICK.list.slice(0);
+  pickEnd();
+  renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
+  startGame(kind, chars);
+}
+
 function toggleMute(){
   AV.sfx = !AV.sfx;
   avSave();
@@ -9983,6 +10160,14 @@ function wireLearn(){
     si.focus();
   });
   $('btnPlayAll').addEventListener('click', playAll);
+  /* v35：先选游戏再选字 */
+  $('btnPickGame').addEventListener('click', gpOpen);
+  $('gpClose').addEventListener('click', gpClose);
+  $('gpMask').addEventListener('click', function(ev){
+    if (ev.target === $('gpMask')) gpClose();
+  });
+  $('pickCancel').addEventListener('click', pickCancel);
+  $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
   $('gameHint').addEventListener('click', gameHint);
   $('gameSpk').addEventListener('click', readAsk);
@@ -10018,6 +10203,8 @@ function wireLearn(){
     if (ev.key !== 'Escape') return;
     /* 描写面板压在学字卡上面，Esc 要一层一层退 */
     if ($('traceMask') && !$('traceMask').hidden){ closeTrace(); return; }
+    if ($('gpMask') && !$('gpMask').hidden){ gpClose(); return; }
+    if (PICK.on){ pickCancel(); return; }
     if (!$('cardMask').hidden){ closeCard(); return; }
     if (STATE.phase === 'game') quitGame(true);
   });
@@ -10038,9 +10225,22 @@ function wireLearn(){
     el = t.closest('.ch-card');
     if (el){
       var i = parseInt(el.getAttribute('data-i'), 10);
-      if (!isNaN(i)) openCard(LEARN.list[i]);
+      if (isNaN(i)) return;
+      var c = LEARN.list[i];
+      /* v35：选字态里点字卡是「勾上/取消」，不是打开学字卡 */
+      if (PICK.on){
+        if (!c) return;
+        pickToggle(c);
+        var sel = pickIdx(c) >= 0;
+        el.classList.toggle('sel', sel);
+        el.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        return;
+      }
+      openCard(c);
       return;
     }
+    el = t.closest('[data-gp]');
+    if (el){ pickBegin(el.getAttribute('data-gp')); return; }
     el = t.closest('[data-gk]');
     if (el){
       if (!CARD_CH){ toast('先选一个字'); return; }

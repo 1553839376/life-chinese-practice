@@ -640,6 +640,45 @@ def gate_static(html):
         '.nav-teach{' in html
         and 'touch-action:manipulation' in html.split('.nav-teach{')[1].split('}')[0])
 
+    # v35 先选游戏再选字（T-030）。老师转达同事的意见：「能否先选择游戏再去选练哪个字……
+    # 这个字可以选很多个字，让学生针对性做这些字的练习」。
+    # 原来只有「点一个字 → 卡里挑玩法」，一次一个；新入口反过来：先定玩法，再挑一批字。
+    rec('G1', '认字乐园顶部有「先选游戏」入口，和「全班一起玩」并排',
+        'id="btnPickGame" class="pick-game"' in html and '>先选游戏<' in html
+        and html.index('id="btnPickGame"') < html.index('id="btnPlayAll"'))
+    # 玩法面板必须用 data-gp：学字卡那条 data-gk 的委托读的是 CARD_CH，
+    # 在乐园里 CARD_CH 是 null，复用就等于「先弹一句『先选一个字』然后什么都不发生」。
+    _gpbox = html.split('id="gpMask"')[1].split('id="pickBar"')[0] \
+        if 'id="gpMask"' in html else ''
+    rec('G1', '玩法面板四个玩法走 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH）',
+        bool(_gpbox) and _gpbox.count('data-gp="') == 4 and 'data-gk' not in _gpbox,
+        '' if _gpbox else '找不到 gpMask')
+    rec('G1', '选字是一份独立状态 PICK + 四个动作函数（开始 / 勾选 / 完成 / 取消）',
+        "var PICK = { on: false, kind: '', list: [] };" in html
+        and all(('function ' + f) in html for f in
+                ['pickBegin', 'pickToggle', 'pickStart', 'pickCancel']))
+    # 选字态里点字卡只勾选、不弹学字卡；分支顺序写反了就会「边选边弹窗」
+    _cdl = html.split("t.closest('.ch-card')")[1].split("t.closest('[data-gp]')")[0] \
+        if "t.closest('.ch-card')" in html else ''
+    rec('G1', '选字态点字卡只勾上/取消（PICK.on 分支必须排在 openCard 之前）',
+        bool(_cdl) and 'if (PICK.on)' in _cdl and 'openCard(c)' in _cdl
+        and _cdl.index('if (PICK.on)') < _cdl.index('openCard(c)'),
+        _cdl.replace('\n', ' ')[:110] if _cdl else '找不到 .ch-card 委托')
+    # 整批字交给现有游戏引擎：startGame(kind, chars) 本来就收数组，不要为这个功能改签名
+    rec('G1', '开始时把挑好的字整批交给 startGame，不改游戏引擎签名',
+        'startGame(kind, chars);' in html
+        and 'PICK.list.slice(0)' in html and 'startGame(kind, c);' not in html)
+    rec('G1', '底部操作条常驻，没选字时「开始练习」是灰的',
+        '.pick-bar{position:fixed' in html and "$('pickStart').disabled = !n;" in html
+        and 'id="pickStart" class="pb-start" type="button" disabled' in html)
+    # 底部条是 fixed，离开乐园不收拾就会压在老师端/练习页上
+    rec('G1', '离开认字乐园自动退出选字态（底部条不会飘到别的屏上）',
+        "typeof PICK !== 'undefined' && PICK.on) pickEnd();" in html)
+    rec('G1', '退出选字态会把勾选框、body.picking、两个顶部按钮都还原',
+        "document.body.classList.remove('picking');" in html
+        and "$('pickBar').hidden = true;" in html
+        and "$('btnPlayAll').hidden = false;" in html)
+
     # v28 学字卡瘦身 + 笔顺放慢。老师 2026-10-30 三条反馈：
     # 「不需要什么只看拼音和再听一遍这些词语，你直接在这个字旁边放一个喇叭的标志就好了」
     # 「这个描写的位置很奇怪，这么大个框横在这也不是很好看」

@@ -39,7 +39,9 @@
 
 **游戏美术（v9/v10）**：鱼头右尾左，`fishSVG` viewBox `200×116`；果树用整棵 `treeSVG()`。`.game-field` 有 `max-height:min(620px,80vw)`；动效要看得见幅度（±20px/3.4s、摆尾 ±13°），`transform-box:fill-box`。**先分「没播」和「幅度太小」**；报「画得不对」先核 SVG 坐标。
 
-**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 窗口宽度被钳到 ~500px，判溢出读 `scrollWidth === innerWidth`。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 截图的 canvas 层不刷新** → 判 canvas 只信 `getImageData` 像素统计。
+**先选游戏再选字（v35）**：乐园顶部「先选游戏」→ `#gpMask` 选玩法（`data-gp`）→ 字格进多选态（`PICK.on`，每卡 `.ch-ck` 圆圈）→ 底部 `#pickBar`「钓鱼 · 已选 3 个字」+「开始练习（N）」。**选字态复用同一张字格**（册次筛选/搜索照旧能用、`PICK.list` 独立不受重画影响），不另做字表。两条铁律：① 玩法面板**不许复用 `data-gk`**（那条委托读 `CARD_CH`，乐园里是 null → 只会弹「先选一个字」什么都不发生）；② 底部条是 `position:fixed`，**`showScreen` 里必须兜一道 `pickEnd()`**，否则飘到老师端/练习页上。`startGame(kind, chars)` 本来就收数组，整批交进去即可，**别改引擎签名**；`GAME.origin` 沿用 → 「再玩一次/换个玩法」还带这批字。
+
+**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 窗口宽度被钳到 ~500px，判溢出读 `scrollWidth === innerWidth`；**要看真实 390 排版得套一个 390px 的 iframe**（直接开 `--window-size=390` 会「看起来溢出」，其实是截图裁掉了右边）。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 截图的 canvas 层不刷新** → 判 canvas 只信 `getImageData` 像素统计。
 
 **节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户敏感、多次返工——**调之前先问**。
 

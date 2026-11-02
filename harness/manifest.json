@@ -81,7 +81,14 @@
       "playAll",
       "ART_PACK",
       "CHARS",
-      "STAGES"
+      "STAGES",
+      "PICK",
+      "pickBegin",
+      "pickToggle",
+      "pickStart",
+      "pickCancel",
+      "gpOpen",
+      "gpClose"
     ],
     "趣味游戏": [
       "startGame",
@@ -241,7 +248,11 @@
       "profPickGrid",
       "profPickEmpty",
       "profPick",
-      "traceAgainTx"
+      "traceAgainTx",
+      "btnPickGame",
+      "gpMask",
+      "pickBar",
+      "pickStart"
     ],
     "笔顺描写": [
       "STROKE_PACK",
@@ -323,7 +334,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 520
+      "min_cases": 558
     },
     {
       "name": "check_pair",

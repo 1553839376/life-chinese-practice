@@ -1797,6 +1797,138 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('scrTeacher').hidden === true,
     '隔了 0.6 秒再点不算连点（手抖、学生发两次呆都不会误入）');
 
+  console.log('\n【30】先选游戏再选字（v35）');
+  w.showScreen('learn');
+  await wait(80);
+  ok(!!d.getElementById('btnPickGame') && d.getElementById('btnPickGame').textContent === '先选游戏',
+    '乐园顶部有「先选游戏」入口');
+
+  /* 不在选字态时，点字卡照旧打开学字卡——这是老路径，别被新入口带坏 */
+  const v35_card0 = d.querySelector('#charGrid .ch-card');
+  click(v35_card0);
+  await wait(120);
+  ok(d.getElementById('cardMask').hidden === false, '不在选字态时，点字卡照旧弹出学字卡');
+  w.closeCard();
+  await wait(80);
+
+  click(d.getElementById('btnPickGame'));
+  await wait(120);
+  ok(d.getElementById('gpMask').hidden === false, '先弹出「选一个玩法」面板');
+  const v35_gp = d.querySelectorAll('#gpMask [data-gp]');
+  ok(v35_gp.length === 4, '四个玩法都在面板里：' + v35_gp.length);
+  ok(d.querySelectorAll('#gpMask [data-gk]').length === 0,
+    '玩法面板用自己的 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH，会空着开局）');
+
+  click(d.querySelector('#gpMask [data-gp="fruit"]'));
+  await wait(150);
+  ok(d.getElementById('gpMask').hidden === true, '选完玩法，面板自己关掉');
+  ok(w.PICK.on === true && w.PICK.kind === 'fruit',
+    '进入选字态，玩法记住是摘果子：' + w.PICK.kind);
+  ok(d.getElementById('pickBar').hidden === false, '底部出现常驻操作条');
+  ok(d.body.classList.contains('picking'), 'body 挂上 picking，给字表腾出底部空间');
+  ok(d.querySelectorAll('#charGrid .ch-card.sel').length === 0, '刚进来一个字都没选');
+  ok(d.getElementById('pickStart').disabled === true, '没选字时「开始练习」是灰的（点不动）');
+  ok(d.getElementById('pickNum').textContent.indexOf('摘果子') >= 0,
+    '操作条上写着已选的玩法：' + d.getElementById('pickNum').textContent);
+
+  const v35_cards = d.querySelectorAll('#charGrid .ch-card');
+  ok(d.querySelectorAll('#charGrid .ch-ck').length === v35_cards.length,
+    '每张字卡都长出勾选圆圈：' + d.querySelectorAll('#charGrid .ch-ck').length + ' 个');
+
+  click(v35_cards[0]); click(v35_cards[1]); click(v35_cards[2]);
+  await wait(100);
+  ok(d.querySelectorAll('#charGrid .ch-card.sel').length === 3, '点三下选上三个字');
+  ok(d.getElementById('cardMask').hidden === true, '选字态点字卡只勾选，不会弹出学字卡');
+  ok(v35_cards[0].getAttribute('aria-pressed') === 'true',
+    '选中的卡 aria-pressed=true（读屏软件也读得出选没选）');
+  ok(d.getElementById('pickStart').disabled === false, '选到字之后「开始练习」可以点了');
+  ok(d.getElementById('pickStart').textContent.indexOf('3') >= 0,
+    '按钮上带着数量：' + d.getElementById('pickStart').textContent);
+  ok(d.getElementById('pickNum').textContent.indexOf('3') >= 0,
+    '操作条同步报数：' + d.getElementById('pickNum').textContent);
+
+  click(v35_cards[2]);
+  await wait(80);
+  ok(d.querySelectorAll('#charGrid .ch-card.sel').length === 2, '再点一下就把这个字取消掉');
+  ok(v35_cards[2].getAttribute('aria-pressed') === 'false', '取消后 aria-pressed 回到 false');
+
+  /* 选字态里换册次 / 搜索照旧能用，已选的字不能丢——老师是「先翻到二年级挑几个，
+     再翻回一年级挑几个」这么用的 */
+  const v35_keep = w.PICK.list.length;
+  /* 挑一个**还没选**的字来搜：前面已经勾了两个字，拿已选的字去搜会把它取消掉 */
+  let v35_q = '';
+  for (let i = 0; i < w.LEARN.list.length; i++){
+    if (w.pickIdx(w.LEARN.list[i]) < 0){ v35_q = w.LEARN.list[i].w; break; }
+  }
+  ok(!!v35_q, '字表里还有没选的字可以继续挑：' + v35_q);
+  w.LEARN.q = v35_q;
+  w.renderLearn();
+  await wait(80);
+  ok(w.PICK.list.length === v35_keep,
+    '搜索换一批字，已经选的还在（' + w.PICK.list.length + ' 个）');
+  /* 搜索是「字 / 拼音 / 组词」三路都搜，所以「人」会带出「大人」「二」一堆；
+     在结果里挑一张**还没勾**的卡（不是直接拿第一张，那可能是已选的字） */
+  const v35_one = Array.prototype.slice
+    .call(d.querySelectorAll('#charGrid .ch-card'))
+    .find(el => !el.classList.contains('sel'));
+  ok(!!v35_one, '按字搜索能筛出结果，且里面有还没选的字：' + v35_q);
+  if (v35_one){
+    click(v35_one);
+    await wait(80);
+    ok(w.PICK.list.length === v35_keep + 1,
+      '在筛出来的字里继续挑，跨批次累加：' + w.PICK.list.length);
+  } else {
+    ok(false, '在筛出来的字里继续挑，跨批次累加（没筛出字，这条没跑到）');
+  }
+  w.LEARN.q = '';
+  w.renderLearn();
+  await wait(80);
+  ok(d.querySelectorAll('#charGrid .ch-card.sel').length === v35_keep + (v35_one ? 1 : 0),
+    '清空搜索回全部，之前勾的仍然勾着');
+
+  click(d.getElementById('pickCancel'));
+  await wait(100);
+  ok(w.PICK.on === false && d.getElementById('pickBar').hidden === true, '点「取消」退出选字态');
+  ok(d.querySelectorAll('#charGrid .ch-ck').length === 0, '退出后勾选圆圈全清掉，字卡恢复原样');
+  ok(d.body.classList.contains('picking') === false, 'body 上的 picking 也摘掉了');
+
+  /* 正式走一遍：选玩法 → 挑 4 个字 → 开始 */
+  click(d.getElementById('btnPickGame'));
+  await wait(100);
+  click(d.querySelector('#gpMask [data-gp="feed"]'));
+  await wait(140);
+  const v35_pick = d.querySelectorAll('#charGrid .ch-card');
+  click(v35_pick[0]); click(v35_pick[1]); click(v35_pick[2]); click(v35_pick[3]);
+  await wait(100);
+  const v35_want = w.PICK.list.map(c => c.w).join('');
+  click(d.getElementById('pickStart'));
+  await wait(220);
+  ok(w.STATE.phase === 'game', '点开始就进游戏屏：' + w.STATE.phase);
+  ok(w.GAME.kind === 'feed', '玩的是自己选的那个玩法：' + w.GAME.kind);
+  ok(w.GAME.origin.chars.length === 4, '带进游戏的是挑中的 4 个字：' + w.GAME.origin.chars.length);
+  ok(w.GAME.queue.length >= 6, '只有 4 个字也凑够一局题量：' + w.GAME.queue.length);
+  let v35_in = true;
+  const v35_ws = w.GAME.origin.chars.map(c => c.w);
+  w.GAME.queue.forEach(c => { if (v35_ws.indexOf(c.w) < 0) v35_in = false; });
+  ok(v35_in, '出的每一题都在这批字里（' + v35_want + '）：' +
+    w.GAME.queue.map(c => c.w).join(''));
+  ok(d.getElementById('pickBar').hidden === true && w.PICK.on === false,
+    '进游戏后操作条收起、选字态结束（不会跟着飘进游戏屏）');
+
+  /* 再玩一次 / 换个玩法都还带着这批字：老师挑一次能连着换玩法练 */
+  ok(w.GAME.origin.chars.length === 4, '「再玩一次」靠 GAME.origin 记住这批字');
+  w.quitGame(true);
+  await wait(140);
+  ok(w.STATE.phase === 'learn' && d.getElementById('pickBar').hidden === true,
+    '玩完回乐园，不残留选字态');
+
+  /* Esc 关玩法面板 */
+  click(d.getElementById('btnPickGame'));
+  await wait(100);
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await wait(100);
+  ok(d.getElementById('gpMask').hidden === true, '按 Esc 能关掉玩法面板');
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

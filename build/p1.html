@@ -793,11 +793,63 @@ tr.tr-builtin td{background:#FBFAF3}
 .stage-chip.on b{color:var(--green)}
 .stage-chip:active{transform:scale(.97)}
 
-.learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px}
+.learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px;flex-wrap:wrap}
 .learn-count{font-size:14px;color:var(--ink3);font-weight:700;margin-right:auto}
 .play-all{border:2px solid var(--amber-line);background:var(--amber-bg);color:var(--amber);
   border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px}
 .play-all:active{transform:scale(.97)}
+
+/* ---------- 先选游戏再选字（v35 / T-030） ---------- */
+.pick-game{border:2px solid var(--blue-line);background:var(--blue-bg);color:var(--blue);
+  border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px;
+  white-space:nowrap;flex:none}
+.pick-game:active{transform:scale(.97)}
+.gp-mask{position:fixed;inset:0;z-index:68;background:rgba(20,26,32,.5);
+  display:flex;align-items:center;justify-content:center;padding:14px}
+.gp-box{width:min(520px,100%);max-height:100%;overflow:auto;background:var(--card);
+  border-radius:24px;padding:16px 18px 18px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
+.gp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.gp-eyebrow{flex:1;font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em}
+.gp-tip{margin:0 0 12px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.gp-tip b{color:var(--ink);font-weight:800}
+
+/* 选字态：字卡左下角一个圆圈勾选框（空圈＝可点，填绿＝已选）。
+   不隐藏「有图」小点（.ch-dot 在右上角），两者不打架。 */
+.ch-card.sel{border-color:var(--green);background:var(--green-bg)}
+.ch-card.sel .ch-big{color:var(--green)}
+.ch-ck{position:absolute;left:7px;top:7px;width:22px;height:22px;border-radius:50%;
+  background:#fff;border:2px solid var(--line2);box-sizing:border-box}
+.ch-card.sel .ch-ck{background:var(--green);border-color:var(--green)}
+.ch-card.sel .ch-ck::after{content:'';position:absolute;left:6px;top:3px;width:7px;height:11px;
+  border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(42deg)}
+
+/* 选字时底部常驻操作条 */
+.pick-bar{position:fixed;left:0;right:0;bottom:0;z-index:66;background:var(--card);
+  border-top:1.5px solid var(--line);box-shadow:0 -8px 24px rgba(20,26,32,.12);
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.pb-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pb-num{font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pb-hint{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.pb-acts{display:flex;gap:9px;flex:none}
+.pb-cancel{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);border-radius:13px;
+  padding:0 16px;height:48px;font-size:15px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
+.pb-start{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
+  border-radius:13px;padding:0 20px;height:48px;font-size:16px;font-weight:800;
+  box-shadow:0 3px 0 #1F7A42}
+.pb-start[disabled]{background:#E7E1D2;color:#A9A292;box-shadow:0 3px 0 #DAD2C0}
+body.picking #scrLearn{padding-bottom:96px}
+@media(max-width:430px){
+  .pb-hint{display:none}
+  .pb-start{padding:0 16px}
+  /* 手机上一个入口按钮就 120px，加上字数统计一行放不下：让统计独占一行，
+     两个按钮各占一半把整行铺满（左对齐留半截空当更难看）。 */
+  .learn-bar{gap:9px}
+  .learn-count{flex:1 1 100%;margin-right:0}
+  .pick-game,.play-all{flex:1 1 0;min-width:0;padding:10px 8px;font-size:15px}
+}
 
 /* ---------- 字卡网格 ---------- */
 .grp{margin-bottom:16px}

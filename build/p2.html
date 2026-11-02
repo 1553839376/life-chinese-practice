@@ -34,6 +34,7 @@
 
   <div class="learn-bar">
     <span id="learnCount" class="learn-count">—</span>
+    <button id="btnPickGame" class="pick-game" type="button">先选游戏</button>
     <button id="btnPlayAll" class="play-all" type="button">全班一起玩</button>
   </div>
 
@@ -108,7 +109,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v34</span>
+    <span id="appVer" class="app-ver">v35</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -383,6 +384,45 @@
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- v35：先选游戏、再挑一批字（T-030）。老师转达同事的意见：有时要先定玩法，
+     再挑几个字专门练。选字态复用乐园自己的字格（册次筛选和搜索都还能用），
+     不另做一份字表——多教一套筛选手势只会更乱。 -->
+<div id="gpMask" class="gp-mask" hidden>
+  <div class="gp-box" role="dialog" aria-modal="true" aria-labelledby="gpTitle">
+    <div class="gp-head">
+      <span id="gpTitle" class="gp-eyebrow">第一步 · 先选一个玩法</span>
+      <button id="gpClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
+    </div>
+    <p class="gp-tip">选好玩法，下一步在字表里挑要练的字。<b>可以一次挑好几个字。</b></p>
+    <div class="sg-grid">
+      <button class="sg-btn gb" data-gp="bubble" type="button">
+        <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
+      </button>
+      <button class="sg-btn gf" data-gp="fish" type="button">
+        <span class="sg-ico fis"></span><span class="sg-nm">钓鱼</span><span class="sg-d">小鱼游过去，钓起这个字</span>
+      </button>
+      <button class="sg-btn gr" data-gp="fruit" type="button">
+        <span class="sg-ico fru"></span><span class="sg-nm">摘果子</span><span class="sg-d">果树上挂着字，摘下它</span>
+      </button>
+      <button class="sg-btn ga" data-gp="feed" type="button">
+        <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 选字时底部常驻：选了几个、开始、取消（窄屏也不至于要把页面滚到底才找得到） -->
+<div id="pickBar" class="pick-bar" hidden>
+  <div class="pb-info">
+    <span id="pickNum" class="pb-num">还没选字</span>
+    <span id="pickHint" class="pb-hint">点字卡就能选上，可以选好几个</span>
+  </div>
+  <div class="pb-acts">
+    <button id="pickCancel" class="pb-cancel" type="button">取消</button>
+    <button id="pickStart" class="pb-start" type="button" disabled>开始练习</button>
   </div>
 </div>
 

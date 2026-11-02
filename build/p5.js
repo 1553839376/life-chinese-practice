@@ -32,6 +32,9 @@ var ICO_ERASE = '<svg class="ico-i" viewBox="0 0 24 24" aria-hidden="true" focus
 var SCROLL_MEM = {};
 function showScreen(name){
   var prev = STATE.phase;
+  /* v35：离开认字乐园就退出「选字」态，否则底部那条操作条会飘到别的屏上
+     （进了老师端还压着一条「开始练习」，看着像坏了）。 */
+  if (name !== 'learn' && typeof PICK !== 'undefined' && PICK.on) pickEnd();
   if (prev && prev !== name){
     SCROLL_MEM[prev] = window.pageYOffset ||
       (document.documentElement && document.documentElement.scrollTop) ||

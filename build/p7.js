@@ -49,6 +49,8 @@ var LEARN = {
   list: []
 };
 var CARD_CH = null;
+/* v35：先选游戏再选字（T-030）。on = 正在挑字；kind = 已选的玩法；list = 挑中的字（按 w 去重） */
+var PICK = { on: false, kind: '', list: [] };
 
 /* ============================ 册次 ============================ */
 function stageShort(g){
@@ -110,7 +112,11 @@ function renderStageChips(groups){
 }
 
 function cardHTML(c, i){
-  return '<button type="button" class="ch-card" data-i="' + i + '">' +
+  /* v35：选字态下每张卡多一个圆圈勾选框，已选的加 .sel（边框和字都变绿） */
+  var sel = PICK.on && pickIdx(c) >= 0;
+  return '<button type="button" class="ch-card' + (sel ? ' sel' : '') + '" data-i="' + i + '"' +
+    (PICK.on ? ' aria-pressed="' + (sel ? 'true' : 'false') + '"' : '') + '>' +
+    (PICK.on ? '<span class="ch-ck" aria-hidden="true"></span>' : '') +
     (hasArt(c) ? '<span class="ch-dot"></span>' : '') +
     '<span class="ch-big">' + esc(c.w) + '</span>' +
     '<span class="ch-py">' + esc(c.p || '') + '</span>' +
@@ -847,6 +853,82 @@ function playAll(){
   startGame('random', shuffleArr(src).slice(0, 8));
   toast('从「' + ((src[0] && src[0].g) || '当前字表') + '」抽了 8 个字');
 }
+/* ==================== 先选游戏、再挑一批字（v35 / T-030） ====================
+   老师转达同事的意见：「能否先选择游戏再去选练哪个字……这个字可以选很多个字，
+   让学生针对性做这些字的练习」。
+   原来只有一条路：点一个字 → 学字卡里挑玩法 → 一次玩一个字。想练 6 个字得点 6 遍，
+   而且顺序只能跟着册次走。
+   现在这条路的入口在乐园顶部：选玩法 → 字格进入「多选」态（册次筛选、搜索照旧能用，
+   跨册次挑也认）→ 底部条上「开始练习」。**选字态复用同一张字格**，不另做一份字表：
+   老师已经会用册次和搜索筛，再教一套只会更乱。
+   ======================================================================== */
+function pickIdx(c){
+  var i;
+  for (i = 0; i < PICK.list.length; i++) if (PICK.list[i].w === c.w) return i;
+  return -1;
+}
+function gpOpen(){
+  $('gpMask').hidden = false;
+  if ($('gpClose')) $('gpClose').focus();
+}
+function gpClose(){
+  $('gpMask').hidden = true;
+}
+/* 只收拾状态、不画界面：startGame 会接管屏幕，多画一次反而闪 */
+function pickEnd(){
+  PICK.on = false;
+  PICK.kind = '';
+  PICK.list = [];
+  document.body.classList.remove('picking');
+  $('pickBar').hidden = true;
+  if ($('btnPickGame')) $('btnPickGame').hidden = false;
+  if ($('btnPlayAll')) $('btnPlayAll').hidden = false;
+}
+function pickBegin(kind){
+  if (!GAME_NAMES[kind]) return;
+  gpClose();
+  PICK.on = true;
+  PICK.kind = kind;
+  PICK.list = [];
+  document.body.classList.add('picking');
+  $('pickBar').hidden = false;
+  /* 顶上那两个按钮让位给底部条：同一时刻只留一套「下一步」 */
+  if ($('btnPickGame')) $('btnPickGame').hidden = true;
+  if ($('btnPlayAll')) $('btnPlayAll').hidden = true;
+  renderLearn();
+  renderPickBar();
+  /* 换模式回到字表顶上：勾选框长在字卡上，得让人看见它 */
+  window.scrollTo(0, 0);
+}
+function pickCancel(){
+  pickEnd();
+  renderLearn();
+}
+function renderPickBar(){
+  var n = PICK.list.length, nm = GAME_NAMES[PICK.kind] || '游戏';
+  if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
+  if ($('pickHint')) $('pickHint').textContent = n
+    ? '再点一下能取消，换册次还能接着挑'
+    : '点字卡就能选上，可以选好几个';
+  if ($('pickStart')){
+    $('pickStart').disabled = !n;
+    $('pickStart').textContent = n ? ('开始练习（' + n + '）') : '开始练习';
+  }
+}
+function pickToggle(c){
+  if (!c) return;
+  var i = pickIdx(c);
+  if (i >= 0) PICK.list.splice(i, 1); else PICK.list.push(c);
+  renderPickBar();
+}
+function pickStart(){
+  if (!PICK.list.length){ toast('先点几个字，再开始'); return; }
+  var kind = PICK.kind, chars = PICK.list.slice(0);
+  pickEnd();
+  renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
+  startGame(kind, chars);
+}
+
 function toggleMute(){
   AV.sfx = !AV.sfx;
   avSave();
@@ -879,6 +961,14 @@ function wireLearn(){
     si.focus();
   });
   $('btnPlayAll').addEventListener('click', playAll);
+  /* v35：先选游戏再选字 */
+  $('btnPickGame').addEventListener('click', gpOpen);
+  $('gpClose').addEventListener('click', gpClose);
+  $('gpMask').addEventListener('click', function(ev){
+    if (ev.target === $('gpMask')) gpClose();
+  });
+  $('pickCancel').addEventListener('click', pickCancel);
+  $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
   $('gameHint').addEventListener('click', gameHint);
   $('gameSpk').addEventListener('click', readAsk);
@@ -914,6 +1004,8 @@ function wireLearn(){
     if (ev.key !== 'Escape') return;
     /* 描写面板压在学字卡上面，Esc 要一层一层退 */
     if ($('traceMask') && !$('traceMask').hidden){ closeTrace(); return; }
+    if ($('gpMask') && !$('gpMask').hidden){ gpClose(); return; }
+    if (PICK.on){ pickCancel(); return; }
     if (!$('cardMask').hidden){ closeCard(); return; }
     if (STATE.phase === 'game') quitGame(true);
   });
@@ -934,9 +1026,22 @@ function wireLearn(){
     el = t.closest('.ch-card');
     if (el){
       var i = parseInt(el.getAttribute('data-i'), 10);
-      if (!isNaN(i)) openCard(LEARN.list[i]);
+      if (isNaN(i)) return;
+      var c = LEARN.list[i];
+      /* v35：选字态里点字卡是「勾上/取消」，不是打开学字卡 */
+      if (PICK.on){
+        if (!c) return;
+        pickToggle(c);
+        var sel = pickIdx(c) >= 0;
+        el.classList.toggle('sel', sel);
+        el.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        return;
+      }
+      openCard(c);
       return;
     }
+    el = t.closest('[data-gp]');
+    if (el){ pickBegin(el.getAttribute('data-gp')); return; }
     el = t.closest('[data-gk]');
     if (el){
       if (!CARD_CH){ toast('先选一个字'); return; }
