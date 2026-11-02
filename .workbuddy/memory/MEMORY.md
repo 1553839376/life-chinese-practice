@@ -5,7 +5,7 @@
 ## 一、产物与发布
 - 产物 `build/生活语文练习台.html`：单文件全内联 15 段（`p1 p2 p_open p_sfx p_art p_stroke lib p4 p8 p5 p_so p6 p7 p_close` + `p_voice.json`）；节点 `nU41kHmAoelqM2mGxWRFll` → https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll
 - 构建 `cd build && python build_html.py`（`newline=''` 固定 LF，md5 可复现）。数据在本机 `localStorage['wb2_data_v1']`，云端只是镜像。
-- 发布细节见 `docs/01-HARNESS.md`，三条不能忘：① 用 `build/upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② commit/publish 随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；③ 两个入口（`index.html` + 中文名）都要传，线上两份 md5 不同是正常的（每路径 pnid 不同），只对齐大小与版本。
+- 发布细节见 `docs/01-HARNESS.md`，几条不能忘：① 用 `build/upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**，不给就直接 `{"error":"message 缺失"}` 退出（不是网络问题，别重试）；③ **成功标志认 `KS_PAGE_COMMIT`，不是 "COMMITTED"**——按 COMMITTED 判会白跑 6 次重试，后面全报 `transaction not found`；④ commit/publish 随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；⑤ 两个入口（`index.html` + 中文名）都要传，线上两份 md5 不同是正常的（每路径 pnid 不同），只对齐大小与版本。
 - **线上不能字节比对**：平台注入 pnid 并重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。
 - 静态直链：新版用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录）；给用户前 curl grep 一次 `APP_VER` 的**值**。**角标抓不到 `>v31<`**（平台往 `#appVer` 插了 `<!--pnid:…-->`），核版本只认 `APP_VER`。
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过。
