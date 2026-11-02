@@ -48,10 +48,15 @@ function showScreen(name){
   $('scrGame').hidden = (name !== 'game');
   var nav = $('mainNav'), nb, i, to, on;
   if (nav) nav.hidden = !(name === 'learn' || name === 'pick');
+  /* v36：认字和游戏乐园是同一屏的两个模式，高亮得看 LEARN.mode 而不是 phase，
+     否则点「游戏乐园」会亮在「认字」上。 */
+  var lm = (typeof LEARN !== 'undefined' && LEARN.mode) || 'read';
   nb = document.querySelectorAll('#mainNav .nav-btn');
   for (i = 0; i < nb.length; i++){
     to = nb[i].getAttribute('data-nav');
-    on = (name === 'learn' && to === 'learn') || (name === 'pick' && to === 'pick');
+    on = (name === 'learn' && to === 'learn' && lm !== 'play') ||
+         (name === 'learn' && to === 'games' && lm === 'play') ||
+         (name === 'pick' && to === 'pick');
     if (on) nb[i].classList.add('on'); else nb[i].classList.remove('on');
   }
   /* 回原位：先立刻滚一次，再用 setTimeout 补一次——屏幕刚显示时高度可能还没算好，

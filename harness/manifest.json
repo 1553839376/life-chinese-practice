@@ -78,7 +78,6 @@
       "renderStageChips",
       "openCard",
       "cardHTML",
-      "playAll",
       "ART_PACK",
       "CHARS",
       "STAGES",
@@ -87,8 +86,11 @@
       "pickToggle",
       "pickStart",
       "pickCancel",
-      "gpOpen",
-      "gpClose"
+      "playAny",
+      "stagePool",
+      "learnMode",
+      "pickLabel",
+      "LEARN"
     ],
     "趣味游戏": [
       "startGame",
@@ -249,10 +251,12 @@
       "profPickEmpty",
       "profPick",
       "traceAgainTx",
-      "btnPickGame",
-      "gpMask",
       "pickBar",
-      "pickStart"
+      "pickStart",
+      "gamePick",
+      "gameNow",
+      "gnChange",
+      "learnBody"
     ],
     "笔顺描写": [
       "STROKE_PACK",
@@ -320,7 +324,7 @@
       "name": "e2e_learn",
       "script": "e2e_learn.js",
       "args": [],
-      "min_cases": 36
+      "min_cases": 37
     },
     {
       "name": "e2e_av",
@@ -334,7 +338,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 558
+      "min_cases": 577
     },
     {
       "name": "check_pair",

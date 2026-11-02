@@ -2,9 +2,10 @@
 
 <nav id="mainNav" class="main-nav">
   <div class="nav-in">
-    <span class="nav-logo">认字乐园</span>
+    <span class="nav-logo">生活语文练习台</span>
     <button type="button" class="nav-btn on" data-nav="learn">认字</button>
-    <button type="button" class="nav-btn" data-nav="pick">练习</button>
+    <button type="button" class="nav-btn" data-nav="games">游戏乐园</button>
+    <button type="button" class="nav-btn" data-nav="pick"><span class="nav-x">学生</span>练习</button>
     <button id="btnAV" class="nav-av" type="button" aria-label="声音设置" title="声音设置">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M11 5 6 9H3v6h3l5 4z"></path>
@@ -18,10 +19,39 @@
 
 <section id="scrLearn" class="screen" hidden>
   <div class="learn-hero">
-    <h1>一起认字</h1>
-    <p>搜一个字，或者选一个册次，挑一个字来玩</p>
+    <h1 id="learnTitle">一起认字</h1>
+    <p id="learnSub">搜一个字，或者选一个册次，挑一个字来玩</p>
   </div>
 
+  <!-- v36：游戏乐园。四张玩法卡＋一张「随便玩」直接摆在这一页，不再弹面板；
+       没选玩法的时候把下面整块（搜索 / 册次 / 字格）收起来，第一屏只有玩法。 -->
+  <div id="gamePick" class="game-pick" hidden>
+    <div class="sg-grid game-grid">
+      <button class="sg-btn gb" data-gp="bubble" type="button">
+        <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
+      </button>
+      <button class="sg-btn gf" data-gp="fish" type="button">
+        <span class="sg-ico fis"></span><span class="sg-nm">钓鱼</span><span class="sg-d">小鱼游过去，钓起这个字</span>
+      </button>
+      <button class="sg-btn gr" data-gp="fruit" type="button">
+        <span class="sg-ico fru"></span><span class="sg-nm">摘果子</span><span class="sg-d">果树上挂着字，摘下它</span>
+      </button>
+      <button class="sg-btn ga" data-gp="feed" type="button">
+        <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
+      </button>
+      <button class="sg-btn gy game-any" data-gp="any" type="button">
+        <span class="sg-ico any"></span><span class="sg-nm">随便玩</span><span class="sg-d">不用挑字，随机来一局</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="gameNow" class="game-now" hidden>
+    <span id="gnName" class="gn-name">—</span>
+    <span class="gn-tip">换册次或搜索都行，勾过的字不会丢</span>
+    <button id="gnChange" class="gn-change" type="button">换一个玩法</button>
+  </div>
+
+  <div id="learnBody">
   <div class="learn-search">
     <svg class="ls-ico" viewBox="0 0 24 24" fill="none" stroke="#8A8578" stroke-width="2" stroke-linecap="round" aria-hidden="true">
       <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path>
@@ -34,12 +64,11 @@
 
   <div class="learn-bar">
     <span id="learnCount" class="learn-count">—</span>
-    <button id="btnPickGame" class="pick-game" type="button">先选游戏</button>
-    <button id="btnPlayAll" class="play-all" type="button">全班一起玩</button>
   </div>
 
   <div id="charGrid"></div>
   <p id="learnEmpty" class="empty-tip" hidden>没有找到这个字。换个字或者换个说法再试一次。</p>
+  </div>
 </section>
 
 <section id="scrGame" class="screen game-screen" hidden>
@@ -109,7 +138,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v35</span>
+    <span id="appVer" class="app-ver">v36</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -387,32 +416,9 @@
   </div>
 </div>
 
-<!-- v35：先选游戏、再挑一批字（T-030）。老师转达同事的意见：有时要先定玩法，
-     再挑几个字专门练。选字态复用乐园自己的字格（册次筛选和搜索都还能用），
-     不另做一份字表——多教一套筛选手势只会更乱。 -->
-<div id="gpMask" class="gp-mask" hidden>
-  <div class="gp-box" role="dialog" aria-modal="true" aria-labelledby="gpTitle">
-    <div class="gp-head">
-      <span id="gpTitle" class="gp-eyebrow">第一步 · 先选一个玩法</span>
-      <button id="gpClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
-    </div>
-    <p class="gp-tip">选好玩法，下一步在字表里挑要练的字。<b>可以一次挑好几个字。</b></p>
-    <div class="sg-grid">
-      <button class="sg-btn gb" data-gp="bubble" type="button">
-        <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
-      </button>
-      <button class="sg-btn gf" data-gp="fish" type="button">
-        <span class="sg-ico fis"></span><span class="sg-nm">钓鱼</span><span class="sg-d">小鱼游过去，钓起这个字</span>
-      </button>
-      <button class="sg-btn gr" data-gp="fruit" type="button">
-        <span class="sg-ico fru"></span><span class="sg-nm">摘果子</span><span class="sg-d">果树上挂着字，摘下它</span>
-      </button>
-      <button class="sg-btn ga" data-gp="feed" type="button">
-        <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
-      </button>
-    </div>
-  </div>
-</div>
+<!-- v36：玩法面板整块搬进了认字乐园（#gamePick），不再弹遮罩。
+     原来这里是一层 gp-mask 弹窗，每次点入口都要先弹出来再关掉，
+     而且顶栏点了「游戏乐园」却冒出一个弹窗，手感也不对。 -->
 
 <!-- 选字时底部常驻：选了几个、开始、取消（窄屏也不至于要把页面滚到底才找得到） -->
 <div id="pickBar" class="pick-bar" hidden>

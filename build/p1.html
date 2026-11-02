@@ -754,7 +754,8 @@ tr.tr-builtin td{background:#FBFAF3}
 .nav-in{max-width:1080px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:8px}
 .nav-logo{font-size:16px;font-weight:800;color:var(--ink3);letter-spacing:.06em;margin-right:auto}
 .nav-btn{border:2px solid var(--line);background:var(--card);border-radius:999px;
-  padding:9px 22px;font-size:17px;font-weight:800;color:var(--ink2);min-height:44px}
+  padding:9px 22px;font-size:17px;font-weight:800;color:var(--ink2);min-height:44px;
+  white-space:nowrap}
 .nav-btn.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .nav-btn:active{transform:scale(.96)}
 .nav-teach{border:1.5px solid var(--line2);background:var(--card);border-radius:10px;
@@ -768,6 +769,8 @@ tr.tr-builtin td{background:#FBFAF3}
 .nav-av svg{width:22px;height:22px}
 .nav-av:active{background:var(--blue-bg)}
 .nav-av.off{color:var(--ink3);background:#F0EADC}
+/* 「学生练习」在很窄的手机上只留「练习」两字，否则一排五个按钮挤不下 */
+@media(max-width:420px){.nav-x{display:none}}
 
 /* ---------- 乐园头部 ---------- */
 .learn-hero{padding:8px 2px 14px}
@@ -795,23 +798,34 @@ tr.tr-builtin td{background:#FBFAF3}
 
 .learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px;flex-wrap:wrap}
 .learn-count{font-size:14px;color:var(--ink3);font-weight:700;margin-right:auto}
-.play-all{border:2px solid var(--amber-line);background:var(--amber-bg);color:var(--amber);
-  border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px}
-.play-all:active{transform:scale(.97)}
 
-/* ---------- 先选游戏再选字（v35 / T-030） ---------- */
-.pick-game{border:2px solid var(--blue-line);background:var(--blue-bg);color:var(--blue);
-  border-radius:12px;padding:10px 18px;font-size:16px;font-weight:800;min-height:46px;
-  white-space:nowrap;flex:none}
-.pick-game:active{transform:scale(.97)}
-.gp-mask{position:fixed;inset:0;z-index:68;background:rgba(20,26,32,.5);
-  display:flex;align-items:center;justify-content:center;padding:14px}
-.gp-box{width:min(520px,100%);max-height:100%;overflow:auto;background:var(--card);
-  border-radius:24px;padding:16px 18px 18px;box-shadow:0 18px 40px rgba(20,26,32,.28)}
-.gp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.gp-eyebrow{flex:1;font-size:14px;font-weight:800;color:var(--ink3);letter-spacing:.06em}
-.gp-tip{margin:0 0 12px;font-size:13.5px;color:var(--ink2);line-height:1.55}
-.gp-tip b{color:var(--ink);font-weight:800}
+/* ---------- 游戏乐园（v36）：先选玩法、再挑一批字 ---------- */
+.game-pick{margin:0 0 14px}
+.game-grid{grid-template-columns:1fr 1fr}
+/* 第五张「随便玩」：不用挑字、直接开局。独占一整行，跟上面四张分开。
+   版式跟其他卡一样（图标 / 名字 / 一句说明左对齐），只是拉宽——
+   试过改成「图标在左、说明甩到最右」的横排，整行散成三块，比对齐更难看。 */
+.game-any{grid-column:1/-1;min-height:92px;
+  border-style:dashed;border-color:#D9CFB2;background:#FFFCF2}
+.sg-ico.any{background:#F3EFE2;border:2px dashed #C2B692;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:800;color:#A2966C}
+.sg-ico.any::after{content:'?'}
+/* 已经选好玩法：四张卡收成一条，说明现在练什么、随时能换 */
+.game-now{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 14px;padding:10px 14px;border-radius:14px;
+  background:var(--blue-bg);border:1.5px solid var(--blue-line)}
+.gn-name{font-size:17px;font-weight:800;color:var(--blue);white-space:nowrap}
+.gn-tip{font-size:13px;color:var(--ink2);flex:1;min-width:0}
+.gn-change{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);
+  border-radius:10px;padding:0 14px;min-height:38px;font-size:14px;font-weight:800;
+  flex:none}
+.gn-change:active{transform:scale(.97)}
+@media(max-width:520px){
+  /* 手机上让「换一个玩法」靠右、说明另占一行，别挤成三行碎字 */
+  .gn-name{flex:1}
+  .gn-tip{order:3;flex:1 1 100%;font-size:12.5px}
+}
 
 /* 选字态：字卡左下角一个圆圈勾选框（空圈＝可点，填绿＝已选）。
    不隐藏「有图」小点（.ch-dot 在右上角），两者不打架。 */
@@ -844,11 +858,7 @@ body.picking #scrLearn{padding-bottom:96px}
 @media(max-width:430px){
   .pb-hint{display:none}
   .pb-start{padding:0 16px}
-  /* 手机上一个入口按钮就 120px，加上字数统计一行放不下：让统计独占一行，
-     两个按钮各占一半把整行铺满（左对齐留半截空当更难看）。 */
   .learn-bar{gap:9px}
-  .learn-count{flex:1 1 100%;margin-right:0}
-  .pick-game,.play-all{flex:1 1 0;min-width:0;padding:10px 8px;font-size:15px}
 }
 
 /* ---------- 字卡网格 ---------- */
@@ -1350,9 +1360,13 @@ body.picking #scrLearn{padding-bottom:96px}
   .pick-top h1{font-size:23px}
   .help-bar{gap:8px}
   .help-btn{padding:9px 12px;font-size:15px}
-  .nav-in{padding:8px 12px}
+  .nav-in{padding:8px 10px;gap:6px}
   .nav-logo{display:none}
-  .nav-btn{padding:8px 18px;font-size:16px}
+  /* v36：顶部多了一个「游戏乐园」，手机上得把字号和留白收一点才排得下一行
+     （原来 17px / 22px 留白，加两个四字按钮就会折成两行、整条导航变高）。 */
+  .nav-btn{padding:8px 12px;font-size:15px}
+  .nav-teach{padding:7px 10px;font-size:12px;margin-left:2px}
+  .nav-av{width:38px;height:38px}
   .learn-hero h1{font-size:25px}
   .char-grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:9px}
   .ch-card{min-height:104px;padding:10px 4px 8px}
@@ -1367,6 +1381,9 @@ body.picking #scrLearn{padding-bottom:96px}
   .sheet-trace-hint .sth-i{width:15px;height:15px}
   .sheet-py{font-size:18px}
   .sg-grid{grid-template-columns:1fr}
+  /* 游戏乐园是「一眼挑玩法」的页：手机上留两列，五张卡三行就能看全；
+     学字卡里那个 1 列是给「看清每个玩法」用的，两个场景不一样。 */
+  .game-grid{grid-template-columns:1fr 1fr}
   .feed-row{flex-direction:column;gap:6px;padding:10px}
   .feed-animal{flex-direction:row;gap:10px;padding:6px 12px;border-radius:18px}
   .feed-animal svg{width:84px;height:84px}

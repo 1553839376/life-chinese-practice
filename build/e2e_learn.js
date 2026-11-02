@@ -90,9 +90,11 @@ function ok(cond, msg){ console.log((cond ? 'PASS ' : 'FAIL ') + msg); if (!cond
   ok(d.getElementById('gameOverBox') === null && w.GAME.i === 0, '「再玩一次」重置回第 1 题');
   d.getElementById('gameQuit').click(); await wait(150);
 
-  /* ---------- 7. 全班一起玩 ---------- */
-  d.getElementById('btnPlayAll').click(); await wait(250);
-  ok(w.GAME.queue.length >= 6, '全班一起玩：一轮 ' + w.GAME.queue.length + ' 题');
+  /* ---------- 7. 随便玩（v36：原「全班一起玩」按钮改成游戏乐园里第五张卡） ---------- */
+  d.querySelector('[data-nav="games"]').click(); await wait(220);
+  ok(d.getElementById('gamePick').hidden === false, '点「游戏乐园」露出四＋一张玩法卡');
+  d.querySelector('#gamePick [data-gp="any"]').click(); await wait(280);
+  ok(w.GAME.queue.length >= 6, '随便玩：一轮 ' + w.GAME.queue.length + ' 题');
   ok(['bubble', 'fish', 'fruit', 'feed'].indexOf(w.GAME.kind) >= 0, '玩法随机抽到「' + w.GAME.kind + '」');
   d.getElementById('gameQuit').click(); await wait(150);
 

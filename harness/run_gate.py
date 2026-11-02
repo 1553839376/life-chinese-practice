@@ -640,19 +640,46 @@ def gate_static(html):
         '.nav-teach{' in html
         and 'touch-action:manipulation' in html.split('.nav-teach{')[1].split('}')[0])
 
-    # v35 先选游戏再选字（T-030）。老师转达同事的意见：「能否先选择游戏再去选练哪个字……
-    # 这个字可以选很多个字，让学生针对性做这些字的练习」。
-    # 原来只有「点一个字 → 卡里挑玩法」，一次一个；新入口反过来：先定玩法，再挑一批字。
-    rec('G1', '认字乐园顶部有「先选游戏」入口，和「全班一起玩」并排',
-        'id="btnPickGame" class="pick-game"' in html and '>先选游戏<' in html
-        and html.index('id="btnPickGame"') < html.index('id="btnPlayAll"'))
-    # 玩法面板必须用 data-gp：学字卡那条 data-gk 的委托读的是 CARD_CH，
-    # 在乐园里 CARD_CH 是 null，复用就等于「先弹一句『先选一个字』然后什么都不发生」。
-    _gpbox = html.split('id="gpMask"')[1].split('id="pickBar"')[0] \
-        if 'id="gpMask"' in html else ''
-    rec('G1', '玩法面板四个玩法走 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH）',
-        bool(_gpbox) and _gpbox.count('data-gp="') == 4 and 'data-gk' not in _gpbox,
-        '' if _gpbox else '找不到 gpMask')
+    # v36 顶部三个入口（老师 2026-11-02）：「全班一起玩的入口好像没有意义了吧，可以不要。
+    # 然后这个先选游戏的入口要改个名字，『游戏乐园』是不是可以放在这个位置好一点呢？
+    # 三个选项分别是认字、游戏乐园、学生练习」。
+    # 原「先选游戏」藏在乐园顶部、和字数统计挤在一行，同事第一次根本找不到。
+    rec('G1', '顶部导航三个入口：认字 / 游戏乐园 / 学生练习',
+        'data-nav="learn"' in html and 'data-nav="games"' in html
+        and '>游戏乐园<' in html and 'data-nav="pick"' in html
+        and '<span class="nav-x">学生</span>练习' in html)
+    # 一排五个按钮在 360/390 的手机上会折成两行、整条导航从 60px 撑到 80px，
+    # 靠两处收：≤640 收字号与留白，≤420 把「学生」收掉。
+    rec('G1', '窄屏收字号留白（≤640）＋ 很窄时只留「练习」二字（≤420）',
+        '.nav-btn{padding:8px 12px;font-size:15px}' in html
+        and '@media(max-width:420px){.nav-x{display:none}}' in html
+        and 'white-space:nowrap' in html.split('.nav-btn{')[1].split('}')[0])
+    # 乐园顶部原来那两个按钮（先选游戏 / 全班一起玩）都拆掉了：前者升级成顶部 tab，
+    # 后者变成游戏乐园里第五张「随便玩」卡（按钮点完根本不知道进的是哪款游戏）。
+    rec('G1', '乐园顶部不再有「先选游戏」「全班一起玩」两个按钮',
+        'id="btnPickGame"' not in html and 'id="btnPlayAll"' not in html
+        and 'class="pick-game"' not in html and 'class="play-all"' not in html)
+    # v36：玩法卡直接摆在乐园页里，弹窗拆了。五个 data-gp＝四款玩法 + 随便玩。
+    # 必须用 data-gp：学字卡那条 data-gk 的委托读的是 CARD_CH，乐园里是 null，
+    # 复用就等于「先弹一句『先选一个字』然后什么都不发生」。
+    _gpbox = html.split('id="gamePick"')[1].split('id="gameNow"')[0] \
+        if 'id="gamePick"' in html else ''
+    rec('G1', '五张玩法卡摆在乐园页里（四款玩法 + 随便玩），不再弹遮罩面板',
+        bool(_gpbox) and _gpbox.count('data-gp="') == 5
+        and 'data-gp="any"' in _gpbox and 'data-gk' not in _gpbox
+        and 'id="gpMask"' not in html,
+        '' if _gpbox else '找不到 gamePick')
+    # 认字和游戏乐园共用同一屏的搜索/册次/字格，只是模式不同；另造一屏等于字表两处维护
+    rec('G1', '认字 / 游戏乐园是同一屏的两个模式（LEARN.mode + learnMode）',
+        "mode: 'read'" in html and 'function learnMode(' in html
+        and 'LEARN.mode = m;' in html)
+    # 点「游戏乐园」不能亮在「认字」上：高亮要看 mode 而不是 phase
+    rec('G1', '顶部高亮按模式走，不只看 phase',
+        'LEARN.mode' in html and "lm !== 'play'" in html and "lm === 'play'" in html)
+    # 「随便玩」不挑字、直接开局；其余四张卡才进选字态
+    rec('G1', '「随便玩」直接开局（不进选字态），其余四张卡进选字',
+        "if (gp === 'any') playAny(); else pickBegin(gp);" in html
+        and 'function playAny(' in html and 'function stagePool(' in html)
     rec('G1', '选字是一份独立状态 PICK + 四个动作函数（开始 / 勾选 / 完成 / 取消）',
         "var PICK = { on: false, kind: '', list: [] };" in html
         and all(('function ' + f) in html for f in
@@ -674,10 +701,10 @@ def gate_static(html):
     # 底部条是 fixed，离开乐园不收拾就会压在老师端/练习页上
     rec('G1', '离开认字乐园自动退出选字态（底部条不会飘到别的屏上）',
         "typeof PICK !== 'undefined' && PICK.on) pickEnd();" in html)
-    rec('G1', '退出选字态会把勾选框、body.picking、两个顶部按钮都还原',
+    rec('G1', '退出选字态会把勾选框、body.picking、底部条、玩法提示条都还原',
         "document.body.classList.remove('picking');" in html
         and "$('pickBar').hidden = true;" in html
-        and "$('btnPlayAll').hidden = false;" in html)
+        and "$('gameNow').hidden = true;" in html)
 
     # v28 学字卡瘦身 + 笔顺放慢。老师 2026-10-30 三条反馈：
     # 「不需要什么只看拼音和再听一遍这些词语，你直接在这个字旁边放一个喇叭的标志就好了」

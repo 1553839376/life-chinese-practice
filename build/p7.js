@@ -46,7 +46,8 @@ function hasArt(c){
 var LEARN = {
   stage: null,     /* null = 还没初始化；'' = 全部册次 */
   q: '',
-  list: []
+  list: [],
+  mode: 'read'     /* v36：'read' = 认字（点字卡进学字卡）；'play' = 游戏乐园（先选玩法再挑字） */
 };
 var CARD_CH = null;
 /* v35：先选游戏再选字（T-030）。on = 正在挑字；kind = 已选的玩法；list = 挑中的字（按 w 去重） */
@@ -129,6 +130,23 @@ function renderLearn(){
   if (LEARN.stage === null) LEARN.stage = '';
   renderStageChips(groups);
 
+  /* v36：两种模式共用这一屏的搜索、册次和字格。
+     play 模式还没选玩法时，先把下面整块收起来——第一屏只有玩法卡，
+     也免得「点了字卡却弹出学字卡」这种走错门的感觉。 */
+  var playIdle = (LEARN.mode === 'play' && !PICK.on);
+  var t = $('learnTitle'), sub = $('learnSub');
+  if (t) t.textContent = LEARN.mode === 'play'
+    ? (PICK.on ? '挑几个字' : '挑一个玩法') : '一起认字';
+  if (sub) sub.textContent = LEARN.mode === 'play'
+    ? (PICK.on ? '点字卡选上，勾好就点右下角的「开始练习」。'
+               : '先选一个玩法，再挑要练的字。可以一次挑好几个，也能跨册次。')
+    : '搜一个字，或者选一个册次，挑一个字来玩';
+  if ($('gamePick')) $('gamePick').hidden = !playIdle;
+  if ($('gameNow')) $('gameNow').hidden = !(LEARN.mode === 'play' && PICK.on);
+  if ($('learnBody')) $('learnBody').hidden = playIdle;
+
+  if ($('gnName')) $('gnName').textContent = pickLabel(PICK.kind);
+
   var list = learnList();
   LEARN.list = list;
   var html = '', i, j, c, g;
@@ -161,9 +179,11 @@ function renderLearn(){
 
   $('learnEmpty').hidden = list.length > 0;
   $('learnClear').hidden = !LEARN.q;
-  var label = LEARN.q ? ('搜到 ' + list.length + ' 个字') :
-    (LEARN.stage ? (stageShort(LEARN.stage) + '·' + list.length + ' 个字') : ('全部 ' + list.length + ' 个字'));
-  $('learnCount').textContent = label;
+  /* v36：原来这行是「全部 700 个字 + 两个按钮」，按钮搬走后只剩一句统计，
+     又和上面册次条里的「全部 700」重复。只在搜索时留一句「搜到 N 个字」，
+     其余时候不占位置。 */
+  $('learnCount').hidden = !LEARN.q;
+  $('learnCount').textContent = LEARN.q ? ('搜到 ' + list.length + ' 个字') : '';
 }
 
 /* ============================ 学字卡 ============================ */
@@ -838,41 +858,56 @@ function gameOver(){
 function gotoNav(to){
   sayStop();
   if (to === 'pick'){ leaveStudent(true); return; }
+  learnMode(to === 'games' ? 'play' : 'read');
+}
+/* v36：认字 / 游戏乐园是同一屏的两个模式，不新建一屏——
+   字格、搜索、册次筛选、勾选圆圈全部复用；另做一屏迟早两处走偏。 */
+function learnMode(m){
+  if (PICK.on) pickCancel();          /* 换模式先把选字态收干净 */
+  LEARN.mode = m;
   renderLearn();
   showScreen('learn');
 }
-function playAll(){
-  var src = LEARN.list, i, g0, one = [];
-  if (!src || !src.length){ toast('这一册还没有可以玩的字'); return; }
-  /* 「全部」模式下别跨年级混抽，按第一个册次来，难度才不会跳 */
-  if (!LEARN.q && LEARN.stage === ''){
-    g0 = learnGroups().order[0];
-    for (i = 0; i < src.length; i++){ if (src[i].g === g0) one.push(src[i]); }
-    if (one.length){ src = one; }
+/* 「随便玩」：不挑字，从当前册次随机抽 8 个、玩法也随机。
+   原来这是乐园顶部那个「全班一起玩」按钮，v36 挪成游戏乐园里的第五张卡——
+   按钮点完根本不知道进的是哪款游戏，卡上至少写着「不用挑字，随机来一局」。 */
+function stagePool(){
+  var out = [], i, c, first, one = [];
+  for (i = 0; i < STATE.chars.length; i++){
+    c = STATE.chars[i];
+    if (!c.on || !c.w) continue;
+    if (LEARN.stage && c.g !== LEARN.stage) continue;
+    out.push(c);
   }
+  /* 「全部」模式下别跨年级混抽，只取排在最前的那个册次，难度才不会跳 */
+  if (!LEARN.stage && out.length){
+    first = learnGroups().order[0];
+    for (i = 0; i < out.length; i++){ if (out[i].g === first) one.push(out[i]); }
+    if (one.length) out = one;
+  }
+  return out;
+}
+function playAny(){
+  var src = stagePool();
+  if (!src.length){ toast('这一册还没有可以玩的字'); return; }
   startGame('random', shuffleArr(src).slice(0, 8));
   toast('从「' + ((src[0] && src[0].g) || '当前字表') + '」抽了 8 个字');
 }
-/* ==================== 先选游戏、再挑一批字（v35 / T-030） ====================
-   老师转达同事的意见：「能否先选择游戏再去选练哪个字……这个字可以选很多个字，
+/* ==================== 游戏乐园：先选玩法、再挑一批字（v35 / T-030，v36 改成独立入口） ====================
+   同事的意见：「能否先选择游戏再去选练哪个字……这个字可以选很多个字，
    让学生针对性做这些字的练习」。
-   原来只有一条路：点一个字 → 学字卡里挑玩法 → 一次玩一个字。想练 6 个字得点 6 遍，
-   而且顺序只能跟着册次走。
-   现在这条路的入口在乐园顶部：选玩法 → 字格进入「多选」态（册次筛选、搜索照旧能用，
-   跨册次挑也认）→ 底部条上「开始练习」。**选字态复用同一张字格**，不另做一份字表：
+   原来只有一条路：点一个字 → 学字卡里挑玩法 → **一次玩一个字**，练 6 个要点 6 遍。
+   现在顶部有「游戏乐园」：选玩法 → 字格进入「多选」态（册次筛选、搜索照旧能用，
+   跨册次挑也认）→ 底部条「开始练习」。**选字态复用同一张字格**，不另做一份字表：
    老师已经会用册次和搜索筛，再教一套只会更乱。
    ======================================================================== */
+function pickLabel(kind){
+  return kind === 'any' ? '随便玩' : (GAME_NAMES[kind] || '游戏');
+}
 function pickIdx(c){
   var i;
   for (i = 0; i < PICK.list.length; i++) if (PICK.list[i].w === c.w) return i;
   return -1;
-}
-function gpOpen(){
-  $('gpMask').hidden = false;
-  if ($('gpClose')) $('gpClose').focus();
-}
-function gpClose(){
-  $('gpMask').hidden = true;
 }
 /* 只收拾状态、不画界面：startGame 会接管屏幕，多画一次反而闪 */
 function pickEnd(){
@@ -880,32 +915,29 @@ function pickEnd(){
   PICK.kind = '';
   PICK.list = [];
   document.body.classList.remove('picking');
-  $('pickBar').hidden = true;
-  if ($('btnPickGame')) $('btnPickGame').hidden = false;
-  if ($('btnPlayAll')) $('btnPlayAll').hidden = false;
+  if ($('pickBar')) $('pickBar').hidden = true;
+  if ($('gameNow')) $('gameNow').hidden = true;
+  if ($('gamePick')) $('gamePick').hidden = (LEARN.mode !== 'play');
+  if ($('learnBody')) $('learnBody').hidden = false;
 }
 function pickBegin(kind){
   if (!GAME_NAMES[kind]) return;
-  gpClose();
   PICK.on = true;
   PICK.kind = kind;
   PICK.list = [];
   document.body.classList.add('picking');
   $('pickBar').hidden = false;
-  /* 顶上那两个按钮让位给底部条：同一时刻只留一套「下一步」 */
-  if ($('btnPickGame')) $('btnPickGame').hidden = true;
-  if ($('btnPlayAll')) $('btnPlayAll').hidden = true;
-  renderLearn();
+  renderLearn();          /* 顺带收起玩法卡、顶部换成「钓鱼 · 换一个玩法」 */
   renderPickBar();
   /* 换模式回到字表顶上：勾选框长在字卡上，得让人看见它 */
   window.scrollTo(0, 0);
 }
 function pickCancel(){
   pickEnd();
-  renderLearn();
+  renderLearn();          /* 退回玩法卡那一步 */
 }
 function renderPickBar(){
-  var n = PICK.list.length, nm = GAME_NAMES[PICK.kind] || '游戏';
+  var n = PICK.list.length, nm = pickLabel(PICK.kind);
   if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
   if ($('pickHint')) $('pickHint').textContent = n
     ? '再点一下能取消，换册次还能接着挑'
@@ -960,13 +992,9 @@ function wireLearn(){
     renderLearn();
     si.focus();
   });
-  $('btnPlayAll').addEventListener('click', playAll);
-  /* v35：先选游戏再选字 */
-  $('btnPickGame').addEventListener('click', gpOpen);
-  $('gpClose').addEventListener('click', gpClose);
-  $('gpMask').addEventListener('click', function(ev){
-    if (ev.target === $('gpMask')) gpClose();
-  });
+  /* v36：玩法卡是页面上的普通按钮，统一走点击委托里的 [data-gp]，
+     这里只绑「换一个玩法」和底部条两个按钮。 */
+  $('gnChange').addEventListener('click', pickCancel);
   $('pickCancel').addEventListener('click', pickCancel);
   $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
@@ -1004,7 +1032,6 @@ function wireLearn(){
     if (ev.key !== 'Escape') return;
     /* 描写面板压在学字卡上面，Esc 要一层一层退 */
     if ($('traceMask') && !$('traceMask').hidden){ closeTrace(); return; }
-    if ($('gpMask') && !$('gpMask').hidden){ gpClose(); return; }
     if (PICK.on){ pickCancel(); return; }
     if (!$('cardMask').hidden){ closeCard(); return; }
     if (STATE.phase === 'game') quitGame(true);
@@ -1041,7 +1068,11 @@ function wireLearn(){
       return;
     }
     el = t.closest('[data-gp]');
-    if (el){ pickBegin(el.getAttribute('data-gp')); return; }
+    if (el){
+      var gp = el.getAttribute('data-gp');
+      if (gp === 'any') playAny(); else pickBegin(gp);
+      return;
+    }
     el = t.closest('[data-gk]');
     if (el){
       if (!CARD_CH){ toast('先选一个字'); return; }

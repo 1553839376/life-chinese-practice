@@ -1797,13 +1797,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('scrTeacher').hidden === true,
     '隔了 0.6 秒再点不算连点（手抖、学生发两次呆都不会误入）');
 
-  console.log('\n【30】先选游戏再选字（v35）');
+  console.log('\n【30】游戏乐园：先选玩法再挑字（v35 / v36）');
+  w.learnMode('read');
   w.showScreen('learn');
   await wait(80);
-  ok(!!d.getElementById('btnPickGame') && d.getElementById('btnPickGame').textContent === '先选游戏',
-    '乐园顶部有「先选游戏」入口');
+  const v36_navs = Array.prototype.slice.call(d.querySelectorAll('#mainNav .nav-btn'));
+  ok(v36_navs.map(b => b.textContent.trim()).join('/') === '认字/游戏乐园/学生练习',
+    '顶部三个入口：' + v36_navs.map(b => b.textContent.trim()).join(' / '));
+  ok(!d.getElementById('btnPickGame') && !d.getElementById('btnPlayAll'),
+    '旧的「先选游戏」「全班一起玩」两个按钮已拆掉');
 
-  /* 不在选字态时，点字卡照旧打开学字卡——这是老路径，别被新入口带坏 */
+  /* 认字模式：点字卡照旧打开学字卡——这是老路径，别被新入口带坏 */
+  ok(d.getElementById('gamePick').hidden === true, '认字模式下不显示玩法卡');
   const v35_card0 = d.querySelector('#charGrid .ch-card');
   click(v35_card0);
   await wait(120);
@@ -1811,17 +1816,29 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.closeCard();
   await wait(80);
 
-  click(d.getElementById('btnPickGame'));
-  await wait(120);
-  ok(d.getElementById('gpMask').hidden === false, '先弹出「选一个玩法」面板');
-  const v35_gp = d.querySelectorAll('#gpMask [data-gp]');
-  ok(v35_gp.length === 4, '四个玩法都在面板里：' + v35_gp.length);
-  ok(d.querySelectorAll('#gpMask [data-gk]').length === 0,
-    '玩法面板用自己的 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH，会空着开局）');
-
-  click(d.querySelector('#gpMask [data-gp="fruit"]'));
+  /* 切到游戏乐园 */
+  click(d.querySelector('#mainNav [data-nav="games"]'));
   await wait(150);
-  ok(d.getElementById('gpMask').hidden === true, '选完玩法，面板自己关掉');
+  ok(d.querySelector('#mainNav [data-nav="games"]').classList.contains('on') &&
+    !d.querySelector('#mainNav [data-nav="learn"]').classList.contains('on'),
+    '点「游戏乐园」高亮跟着走，不留在「认字」上');
+  ok(d.getElementById('gamePick').hidden === false, '第一屏露出玩法卡');
+  ok(d.getElementById('learnBody').hidden === true,
+    '还没选玩法时，搜索 / 册次 / 字格先收起来（第一屏只有玩法）');
+  const v35_gp = d.querySelectorAll('#gamePick [data-gp]');
+  ok(v35_gp.length === 5, '四款玩法 + 一张「随便玩」：' + v35_gp.length);
+  ok(d.querySelectorAll('#gamePick [data-gk]').length === 0,
+    '玩法卡用自己的 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH，会空着开局）');
+  ok(!!d.querySelector('#gamePick [data-gp="any"]'), '第五张是「随便玩」');
+  ok(!d.getElementById('gpMask'), '不再有遮罩弹窗（v36 把面板拆了）');
+
+  click(d.querySelector('#gamePick [data-gp="fruit"]'));
+  await wait(150);
+  ok(d.getElementById('gamePick').hidden === true && d.getElementById('gameNow').hidden === false,
+    '选完玩法，玩法卡收成一条提示');
+  ok(d.getElementById('gnName').textContent === '摘果子',
+    '提示条上写着玩法：' + d.getElementById('gnName').textContent);
+  ok(d.getElementById('learnBody').hidden === false, '字格重新露出来');
   ok(w.PICK.on === true && w.PICK.kind === 'fruit',
     '进入选字态，玩法记住是摘果子：' + w.PICK.kind);
   ok(d.getElementById('pickBar').hidden === false, '底部出现常驻操作条');
@@ -1893,9 +1910,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.body.classList.contains('picking') === false, 'body 上的 picking 也摘掉了');
 
   /* 正式走一遍：选玩法 → 挑 4 个字 → 开始 */
-  click(d.getElementById('btnPickGame'));
-  await wait(100);
-  click(d.querySelector('#gpMask [data-gp="feed"]'));
+  click(d.querySelector('#gamePick [data-gp="feed"]'));
   await wait(140);
   const v35_pick = d.querySelectorAll('#charGrid .ch-card');
   click(v35_pick[0]); click(v35_pick[1]); click(v35_pick[2]); click(v35_pick[3]);
@@ -1922,12 +1937,39 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.STATE.phase === 'learn' && d.getElementById('pickBar').hidden === true,
     '玩完回乐园，不残留选字态');
 
-  /* Esc 关玩法面板 */
-  click(d.getElementById('btnPickGame'));
-  await wait(100);
+  /* Esc 退出选字态（面板拆了，Esc 退回玩法卡） */
+  click(d.querySelector('#gamePick [data-gp="bubble"]'));
+  await wait(140);
+  ok(w.PICK.on === true, '再选一个玩法，重新进选字态');
   d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  await wait(100);
-  ok(d.getElementById('gpMask').hidden === true, '按 Esc 能关掉玩法面板');
+  await wait(120);
+  ok(w.PICK.on === false && d.getElementById('gamePick').hidden === false,
+    '按 Esc 退出选字态、退回玩法卡');
+
+  /* 第五张「随便玩」：不挑字，点了直接开局 */
+  click(d.querySelector('#gamePick [data-gp="any"]'));
+  await wait(280);
+  ok(w.STATE.phase === 'game', '「随便玩」点了直接开局：' + w.STATE.phase);
+  ok(['bubble', 'fish', 'fruit', 'feed'].indexOf(w.GAME.kind) >= 0,
+    '随便玩随机到一款真玩法：' + w.GAME.kind);
+  ok(w.GAME.origin.chars.length >= 6, '随便玩自带一批字：' + w.GAME.origin.chars.length);
+  ok(d.getElementById('pickBar').hidden === true, '随便玩不进选字态，没有底部条');
+  w.quitGame(true);
+  await wait(150);
+  ok(d.getElementById('gamePick').hidden === false, '玩完回游戏乐园，看到的是玩法卡');
+
+  /* 切回「认字」：选字态要收干净，别把勾选圆圈带回认字乐园 */
+  click(d.querySelector('#gamePick [data-gp="bubble"]'));
+  await wait(140);
+  ok(w.PICK.on === true, '先进入选字态');
+  click(d.querySelector('#mainNav [data-nav="learn"]'));
+  await wait(150);
+  ok(w.PICK.on === false && d.getElementById('pickBar').hidden === true,
+    '切回「认字」自动退出选字态');
+  ok(d.querySelectorAll('#charGrid .ch-ck').length === 0, '勾选圆圈全清');
+  ok(d.getElementById('gamePick').hidden === true, '认字模式不显示玩法卡');
+  ok(d.querySelector('#mainNav [data-nav="learn"]').classList.contains('on'),
+    '高亮回到「认字」');
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
