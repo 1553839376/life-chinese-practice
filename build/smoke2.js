@@ -1771,6 +1771,32 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(false, '当前测试环境无法模拟滚动位置');
   }
 
+  console.log('\n【29】老师入口：连点两下才进（v34）');
+  const v34_entry = d.getElementById('btnTeacherTop');
+  const v34_tap = () => v34_entry.dispatchEvent(
+    new w.MouseEvent('pointerup', { bubbles: true, clientX: 900, clientY: 18 }));
+  w.showScreen('learn');
+  await wait(60);
+  v34_tap();
+  await wait(80);
+  ok(d.getElementById('scrTeacher').hidden === true,
+    '只点一下不进老师端：学生随手一点不会掉进配置页');
+  v34_tap();
+  await wait(160);
+  ok(d.getElementById('scrTeacher').hidden === false,
+    '紧接着再点一下（间隔 < 520ms）就进老师端');
+  ok((v34_entry.getAttribute('title') || '').indexOf('连点两下') >= 0,
+    '按钮提示改成「连点两下」：' + v34_entry.getAttribute('title'));
+
+  w.showScreen('learn');
+  await wait(40);
+  v34_tap();
+  await wait(620);
+  v34_tap();
+  await wait(140);
+  ok(d.getElementById('scrTeacher').hidden === true,
+    '隔了 0.6 秒再点不算连点（手抖、学生发两次呆都不会误入）');
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

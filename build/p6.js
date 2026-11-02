@@ -1362,7 +1362,7 @@ function wireEvents(){
 
   $('btnBackPick').addEventListener('click', function(){
     /* 从老师端「抽练」进来的，点返回就回原来的老师端标签页（档案还开着），
-       不把孩子丢在选人页上、也不用老师再长按一次「老师」 */
+       不把孩子丢在选人页上、也不用老师再连点两下「老师」 */
     if (STATE.fromTeacher){
       var back = STATE.fromTeacher;
       STATE.fromTeacher = '';
@@ -1469,15 +1469,21 @@ function wireEvents(){
   tea.addEventListener('input', scheduleCache);
   tea.addEventListener('change', scheduleCache);
 
+  /* 老师入口：双击进入（v34）。原来是按住不放 1 秒，触屏上手指一滑就作废，
+     老师自己都点不进去。这里自己数两次 pointerup，不靠浏览器自带的双击事件
+     （触屏上派发不一致），鼠标和触屏走同一套判定：
+     两次落点相距 < 40px、间隔 < 520ms 才算双击——学生瞎点一下、乱点两下都不会进去。 */
   var entry = $('btnTeacherTop');
-  var lp = null;
-  function down(){ if (lp) clearTimeout(lp); lp = setTimeout(function(){ lp = null; openTeacher(); }, 900); }
-  function up(){ if (lp){ clearTimeout(lp); lp = null; } }
-  entry.addEventListener('pointerdown', down);
-  entry.addEventListener('pointerup', up);
-  entry.addEventListener('pointerleave', up);
-  entry.addEventListener('pointercancel', up);
-  entry.addEventListener('dblclick', function(){ openTeacher(); });
+  var tapAt = 0, tapX = 0, tapY = 0;
+  var TAP_GAP = 520, TAP_SLOP = 40;
+  entry.addEventListener('pointerup', function(e){
+    var now = Date.now();
+    var x = e.clientX || 0, y = e.clientY || 0;
+    var twice = (now - tapAt < TAP_GAP) &&
+                Math.abs(x - tapX) < TAP_SLOP && Math.abs(y - tapY) < TAP_SLOP;
+    if (twice){ tapAt = 0; openTeacher(); return; }
+    tapAt = now; tapX = x; tapY = y;
+  });
 }
 
 /* ------------------------- 启动 ------------------------- */

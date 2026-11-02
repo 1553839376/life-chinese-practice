@@ -758,7 +758,9 @@ tr.tr-builtin td{background:#FBFAF3}
 .nav-btn.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .nav-btn:active{transform:scale(.96)}
 .nav-teach{border:1.5px solid var(--line2);background:var(--card);border-radius:10px;
-  padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink3);min-height:38px;margin-left:6px}
+  padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink3);min-height:38px;margin-left:6px;
+  /* 双击进老师端：禁掉双击缩放与文字选中，否则第二下会被浏览器吃掉（v34） */
+  touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .nav-teach:active{background:#F0EADC}
 .nav-av{display:flex;align-items:center;justify-content:center;width:42px;height:42px;
   border:1.5px solid var(--line2);background:var(--card);border-radius:12px;
@@ -1357,7 +1359,7 @@ tr.tr-builtin td{background:#FBFAF3}
         <path d="M18.5 6a8 8 0 0 1 0 12"></path>
       </svg>
     </button>
-    <button id="btnTeacherTop" class="nav-teach" type="button" title="长按 1 秒进入老师端">老师</button>
+    <button id="btnTeacherTop" class="nav-teach" type="button" title="连点两下进入老师端">老师</button>
   </div>
 </nav>
 
@@ -1423,7 +1425,7 @@ tr.tr-builtin td{background:#FBFAF3}
   </div>
   <p class="pick-hint">点一下自己的照片，开始今天的练习</p>
   <div id="stuGrid" class="stu-grid"></div>
-  <p id="pickEmpty" class="empty-tip" hidden>还没有学生。请长按右上角「老师」约 1 秒进去添加学生、上传照片。</p>
+  <p id="pickEmpty" class="empty-tip" hidden>还没有学生。请连点两下右上角「老师」进去添加学生、上传照片。</p>
   <button id="btnGoLearn" class="go-learn" type="button" data-nav="learn" hidden>没有学生也能玩：去认字乐园</button>
 </section>
 
@@ -1453,7 +1455,7 @@ tr.tr-builtin td{background:#FBFAF3}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v33</span>
+    <span id="appVer" class="app-ver">v34</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3311,7 +3313,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v33';
+var APP_VER = 'v34';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -5625,7 +5627,7 @@ function renderTypeTabs(){
   if (stage) stage.setAttribute('data-sp-database-id', DATABASE_ID);
 }
 function renderNoType(){
-  setHTML($('stage'), '<div class="empty-tip">这位同学还没有分配练习题型。请老师点右上角「老师」（长按约 1 秒）进去勾选题型。</div>');
+  setHTML($('stage'), '<div class="empty-tip">这位同学还没有分配练习题型。请老师点右上角「老师」（连点两下）进去勾选题型。</div>');
   $('qNow').textContent = '0';
   $('qTotal').textContent = '0';
 }
@@ -5826,7 +5828,7 @@ function renderStuHome(){
 
   if (!p.total){
     setHTML(stage, '<div class="empty-tip">这位同学还没有字表，所以今天没有要练的字。' +
-      '请老师点右上角「老师」（长按约 1 秒）进去，在 ' + esc(stu.name) + ' 的「学哪些字」里选几个。</div>');
+      '请老师点右上角「老师」（连点两下）进去，在 ' + esc(stu.name) + ' 的「学哪些字」里选几个。</div>');
     return;
   }
 
@@ -5882,7 +5884,7 @@ function preFootRefresh(){
   var tip = $('preTip');
   if (tip){
     tip.textContent = !hasType
-      ? '请老师点右上角「老师」（长按约 1 秒）进去勾选练习题型'
+      ? '请老师点右上角「老师」（连点两下）进去勾选练习题型'
       : '一张一张点着读，读完再开始练习';
   }
 }
@@ -5900,7 +5902,7 @@ function renderPreStudy(){
 
   if (!list.length){
     setHTML(stage, '<div class="empty-tip">这位同学还没有字表，所以没有今天的字卡。' +
-      '请老师点右上角「老师」（长按约 1 秒）进去，在学生的「学哪些字」里选几个。</div>');
+      '请老师点右上角「老师」（连点两下）进去，在学生的「学哪些字」里选几个。</div>');
     return;
   }
 
@@ -6172,7 +6174,7 @@ function startQuiz(type){
   }
   renderDrillBar(null);
   if (!pool.length){
-    setHTML($('stage'), '<div class="empty-tip">这位同学还没有字表。请老师点右上角「老师」（长按约 1 秒）进去，在学生的「学哪些字」里选几个。</div>');
+    setHTML($('stage'), '<div class="empty-tip">这位同学还没有字表。请老师点右上角「老师」（连点两下）进去，在学生的「学哪些字」里选几个。</div>');
     $('qNow').textContent = '0'; $('qTotal').textContent = '0';
     return;
   }
@@ -8932,7 +8934,7 @@ function wireEvents(){
 
   $('btnBackPick').addEventListener('click', function(){
     /* 从老师端「抽练」进来的，点返回就回原来的老师端标签页（档案还开着），
-       不把孩子丢在选人页上、也不用老师再长按一次「老师」 */
+       不把孩子丢在选人页上、也不用老师再连点两下「老师」 */
     if (STATE.fromTeacher){
       var back = STATE.fromTeacher;
       STATE.fromTeacher = '';
@@ -9039,15 +9041,21 @@ function wireEvents(){
   tea.addEventListener('input', scheduleCache);
   tea.addEventListener('change', scheduleCache);
 
+  /* 老师入口：双击进入（v34）。原来是按住不放 1 秒，触屏上手指一滑就作废，
+     老师自己都点不进去。这里自己数两次 pointerup，不靠浏览器自带的双击事件
+     （触屏上派发不一致），鼠标和触屏走同一套判定：
+     两次落点相距 < 40px、间隔 < 520ms 才算双击——学生瞎点一下、乱点两下都不会进去。 */
   var entry = $('btnTeacherTop');
-  var lp = null;
-  function down(){ if (lp) clearTimeout(lp); lp = setTimeout(function(){ lp = null; openTeacher(); }, 900); }
-  function up(){ if (lp){ clearTimeout(lp); lp = null; } }
-  entry.addEventListener('pointerdown', down);
-  entry.addEventListener('pointerup', up);
-  entry.addEventListener('pointerleave', up);
-  entry.addEventListener('pointercancel', up);
-  entry.addEventListener('dblclick', function(){ openTeacher(); });
+  var tapAt = 0, tapX = 0, tapY = 0;
+  var TAP_GAP = 520, TAP_SLOP = 40;
+  entry.addEventListener('pointerup', function(e){
+    var now = Date.now();
+    var x = e.clientX || 0, y = e.clientY || 0;
+    var twice = (now - tapAt < TAP_GAP) &&
+                Math.abs(x - tapX) < TAP_SLOP && Math.abs(y - tapY) < TAP_SLOP;
+    if (twice){ tapAt = 0; openTeacher(); return; }
+    tapAt = now; tapX = x; tapY = y;
+  });
 }
 
 /* ------------------------- 启动 ------------------------- */

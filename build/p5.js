@@ -154,7 +154,7 @@ function renderTypeTabs(){
   if (stage) stage.setAttribute('data-sp-database-id', DATABASE_ID);
 }
 function renderNoType(){
-  setHTML($('stage'), '<div class="empty-tip">这位同学还没有分配练习题型。请老师点右上角「老师」（长按约 1 秒）进去勾选题型。</div>');
+  setHTML($('stage'), '<div class="empty-tip">这位同学还没有分配练习题型。请老师点右上角「老师」（连点两下）进去勾选题型。</div>');
   $('qNow').textContent = '0';
   $('qTotal').textContent = '0';
 }
@@ -355,7 +355,7 @@ function renderStuHome(){
 
   if (!p.total){
     setHTML(stage, '<div class="empty-tip">这位同学还没有字表，所以今天没有要练的字。' +
-      '请老师点右上角「老师」（长按约 1 秒）进去，在 ' + esc(stu.name) + ' 的「学哪些字」里选几个。</div>');
+      '请老师点右上角「老师」（连点两下）进去，在 ' + esc(stu.name) + ' 的「学哪些字」里选几个。</div>');
     return;
   }
 
@@ -411,7 +411,7 @@ function preFootRefresh(){
   var tip = $('preTip');
   if (tip){
     tip.textContent = !hasType
-      ? '请老师点右上角「老师」（长按约 1 秒）进去勾选练习题型'
+      ? '请老师点右上角「老师」（连点两下）进去勾选练习题型'
       : '一张一张点着读，读完再开始练习';
   }
 }
@@ -429,7 +429,7 @@ function renderPreStudy(){
 
   if (!list.length){
     setHTML(stage, '<div class="empty-tip">这位同学还没有字表，所以没有今天的字卡。' +
-      '请老师点右上角「老师」（长按约 1 秒）进去，在学生的「学哪些字」里选几个。</div>');
+      '请老师点右上角「老师」（连点两下）进去，在学生的「学哪些字」里选几个。</div>');
     return;
   }
 
@@ -701,7 +701,7 @@ function startQuiz(type){
   }
   renderDrillBar(null);
   if (!pool.length){
-    setHTML($('stage'), '<div class="empty-tip">这位同学还没有字表。请老师点右上角「老师」（长按约 1 秒）进去，在学生的「学哪些字」里选几个。</div>');
+    setHTML($('stage'), '<div class="empty-tip">这位同学还没有字表。请老师点右上角「老师」（连点两下）进去，在学生的「学哪些字」里选几个。</div>');
     $('qNow').textContent = '0'; $('qTotal').textContent = '0';
     return;
   }

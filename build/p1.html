@@ -758,7 +758,9 @@ tr.tr-builtin td{background:#FBFAF3}
 .nav-btn.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
 .nav-btn:active{transform:scale(.96)}
 .nav-teach{border:1.5px solid var(--line2);background:var(--card);border-radius:10px;
-  padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink3);min-height:38px;margin-left:6px}
+  padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink3);min-height:38px;margin-left:6px;
+  /* 双击进老师端：禁掉双击缩放与文字选中，否则第二下会被浏览器吃掉（v34） */
+  touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .nav-teach:active{background:#F0EADC}
 .nav-av{display:flex;align-items:center;justify-content:center;width:42px;height:42px;
   border:1.5px solid var(--line2);background:var(--card);border-radius:12px;

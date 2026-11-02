@@ -618,6 +618,28 @@ def gate_static(html):
         'function migrateTypes' in html and 'LS_DATA_BAK_T023' in html
         and 'migrateTypes();' in html)
 
+    # v34 老师入口改双击。老师 2026-11-02
+    # 「把老师那个图标的触发方式改为双击吧，长按有点难触发。学生其实也不会去按那个按钮」——
+    # 长按要求手指按住 1 秒不动，触屏上稍微一划就作废；双击才是孩子和老师都熟的手势。
+    _ent = html.split("var entry = $('btnTeacherTop')")[1].split('function boot')[0] \
+        if "var entry = $('btnTeacherTop')" in html else ''
+    rec('G1', '老师入口靠两次 pointerup 自己判双击（落点 40px 内、间隔 520ms 内）',
+        bool(_ent) and "addEventListener('pointerup'" in _ent
+        and 'TAP_GAP = 520' in _ent and 'TAP_SLOP = 40' in _ent
+        and 'Math.abs(x - tapX)' in _ent and 'openTeacher();' in _ent,
+        _ent.replace('\n', ' ')[:120] if _ent else '找不到入口绑定')
+    rec('G1', '长按那套已拆掉（入口代码里没有 pointerdown / 900ms 定时器 / dblclick）',
+        bool(_ent) and 'pointerdown' not in _ent and '900' not in _ent
+        and 'dblclick' not in _ent)
+    rec('G1', '界面文案统一「连点两下」（不再出现「长按约 1 秒」）',
+        'title="连点两下进入老师端"' in html
+        and '（长按约 1 秒）' not in html and '长按右上角' not in html
+        and html.count('（连点两下）') >= 5)
+    # 双击会被浏览器当成「放大手势」吃掉第二下；按钮上必须关掉缩放与选中
+    rec('G1', '老师按钮关掉双击缩放/文字选中（.nav-teach 带 touch-action:manipulation）',
+        '.nav-teach{' in html
+        and 'touch-action:manipulation' in html.split('.nav-teach{')[1].split('}')[0])
+
     # v28 学字卡瘦身 + 笔顺放慢。老师 2026-10-30 三条反馈：
     # 「不需要什么只看拼音和再听一遍这些词语，你直接在这个字旁边放一个喇叭的标志就好了」
     # 「这个描写的位置很奇怪，这么大个框横在这也不是很好看」
