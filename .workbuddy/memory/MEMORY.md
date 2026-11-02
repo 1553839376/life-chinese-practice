@@ -9,6 +9,7 @@
 - **线上不能字节比对**：平台注入 pnid 并重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。
 - 静态直链：新版用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录）；给用户前 curl grep 一次 `APP_VER` 的**值**。**角标抓不到 `>v31<`**（平台往 `#appVer` 插了 `<!--pnid:…-->`），核版本只认 `APP_VER`。
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过。
+- **分享卡 / 二维码**：`build/gen_share_card_v34.py`（segno 装在本机 default python env；HTML→本机 Chrome `--headless=new --force-device-scale-factor=2` 截图）。**量高度别用 `documentElement.scrollHeight`**（视口比内容高时返回视口高度，底下拖一大片空白），量 `卡片.getBoundingClientRect().height + body 上下 padding`；截完用 `build/decode_qr2.js`（jsQR+pngjs，`npm i jsqr pngjs --no-save`）解一遍核对内容，`sips -Z 620` 缩到微信缩略图尺寸再解一次。
 - **git**：`http.proxy` 每次开机都变，fetch/push 一律 6~8 次重试。**走沙箱代理打 GitHub 必 502**（`curl` 走代理 000 / `--noproxy '*'` 200）→ 去掉 `http(s).proxy` 并 `env -u http_proxy … git push`；直连 443/HTTP2 framing → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25`，别在同一档参数上死磕。
 
 ## 二、教学口径与数据结构
