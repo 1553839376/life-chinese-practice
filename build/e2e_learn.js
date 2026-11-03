@@ -16,17 +16,23 @@ function ok(cond, msg){ console.log((cond ? 'PASS ' : 'FAIL ') + msg); if (!cond
   ok(d.getElementById('scrPick').hidden === true, '练习台退到第二屏');
   ok(d.getElementById('mainNav').hidden === false, '主导航显示');
   const cards = [...d.querySelectorAll('#charGrid .ch-card')];
-  console.log('  首屏字卡 ' + cards.length + ' 张 | 册次条 ' + d.querySelectorAll('.stage-chip').length + ' 个 | ' +
-    d.querySelectorAll('.grp').length + ' 个年级分段 | ' + d.getElementById('learnCount').textContent);
+  console.log('  首屏字卡 ' + cards.length + ' 张 | 年级 ' + d.querySelectorAll('.grade-chip').length +
+    ' 个 | 册次条 ' + d.querySelectorAll('.stage-chip').length + ' 个 | ' +
+    d.querySelectorAll('.grp').length + ' 个册次分段 | ' + d.getElementById('learnCount').textContent);
   ok(cards.length > 100, '首屏铺开各年级的字');
-  ok(d.querySelectorAll('.stage-chip').length >= 20, '册次条覆盖各年级');
+  /* v37 起册次是两级：没选年级时只看到 7 个年级胶囊，册次条收起 */
+  ok(d.querySelectorAll('.grade-chip').length === 7, '年级行 7 个（全部 + 一～六）');
+  ok(d.querySelectorAll('.stage-chip').length === 0 && d.getElementById('stageStrip').hidden,
+    '没选年级时册次条不占位');
 
-  /* ---------- 2. 切册次 ---------- */
+  /* ---------- 2. 先点年级，再切册次 ---------- */
+  d.querySelector('#gradeStrip [data-grade="三"]').click();
+  await wait(170);
   const chips = [...d.querySelectorAll('.stage-chip')];
-  const c2 = chips[3];
-  c2.click(); await wait(150);
+  const c2 = chips[1];
+  c2.click(); await wait(170);
   const n2 = d.querySelectorAll('#charGrid .ch-card').length;
-  console.log('  切到「' + c2.textContent + '」→ ' + d.getElementById('learnCount').textContent);
+  console.log('  切到「' + c2.textContent + '」→ ' + n2 + ' 张');
   ok(n2 > 0 && n2 !== cards.length, '切换册次换了一批字');
 
   /* ---------- 3. 搜索（拼音不带声调） ---------- */

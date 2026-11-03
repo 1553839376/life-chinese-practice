@@ -786,15 +786,33 @@ tr.tr-builtin td{background:#FBFAF3}
 .ls-clear{border:1.5px solid var(--line2);border-radius:10px;padding:7px 12px;
   font-size:14px;font-weight:700;color:var(--ink2);background:var(--card);flex:none}
 
-/* ---------- 册次条 ---------- */
+/* ---------- 册次条（v37：年级 / 册次 两级） ---------- */
+/* 一年级 17 个字、六年级 230 个字，全在一条 22 个胶囊的横条上；
+   高年级老师每天要拉三四屏。改成两级：先年级（一行 7 个放得下），再册次（最多 4 个）。 */
+.grade-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+  gap:8px;max-width:560px;padding:2px 2px 10px}
+.grade-chip{border:2px solid var(--line);background:var(--card);border-radius:999px;
+  min-height:44px;padding:9px 4px;font-family:inherit;font-size:15px;font-weight:700;
+  color:var(--ink2);line-height:1;white-space:nowrap;cursor:pointer}
+.grade-chip.on{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+.grade-chip:active{transform:scale(.97)}
 .stage-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 12px;
   scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.stage-strip[hidden]{display:none}
 .stage-chip{flex:none;border:2px solid var(--line);background:var(--card);border-radius:999px;
   padding:9px 18px;font-size:16px;font-weight:700;color:var(--ink2);min-height:44px;white-space:nowrap}
 .stage-chip b{font-weight:800;color:var(--ink3);font-size:13px;margin-left:6px}
 .stage-chip.on{border-color:var(--green);background:var(--green-bg);color:var(--green)}
 .stage-chip.on b{color:var(--green)}
 .stage-chip:active{transform:scale(.97)}
+/* 窄屏：六年级 5 个胶囊（全年级 + 4 个册次）要挤进 354px，只能收字号、省掉字数。
+   手机上一行放不下就得滑——那正是 v37 要解决的问题，不能在第二级这里又退回去。
+   高度仍是 44px，点击目标不变，只是字小一号。宽屏（≥481）照旧 16px 带字数。 */
+@media (max-width:480px){
+  .stage-strip{gap:5px}
+  .stage-chip{padding:8px 7px;font-size:14px}
+  .stage-chip b{display:none}
+}
 
 .learn-bar{display:flex;align-items:center;gap:12px;margin:0 2px 12px;flex-wrap:wrap}
 .learn-count{font-size:14px;color:var(--ink3);font-weight:700;margin-right:auto}
@@ -1476,7 +1494,8 @@ body.picking #scrLearn{padding-bottom:96px}
     <button id="learnClear" class="ls-clear" type="button" hidden>清空</button>
   </div>
 
-  <div id="stageStrip" class="stage-strip"></div>
+  <div id="gradeStrip" class="grade-strip"></div>
+  <div id="stageStrip" class="stage-strip" hidden></div>
 
   <div class="learn-bar">
     <span id="learnCount" class="learn-count">—</span>
@@ -1554,7 +1573,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v36</span>
+    <span id="appVer" class="app-ver">v37</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3428,7 +3447,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v36';
+var APP_VER = 'v37';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -5444,15 +5463,19 @@ function sfxOk(){
       只是旋律方向相反，闭着眼仍然可能混。
    现在：方波（泛音多、穿透力强）+ 双路打拍（嗡嗡的粗糙感）+ 两次往下滑（走向明确向下），
    音区从 233Hz 落到 130Hz，全部落在小喇叭放得出的范围里，收尾再补 147Hz 的短闷响。
-   总长约 0.62s，比 v22（0.56s）略长，给孩子留出「这题不对」的反应时间。 */
+   总长约 0.62s，比 v22（0.56s）略长，给孩子留出「这题不对」的反应时间。
+   v37 只调音量：老师 2026-11-03 反馈「错误音效有点大声」。方波同一峰值的主观响度
+   明显高于正确音的 triangle，原来 0.32/0.30/0.30 比正确音（0.26）还高，教室里显得凶。
+   降到 0.22/0.21/0.20（幅度 -31%，约 -3.2 dB）：音色、走向、时长一律不动，
+   只把整体压低一档，仍高于「教室听不见」的 0.15 线，也仍在正确音之上一点（错了要听得出）。 */
 function sfxNo(){
   if (!AV.sfx) return;
   var ctx = vaCtx();
   if (!ctx) return;
   var t = ctx.currentTime + 0.005;
-  synthBuzz(ctx, 233.08, t, 0.26, 0.32, 12, 174.61);
-  synthBuzz(ctx, 174.61, t + 0.24, 0.26, 0.30, 10, 130.81);
-  synthTone(ctx, 146.83, t + 0.46, 0.16, 0.30, 'triangle', 110.00);
+  synthBuzz(ctx, 233.08, t, 0.26, 0.22, 12, 174.61);
+  synthBuzz(ctx, 174.61, t + 0.24, 0.26, 0.21, 10, 130.81);
+  synthTone(ctx, 146.83, t + 0.46, 0.16, 0.20, 'triangle', 110.00);
 }
 /* 连对：音高随连击往上抬，越玩越顺，比每关都一样的老虎机音更有节奏 */
 function sfxStreak(level){
@@ -9271,7 +9294,8 @@ function hasArt(c){
 
 /* ============================ 乐园状态 ============================ */
 var LEARN = {
-  stage: null,     /* null = 还没初始化；'' = 全部册次 */
+  stage: null,     /* null = 还没初始化；'' = 该年级全部册次（或全部册次） */
+  grade: null,     /* v37：null/'' = 全部年级；'一'..'六' = 只看这个年级。两级的第一级 */
   q: '',
   list: [],
   mode: 'read'     /* v36：'read' = 认字（点字卡进学字卡）；'play' = 游戏乐园（先选玩法再挑字） */
@@ -9281,6 +9305,14 @@ var CARD_CH = null;
 var PICK = { on: false, kind: '', list: [] };
 
 /* ============================ 册次 ============================ */
+/* v37：22 个册次原来是横着一长条、要拉三四屏（六年级 230 个字全压在最后），
+   《生活语文生字》的老师常教高年级，每天都要拉到最底。改成两级：
+   先点年级（一～六，一行 7 个胶囊放得下），再点这个年级的册次（最多 4 个，一屏内）。 */
+var GRADES = ['一', '二', '三', '四', '五', '六'];
+function gradeOf(g){
+  var m = /^([一二三四五六])年级/.exec(String(g || ''));
+  return m ? m[1] : '';
+}
 function stageShort(g){
   var m = /^([一二三四五六])年级(上|下)册(?:-(.))?$/.exec(g);
   if (!m) return g;
@@ -9317,26 +9349,62 @@ function learnList(){
       if (c.w.indexOf(q) < 0 &&
           noTone(c.p).indexOf(lq) < 0 &&
           String(c.words || '').indexOf(q) < 0) continue;
-    } else if (LEARN.stage && c.g !== LEARN.stage) continue;
+    } else if (LEARN.stage){
+      if (c.g !== LEARN.stage) continue;
+    } else if (LEARN.grade){
+      /* v37：只选了年级，就把这个年级的 2~4 个册次全算上（六年级 230 个字） */
+      if (gradeOf(c.g) !== LEARN.grade) continue;
+    }
     out.push(c);
   }
   return out;
 }
 
 /* ============================ 乐园渲染 ============================ */
-function renderStageChips(groups){
-  var total = 0, i, html, on;
-  for (i = 0; i < STATE.chars.length; i++){
-    if (STATE.chars[i].on && STATE.chars[i].w) total++;
-  }
-  on = (LEARN.q || LEARN.stage === '') ? ' on' : '';
-  html = '<button type="button" class="stage-chip' + on + '" data-g="">全部<b>' + total + '</b></button>';
+/* 第一级：年级（全部 + 一～六）。七个胶囊一行放得下，不用滚。 */
+function renderGradeChips(groups){
+  var cnt = {}, i, g, html, on;
   for (i = 0; i < groups.order.length; i++){
-    on = (!LEARN.q && LEARN.stage === groups.order[i]) ? ' on' : '';
-    html += '<button type="button" class="stage-chip' + on + '" data-g="' + esc(groups.order[i]) + '">' +
-      esc(stageShort(groups.order[i])) + '<b>' + groups.cnt[groups.order[i]] + '</b></button>';
+    g = gradeOf(groups.order[i]);
+    if (!g) continue;
+    cnt[g] = (cnt[g] || 0) + groups.cnt[groups.order[i]];
   }
-  setHTML($('stageStrip'), html);
+  /* 字表换过（导入备份 / 词库兜底）后，原来选的年级可能已经不存在了：
+     退回「全部」，别停在一个空年级上——第二级会列出「全年级 0」，字格也空着。 */
+  if (LEARN.grade && !cnt[LEARN.grade]){ LEARN.grade = ''; LEARN.stage = ''; }
+  /* 搜索是跨册次的临时态：这时候「全部」亮着，年级和册次都不亮，
+     册次行也收起——否则会出现「亮着『一年级』但列出 700 个字里搜到的字」。 */
+  on = (LEARN.q || !LEARN.grade) ? ' on' : '';
+  html = '<button type="button" class="grade-chip' + on + '" data-grade="">全部</button>';
+  for (i = 0; i < GRADES.length; i++){
+    g = GRADES[i];
+    if (!cnt[g]) continue;   /* 这个年级一个字都没有就不出现，免得点进去是空的 */
+    on = (!LEARN.q && LEARN.grade === g) ? ' on' : '';
+    html += '<button type="button" class="grade-chip' + on + '" data-grade="' + g + '">' + g + '</button>';
+  }
+  setHTML($('gradeStrip'), html);
+}
+
+/* 第二级：这个年级的册次（最多 4 个 + 一句「全年级」）。没选年级时整条收起。 */
+function renderStageChips(groups){
+  var box = $('stageStrip');
+  if (!box) return;
+  if (LEARN.q || !LEARN.grade){ box.hidden = true; setHTML(box, ''); return; }
+  box.hidden = false;
+  var tot = 0, i, g, html, on;
+  for (i = 0; i < groups.order.length; i++){
+    if (gradeOf(groups.order[i]) === LEARN.grade) tot += groups.cnt[groups.order[i]];
+  }
+  on = (LEARN.stage === '') ? ' on' : '';
+  html = '<button type="button" class="stage-chip' + on + '" data-g="">全年级<b>' + tot + '</b></button>';
+  for (i = 0; i < groups.order.length; i++){
+    g = groups.order[i];
+    if (gradeOf(g) !== LEARN.grade) continue;
+    on = (LEARN.stage === g) ? ' on' : '';
+    html += '<button type="button" class="stage-chip' + on + '" data-g="' + esc(g) + '">' +
+      esc(stageShort(g)) + '<b>' + groups.cnt[g] + '</b></button>';
+  }
+  setHTML(box, html);
 }
 
 function cardHTML(c, i){
@@ -9355,6 +9423,8 @@ function cardHTML(c, i){
 function renderLearn(){
   var groups = learnGroups();
   if (LEARN.stage === null) LEARN.stage = '';
+  if (LEARN.grade === null) LEARN.grade = '';
+  renderGradeChips(groups);
   renderStageChips(groups);
 
   /* v36：两种模式共用这一屏的搜索、册次和字格。
@@ -10103,12 +10173,16 @@ function stagePool(){
   for (i = 0; i < STATE.chars.length; i++){
     c = STATE.chars[i];
     if (!c.on || !c.w) continue;
-    if (LEARN.stage && c.g !== LEARN.stage) continue;
+    if (LEARN.stage){
+      if (c.g !== LEARN.stage) continue;
+    } else if (LEARN.grade && gradeOf(c.g) !== LEARN.grade) continue;
     out.push(c);
   }
-  /* 「全部」模式下别跨年级混抽，只取排在最前的那个册次，难度才不会跳 */
+  /* 「全部」模式下别跨年级混抽，只取排在最前的那个册次，难度才不会跳。
+     v37：选了年级时「最前」要在本年级里找，不能拿全库的第一个册次（一上）。 */
   if (!LEARN.stage && out.length){
-    first = learnGroups().order[0];
+    first = out[0].g;
+    for (i = 0; i < out.length; i++){ if (byStage(out[i].g, first) < 0) first = out[i].g; }
     for (i = 0; i < out.length; i++){ if (out[i].g === first) one.push(out[i]); }
     if (one.length) out = one;
   }
@@ -10269,6 +10343,16 @@ function wireLearn(){
     if (!t || !t.closest) return;
     var el = t.closest('[data-nav]');
     if (el){ gotoNav(el.getAttribute('data-nav')); return; }
+    el = t.closest('.grade-chip');
+    if (el){
+      /* v37：换年级时册次归零——「六上·写」不能留在「一年级」里，否则字格是空的 */
+      LEARN.grade = el.getAttribute('data-grade') || '';
+      LEARN.stage = '';
+      LEARN.q = '';
+      if ($('learnSearch')) $('learnSearch').value = '';
+      renderLearn();
+      return;
+    }
     el = t.closest('.stage-chip');
     if (el){
       LEARN.stage = el.getAttribute('data-g');

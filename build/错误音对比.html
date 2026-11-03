@@ -71,13 +71,34 @@
   </div>
 
   <div class="card rec">
-    <div class="hd"><span class="tag">A</span><span class="name">方波嗡嗡，两级下滑</span>
-      <span class="badge">已装进产品（v23）</span></div>
+    <div class="hd"><span class="tag">E</span><span class="name">方波嗡嗡，两级下滑（音量 0.22）</span>
+      <span class="badge">现在装在产品里（v37）</span></div>
+    <p class="desc">音色、走向、时长和下面 A 一模一样，只是<b>整体压低一档</b>：峰值 0.32 → <em>0.22</em>（幅度 -31%，约 -3.2 dB）。<br>
+      为什么同样的数字，方波听起来比答对音凶：方波泛音多、谐波能量集中在耳朵最敏感的 1~4 kHz，峰值 0.32 时主观响度远超 triangle 的 0.26。</p>
+    <div class="row">
+      <button class="btn-no" data-play="E">▶ 播放</button>
+      <button data-play="E" data-twice="1">▶ 连拨两次（听重复时烦不烦）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="tag">F</span><span class="name">再轻一档（音量 0.18）</span>
+      <span class="badge">觉得 E 还大就选它</span></div>
+    <p class="desc">峰值 <em>0.18</em>，已经和答对音的最后一个音差不多。教室外放还能听见，但基本不扎耳；
+      代价是在吵的教室里可能被环境声盖住——听不出「错了」比听不出「对了」更麻烦。</p>
+    <div class="row">
+      <button class="btn-no" data-play="F">▶ 播放</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="tag">A</span><span class="name">方波嗡嗡，两级下滑（音量 0.32）</span>
+      <span class="badge">v23~v36 一直用这个，你说大声的就是它</span></div>
     <p class="desc">两只方波差一点音高同时响，出「嗡嗡」的颗粒感，<em>233 → 175 → 131 Hz</em> 一路往下掉，最后补一口 147 Hz 闷响。总长 0.62 秒。<br>
-      和答对音在三个维度同时拉开：更响、更低、更粗糙——不用听旋律也能分出对错。</p>
+      和答对音在三个维度同时拉开：更响、更低、更粗糙——不用听旋律也能分出对错。留着它是为了对比：先听 A 再听 E，差别最明显。</p>
     <div class="row">
       <button class="btn-no" data-play="A">▶ 播放</button>
-      <button data-play="A" data-twice="1">▶ 连拨两次（听重复时烦不烦）</button>
+      <button data-play="A" data-twice="1">▶ 连拨两次</button>
     </div>
   </div>
 
@@ -112,7 +133,8 @@
   </div>
 
   <p class="foot">
-    <b>怎么选</b>：直接回我一个字母就行（例：<b>「要 C」</b>）。A 已经在产品里了，不改也是 A。<br>
+    <b>怎么选</b>：回我一个字母就行（例：<b>「要 F」</b>）。<b>E 已经装进产品了</b>，觉得合适就不用管；
+    觉得还大就回「F」，觉得太小听不见就回「A」。<br>
     <b>这些音都是实时合成的</b>，不是录音文件——所以在这台电脑上听到的，和以后在平板上听到的是同一套算法。
     但<b>外放的差别是真的</b>：如果你手边有上课用的那台平板，用它外放听一遍最准。
   </p>
@@ -180,11 +202,23 @@
       tone(c, 987.77, t + 0.11, 0.24, 0.21, 'triangle');
       tone(c, 1318.51, t + 0.17, 0.32, 0.18, 'sine');
     },
-    /* A = v23 线上版本 */
+    /* A = v23~v36 版本（峰值 0.32，老师 2026-11-03 说大声） */
     A: function(c, t){
       buzz(c, 233.08, t, 0.26, 0.32, 12, 174.61);
       buzz(c, 174.61, t + 0.24, 0.26, 0.30, 10, 130.81);
       tone(c, 146.83, t + 0.46, 0.16, 0.30, 'triangle', 110.00);
+    },
+    /* E = v37 装机版：同一套音，峰值 0.32 → 0.22 */
+    E: function(c, t){
+      buzz(c, 233.08, t, 0.26, 0.22, 12, 174.61);
+      buzz(c, 174.61, t + 0.24, 0.26, 0.21, 10, 130.81);
+      tone(c, 146.83, t + 0.46, 0.16, 0.20, 'triangle', 110.00);
+    },
+    /* F = 再轻一档：0.18，教室外放还听得见，但基本不扎耳 */
+    F: function(c, t){
+      buzz(c, 233.08, t, 0.26, 0.18, 12, 174.61);
+      buzz(c, 174.61, t + 0.24, 0.26, 0.17, 10, 130.81);
+      tone(c, 146.83, t + 0.46, 0.16, 0.17, 'triangle', 110.00);
     },
     /* B = v22 旧版 */
     B: function(c, t){

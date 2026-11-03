@@ -44,7 +44,8 @@ function hasArt(c){
 
 /* ============================ 乐园状态 ============================ */
 var LEARN = {
-  stage: null,     /* null = 还没初始化；'' = 全部册次 */
+  stage: null,     /* null = 还没初始化；'' = 该年级全部册次（或全部册次） */
+  grade: null,     /* v37：null/'' = 全部年级；'一'..'六' = 只看这个年级。两级的第一级 */
   q: '',
   list: [],
   mode: 'read'     /* v36：'read' = 认字（点字卡进学字卡）；'play' = 游戏乐园（先选玩法再挑字） */
@@ -54,6 +55,14 @@ var CARD_CH = null;
 var PICK = { on: false, kind: '', list: [] };
 
 /* ============================ 册次 ============================ */
+/* v37：22 个册次原来是横着一长条、要拉三四屏（六年级 230 个字全压在最后），
+   《生活语文生字》的老师常教高年级，每天都要拉到最底。改成两级：
+   先点年级（一～六，一行 7 个胶囊放得下），再点这个年级的册次（最多 4 个，一屏内）。 */
+var GRADES = ['一', '二', '三', '四', '五', '六'];
+function gradeOf(g){
+  var m = /^([一二三四五六])年级/.exec(String(g || ''));
+  return m ? m[1] : '';
+}
 function stageShort(g){
   var m = /^([一二三四五六])年级(上|下)册(?:-(.))?$/.exec(g);
   if (!m) return g;
@@ -90,26 +99,62 @@ function learnList(){
       if (c.w.indexOf(q) < 0 &&
           noTone(c.p).indexOf(lq) < 0 &&
           String(c.words || '').indexOf(q) < 0) continue;
-    } else if (LEARN.stage && c.g !== LEARN.stage) continue;
+    } else if (LEARN.stage){
+      if (c.g !== LEARN.stage) continue;
+    } else if (LEARN.grade){
+      /* v37：只选了年级，就把这个年级的 2~4 个册次全算上（六年级 230 个字） */
+      if (gradeOf(c.g) !== LEARN.grade) continue;
+    }
     out.push(c);
   }
   return out;
 }
 
 /* ============================ 乐园渲染 ============================ */
-function renderStageChips(groups){
-  var total = 0, i, html, on;
-  for (i = 0; i < STATE.chars.length; i++){
-    if (STATE.chars[i].on && STATE.chars[i].w) total++;
-  }
-  on = (LEARN.q || LEARN.stage === '') ? ' on' : '';
-  html = '<button type="button" class="stage-chip' + on + '" data-g="">全部<b>' + total + '</b></button>';
+/* 第一级：年级（全部 + 一～六）。七个胶囊一行放得下，不用滚。 */
+function renderGradeChips(groups){
+  var cnt = {}, i, g, html, on;
   for (i = 0; i < groups.order.length; i++){
-    on = (!LEARN.q && LEARN.stage === groups.order[i]) ? ' on' : '';
-    html += '<button type="button" class="stage-chip' + on + '" data-g="' + esc(groups.order[i]) + '">' +
-      esc(stageShort(groups.order[i])) + '<b>' + groups.cnt[groups.order[i]] + '</b></button>';
+    g = gradeOf(groups.order[i]);
+    if (!g) continue;
+    cnt[g] = (cnt[g] || 0) + groups.cnt[groups.order[i]];
   }
-  setHTML($('stageStrip'), html);
+  /* 字表换过（导入备份 / 词库兜底）后，原来选的年级可能已经不存在了：
+     退回「全部」，别停在一个空年级上——第二级会列出「全年级 0」，字格也空着。 */
+  if (LEARN.grade && !cnt[LEARN.grade]){ LEARN.grade = ''; LEARN.stage = ''; }
+  /* 搜索是跨册次的临时态：这时候「全部」亮着，年级和册次都不亮，
+     册次行也收起——否则会出现「亮着『一年级』但列出 700 个字里搜到的字」。 */
+  on = (LEARN.q || !LEARN.grade) ? ' on' : '';
+  html = '<button type="button" class="grade-chip' + on + '" data-grade="">全部</button>';
+  for (i = 0; i < GRADES.length; i++){
+    g = GRADES[i];
+    if (!cnt[g]) continue;   /* 这个年级一个字都没有就不出现，免得点进去是空的 */
+    on = (!LEARN.q && LEARN.grade === g) ? ' on' : '';
+    html += '<button type="button" class="grade-chip' + on + '" data-grade="' + g + '">' + g + '</button>';
+  }
+  setHTML($('gradeStrip'), html);
+}
+
+/* 第二级：这个年级的册次（最多 4 个 + 一句「全年级」）。没选年级时整条收起。 */
+function renderStageChips(groups){
+  var box = $('stageStrip');
+  if (!box) return;
+  if (LEARN.q || !LEARN.grade){ box.hidden = true; setHTML(box, ''); return; }
+  box.hidden = false;
+  var tot = 0, i, g, html, on;
+  for (i = 0; i < groups.order.length; i++){
+    if (gradeOf(groups.order[i]) === LEARN.grade) tot += groups.cnt[groups.order[i]];
+  }
+  on = (LEARN.stage === '') ? ' on' : '';
+  html = '<button type="button" class="stage-chip' + on + '" data-g="">全年级<b>' + tot + '</b></button>';
+  for (i = 0; i < groups.order.length; i++){
+    g = groups.order[i];
+    if (gradeOf(g) !== LEARN.grade) continue;
+    on = (LEARN.stage === g) ? ' on' : '';
+    html += '<button type="button" class="stage-chip' + on + '" data-g="' + esc(g) + '">' +
+      esc(stageShort(g)) + '<b>' + groups.cnt[g] + '</b></button>';
+  }
+  setHTML(box, html);
 }
 
 function cardHTML(c, i){
@@ -128,6 +173,8 @@ function cardHTML(c, i){
 function renderLearn(){
   var groups = learnGroups();
   if (LEARN.stage === null) LEARN.stage = '';
+  if (LEARN.grade === null) LEARN.grade = '';
+  renderGradeChips(groups);
   renderStageChips(groups);
 
   /* v36：两种模式共用这一屏的搜索、册次和字格。
@@ -876,12 +923,16 @@ function stagePool(){
   for (i = 0; i < STATE.chars.length; i++){
     c = STATE.chars[i];
     if (!c.on || !c.w) continue;
-    if (LEARN.stage && c.g !== LEARN.stage) continue;
+    if (LEARN.stage){
+      if (c.g !== LEARN.stage) continue;
+    } else if (LEARN.grade && gradeOf(c.g) !== LEARN.grade) continue;
     out.push(c);
   }
-  /* 「全部」模式下别跨年级混抽，只取排在最前的那个册次，难度才不会跳 */
+  /* 「全部」模式下别跨年级混抽，只取排在最前的那个册次，难度才不会跳。
+     v37：选了年级时「最前」要在本年级里找，不能拿全库的第一个册次（一上）。 */
   if (!LEARN.stage && out.length){
-    first = learnGroups().order[0];
+    first = out[0].g;
+    for (i = 0; i < out.length; i++){ if (byStage(out[i].g, first) < 0) first = out[i].g; }
     for (i = 0; i < out.length; i++){ if (out[i].g === first) one.push(out[i]); }
     if (one.length) out = one;
   }
@@ -1042,6 +1093,16 @@ function wireLearn(){
     if (!t || !t.closest) return;
     var el = t.closest('[data-nav]');
     if (el){ gotoNav(el.getAttribute('data-nav')); return; }
+    el = t.closest('.grade-chip');
+    if (el){
+      /* v37：换年级时册次归零——「六上·写」不能留在「一年级」里，否则字格是空的 */
+      LEARN.grade = el.getAttribute('data-grade') || '';
+      LEARN.stage = '';
+      LEARN.q = '';
+      if ($('learnSearch')) $('learnSearch').value = '';
+      renderLearn();
+      return;
+    }
     el = t.closest('.stage-chip');
     if (el){
       LEARN.stage = el.getAttribute('data-g');

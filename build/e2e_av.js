@@ -262,8 +262,14 @@ function ok(cond, msg){ total++; console.log((cond ? 'PASS ' : 'FAIL ') + msg); 
   w.sfxNo();
   await wait(60);
   const noPeak = Math.max.apply(null, peaks.concat([0]));
-  ok(noPeak >= 0.30, '错误音效峰值 ' + noPeak + '（不低于 0.30，v21 及以前只有 0.20/0.17）');
-  ok(noPeak >= okPeak, '错误音不比正确音轻（旧版方向反了：错 0.20 < 对 0.26）');
+  /* v37 老师 2026-11-03：「错误音效有点大声」。方波同一峰值的主观响度明显高于正确音的
+     triangle，原来 0.32 比正确音（0.26）还高，教室里显得凶 → 降到 0.22。
+     口径改成两头卡：低于 0.18 教室听不见，高于 0.30 又会变吵。 */
+  ok(noPeak >= 0.18 && noPeak <= 0.31,
+     '错误音效峰值 ' + noPeak + '（0.18~0.31：低于 0.18 听不见，高于 0.31 嫌吵）');
+  ok(noPeak >= okPeak * 0.7,
+     '错误音不比正确音低太多（方波主观更响，允许峰值低于正确音的 triangle）：错 ' +
+     noPeak + ' / 对 ' + okPeak);
   ok(peaks.length >= 3, '错误音是分层下滑（实测 ' + peaks.length + ' 个增益包络）');
   ok(oscTypes.indexOf('square') >= 0,
      '错误音用了方波（v22 全是 triangle/sine，圆润得像叹气；v23 起要有粗糙感）：' +

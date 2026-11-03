@@ -1971,6 +1971,103 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelector('#mainNav [data-nav="learn"]').classList.contains('on'),
     '高亮回到「认字」');
 
+  /* ---------- 31. 册次两级：先年级、再册次（v37） ---------- */
+  console.log('\n--- 31. 册次两级 ---');
+  /* 前面的测试把字表换成了不带册次的小样本（g:''），这里先换回内置字库——
+     两级册次全靠 g 里的「X年级」，没有 g 就只有「全部」一个按钮。 */
+  const v37_bak = w.STATE.chars;
+  w.STATE.chars = w.CHARS.filter(c => c.w).map((c, i) =>
+    Object.assign({}, c, { id: 'v37_' + i, on: true }));
+  click(d.querySelector('#mainNav [data-nav="learn"]'));
+  await wait(160);
+  w.LEARN.q = ''; w.LEARN.grade = ''; w.LEARN.stage = '';
+  w.renderLearn();
+  await wait(90);
+
+  const gSel = Array.from(d.querySelectorAll('#gradeStrip .grade-chip'));
+  ok(gSel.length === 7, '年级行 7 个（全部 + 一～六）：' + gSel.length);
+  ok(gSel[0].textContent.trim() === '全部' && gSel[6].textContent.trim() === '六',
+    '两头是「全部」和「六」：' + gSel[0].textContent.trim() + '/' + gSel[6].textContent.trim());
+  ok(d.getElementById('stageStrip').hidden === true, '没选年级时第二级册次条收起');
+  ok(d.querySelectorAll('#charGrid .ch-card').length === 700, '默认还是全部 700 个字');
+  ok(!d.querySelector('#gradeStrip b'), '年级胶囊不写字数（七个才放得下一行）');
+
+  click(d.querySelector('#gradeStrip [data-grade="六"]'));
+  await wait(170);
+  ok(w.LEARN.grade === '六' && w.LEARN.stage === '', '点六年级：年级=六、册次=本级全部');
+  ok(d.getElementById('stageStrip').hidden === false, '第二级册次条出现');
+  const sixChips = Array.from(d.querySelectorAll('#stageStrip .stage-chip'));
+  ok(sixChips.length === 5, '六年级第二级 5 个（全年级 + 上下册写/认）：' + sixChips.length);
+  ok(d.querySelectorAll('#charGrid .ch-card').length === 230,
+    '一次看到六年级 230 个字（原来要拉到最右边）：' + d.querySelectorAll('#charGrid .ch-card').length);
+  ok(d.querySelector('#stageStrip .stage-chip.on').textContent.indexOf('全年级') >= 0,
+    '「全年级」是当前选中态');
+
+  click(d.querySelector('#stageStrip [data-g="六年级上册-写"]'));
+  await wait(170);
+  ok(w.LEARN.stage === '六年级上册-写', '再点册次精确到「六上·写」');
+  ok(d.querySelectorAll('#charGrid .ch-card').length === 50, '六上·写 50 个字');
+  ok(d.querySelector('#stageStrip .stage-chip.on').textContent.indexOf('六上·写') >= 0,
+    '选中的册次胶囊高亮');
+
+  /* 换年级必须把册次清零：否则「六上·写」留在一年级里，字格是空的 */
+  click(d.querySelector('#gradeStrip [data-grade="一"]'));
+  await wait(170);
+  ok(w.LEARN.grade === '一' && w.LEARN.stage === '', '换年级自动清掉上个年级的册次');
+  ok(d.querySelectorAll('#charGrid .ch-card').length === 17,
+    '一年级 17 个字：' + d.querySelectorAll('#charGrid .ch-card').length);
+  ok(d.querySelectorAll('#stageStrip .stage-chip').length === 3,
+    '一年级第二级 3 个（全年级 + 上下册，没有写/认拆分）');
+
+  click(d.querySelector('#stageStrip [data-g="一年级下册"]'));
+  await wait(170);
+  ok(d.querySelectorAll('#charGrid .ch-card').length === 7, '一下 7 个字');
+
+  /* 搜索是跨册次的临时态：册次条收起、高亮落回「全部」，
+     否则会出现「亮着一上、却列出全库搜到的字」 */
+  const sInput = d.getElementById('learnSearch');
+  sInput.value = '日';
+  sInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await wait(320);
+  ok(d.getElementById('stageStrip').hidden === true, '搜索时册次条收起');
+  ok(d.querySelector('#gradeStrip .grade-chip.on').textContent.trim() === '全部',
+    '搜索时高亮落回「全部」');
+  sInput.value = '';
+  sInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await wait(320);
+
+  /* 「随便玩」在本年级里抽：选了六年级就不能抽到一年级的字（难度会跳） */
+  click(d.querySelector('#gradeStrip [data-grade="六"]'));
+  await wait(170);
+  click(d.querySelector('#mainNav [data-nav="games"]'));
+  await wait(170);
+  click(d.querySelector('#gamePick [data-gp="any"]'));
+  await wait(320);
+  const anyG = (w.GAME.origin.chars || []).map(c => c.g);
+  ok(anyG.length > 0 && anyG.every(g => /^六年级/.test(g)),
+    '选了六年级再「随便玩」，抽的还是六年级的字：' + Array.from(new Set(anyG)).join('/'));
+  w.quitGame(true);
+  await wait(220);
+  click(d.querySelector('#mainNav [data-nav="learn"]'));
+  await wait(170);
+
+  click(d.querySelector('#gradeStrip [data-grade=""]'));
+  await wait(170);
+  ok(w.LEARN.grade === '' && d.querySelectorAll('#charGrid .ch-card').length === 700,
+    '点「全部」回到 700 个字');
+  ok(d.getElementById('stageStrip').hidden === true, '回到全部后第二级收起');
+
+  /* 字表里没有册次（g 为空）时不能崩：只剩「全部」一个按钮，册次条永不出现 */
+  w.STATE.chars = v37_bak;
+  w.LEARN.grade = '六'; w.LEARN.stage = '';
+  w.renderLearn();
+  await wait(120);
+  ok(d.querySelectorAll('#gradeStrip .grade-chip').length === 1 &&
+     d.getElementById('stageStrip').hidden === true,
+    '字表没有册次时只剩「全部」，第二级不出现（降级不报错）');
+  w.LEARN.grade = ''; w.renderLearn();
+  await wait(100);
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

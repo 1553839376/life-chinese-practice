@@ -426,13 +426,21 @@ def gate_static(html):
     # synthBuzz 的签名是 (ctx, freq, at, dur, vol, beatHz, bendTo)，vol 仍在第 5 位。
     _vols += [float(x) for x in re.findall(
         r"synthBuzz\(ctx,\s*[\d.]+,\s*[^,]+,\s*[\d.]+,\s*(0\.\d+)", sfbody)]
-    rec('G1', '错误音不比正确音轻（三层以上且每层 vol ≥ 0.26）',
-        len(_vols) >= 3 and min(_vols) >= 0.26,
-        ('sfxNo 各层音量实测 %s' % _vols) if sfbody else '找不到 sfxNo')
-    # v23：错误音必须「扎」得出去。方波泛音一直排到高频，手机/平板外放才放得出来；
-    # v22 用 triangle + 98 Hz「咚」，老师两次反馈「不明显」——低频那层在小喇叭上没有声压。
     _buzzbody = html.split('function synthBuzz')[1][:1400] \
         if 'function synthBuzz' in html else ''
+    # v37 老师 2026-11-03：「错误音效有点大声」。方波同一峰值的主观响度远超 triangle，
+    # 原来 0.32 比正确音（0.26）还高，教室里显得凶 → 降到 0.22。口径改成两头卡：
+    # 低于 0.18 教室听不见（v21 那版 0.20/0.17 就是「不明显」），高于 0.31 又会变吵。
+    rec('G1', '错误音音量在 0.18~0.31 之间（三层以上，低于 0.18 听不见、高于 0.31 嫌吵）',
+        len(_vols) >= 3 and min(_vols) >= 0.18 and max(_vols) <= 0.31,
+        ('sfxNo 各层音量实测 %s' % _vols) if sfbody else '找不到 sfxNo')
+    # 音色/走向不许退回去：v37 只准动音量，动了方波或频段就说明改错了方向
+    rec('G1', 'v37 只调了音量：错误音三层仍是方波打拍 + 低频收尾',
+        'synthBuzz(ctx' in sfbody and "'square'" in _buzzbody
+        and '146.83' in sfbody and '233.08' in sfbody,
+        ('sfxNo 三音实测 %s' % _vols) if sfbody else '找不到 sfxNo')
+    # v23：错误音必须「扎」得出去。方波泛音一直排到高频，手机/平板外放才放得出来；
+    # v22 用 triangle + 98 Hz「咚」，老师两次反馈「不明显」——低频那层在小喇叭上没有声压。
     rec('G1', '错误音用方波打拍（synthBuzz 里有 square + 两路差频，别退回圆润的 triangle）',
         "'square'" in _buzzbody and 'freq + (beatHz' in _buzzbody and 'synthBuzz(ctx' in sfbody,
         '' if _buzzbody else '找不到 synthBuzz')
@@ -705,6 +713,48 @@ def gate_static(html):
         "document.body.classList.remove('picking');" in html
         and "$('pickBar').hidden = true;" in html
         and "$('gameNow').hidden = true;" in html)
+
+    # v37 册次两级（老师 2026-11-03）：「如果是六年级五年级要拉很久很累，有没有其他办法去更好的呈现」。
+    # 22 个册次原来横着一条要拉三四屏，而六年级 230 个字（全库 33%）正好压在最后。
+    # 现在第一级年级「全部+一～六」（一行 7 个），第二级是该年级的册次（最多 4 个 + 全年级）。
+    rec('G1', '册次先年级后册次（#gradeStrip 在 #stageStrip 之前）',
+        'id="gradeStrip"' in html and 'id="stageStrip"' in html
+        and html.index('id="gradeStrip"') < html.index('id="stageStrip"'))
+    # .stage-strip 是 display:flex，作者样式会盖掉 [hidden] 的 UA display:none——
+    # 少了这一条，「没选年级时册次条收起」立刻失效（空一条 padding 吊在字格上面）
+    rec('G1', '隐藏的册次条真的不占位（.stage-strip[hidden]{display:none}）',
+        '.stage-strip[hidden]{display:none}' in html)
+    # 七个年级胶囊必须等分且不换行：flex + 内容宽度在 390 上会折成两行
+    rec('G1', '年级行等分一行、不横滚（grid-auto-flow:column + minmax(0,1fr)）',
+        '.grade-strip{' in html
+        and 'grid-auto-flow:column' in html.split('.grade-strip{')[1].split('}')[0]
+        and 'minmax(0,1fr)' in html.split('.grade-strip{')[1].split('}')[0])
+    rec('G1', '年级胶囊不写字数（七个带字数在 390 上放不下）',
+        'function renderGradeChips(' in html
+        and '<b>' not in html.split('function renderGradeChips(')[1]
+            .split('function renderStageChips(')[0])
+    rec('G1', 'renderLearn 同时刷新年级与册次两级',
+        'renderGradeChips(groups);' in html and 'renderStageChips(groups);' in html
+        and html.index('function renderGradeChips(') < html.index('function renderLearn('))
+    # 换年级不清册次 → 「六上·写」留在「一年级」里，字格直接是空的
+    _gd37 = html.split("t.closest('.grade-chip')")[1].split("t.closest('.stage-chip')")[0] \
+        if "t.closest('.grade-chip')" in html else ''
+    rec('G1', '换年级自动清掉上个年级的册次（LEARN.stage = ""）',
+        bool(_gd37) and "LEARN.stage = ''" in _gd37
+        and "LEARN.grade = el.getAttribute('data-grade')" in _gd37,
+        _gd37.replace('\n', ' ')[:100] if _gd37 else '找不到 .grade-chip 委托')
+    # 搜索是跨册次的临时态：册次条收起、高亮落回「全部」
+    rec('G1', '搜索时册次条收起（跨册搜索不该亮着某个册次）',
+        'if (LEARN.q || !LEARN.grade){ box.hidden = true;' in html
+        and "on = (LEARN.q || !LEARN.grade) ? ' on' : '';" in html)
+    # 窄屏第二级 5 个胶囊挤进 354px：收字号 14 + 内边距 7 + 隐藏字数，不能又退回横滚
+    rec('G1', '窄屏第二级不横滚（≤480 收字号、隐藏字数）',
+        '@media (max-width:480px)' in html
+        and '.stage-chip b{display:none}' in html
+        and '.stage-chip{padding:8px 7px;font-size:14px}' in html)
+    # 字表没有册次（g 为空）时只剩「全部」，第二级永不出现——降级不许报错
+    rec('G1', '字表没有册次时退回「全部」（LEARN.grade 不存在就清空）',
+        "if (LEARN.grade && !cnt[LEARN.grade]){ LEARN.grade = ''; LEARN.stage = ''; }" in html)
 
     # v28 学字卡瘦身 + 笔顺放慢。老师 2026-10-30 三条反馈：
     # 「不需要什么只看拼音和再听一遍这些词语，你直接在这个字旁边放一个喇叭的标志就好了」

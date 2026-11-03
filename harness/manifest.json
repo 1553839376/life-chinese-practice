@@ -90,7 +90,10 @@
       "stagePool",
       "learnMode",
       "pickLabel",
-      "LEARN"
+      "LEARN",
+      "GRADES",
+      "gradeOf",
+      "renderGradeChips"
     ],
     "趣味游戏": [
       "startGame",
@@ -324,7 +327,7 @@
       "name": "e2e_learn",
       "script": "e2e_learn.js",
       "args": [],
-      "min_cases": 37
+      "min_cases": 38
     },
     {
       "name": "e2e_av",
@@ -338,7 +341,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 577
+      "min_cases": 600
     },
     {
       "name": "check_pair",
