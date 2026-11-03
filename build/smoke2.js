@@ -2196,7 +2196,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '大',
     '对照态下答案不被自动收走：' + d.querySelector('#stage .wg-box .wg-ans').textContent);
 
-  /* 老师辅助栏「提示一下」走同一条路，不再永久亮着 */
+  /* 老师辅助栏「提示一下」= 永久亮答案（给实在不会的孩子照着写），
+     和学生自己点的「看一眼」（3 秒自动合）是两条，别串成一条 */
   w.startQuiz('汉字听写');
   await wait(60);
   w.STATE.quiz.qs = [{ target: w.STATE.chars.filter(c => c.w === '山')[0] }];
@@ -2206,10 +2207,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click(d.getElementById('btnHint'));
   await wait(40);
   ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '山',
-    '老师「提示一下」也亮答案（和学生的「看一眼」同一套）');
+    '老师「提示一下」亮答案');
   await wait(3400);
-  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '',
-    '老师的提示同样 3 秒自动合上，不再永久亮着');
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '山',
+    '老师的提示一直亮着不自动收（实在不会的孩子要照着写）：' +
+    d.querySelector('#stage .wg-box .wg-ans').textContent);
 
   /* 描红不出现「看一眼」：底字本来就在格子里 */
   w.startQuiz('描红汉字');

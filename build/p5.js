@@ -1406,23 +1406,28 @@ function wgFinishTrace(){
   STATE.quiz.promptUsed = 1;
   gradeAnswer(true);
 }
-/* 老师按「提示一下」：听写走「看一眼」（3 秒自动合上、记一次辅助），描红把底字加深。
-   v38 之前听写这里是永久亮答案，老师 2026-11-03 说「目前现有的是无法关掉的」——
-   亮着不关等于把听写变成抄写，孩子照着抄完，档案里还记成「写对了」。 */
+/* 老师按「提示一下」：听写**永久亮答案**、描红把底字加深，都记一次辅助。
+   这是老师亲手按的，不是孩子自己点的——老师按之前已经判断过「这孩子实在不会」，
+   所以答案要一直亮着给他照着写，3 秒就收走等于什么都没给（老师 2026-11-03：
+   「老师那个按钮不用改，那个就给实在不会的同学描就好了」）。
+   孩子自己能点的「看一眼」才限 3 秒、每题一次，见下面 wgPeek。 */
 function wgHint(){
   var q = curQ(), b;
   if (!q || !STATE.quiz) return;
+  STATE.quiz.promptUsed++;
+  sfxPop();
   if (STATE.quiz.type === '描红汉字'){
-    STATE.quiz.promptUsed++;
-    sfxPop();
     b = WG.boxes[0];
     if (b && b.el.classList) b.el.classList.add('hint');
     toast('底下的字加深了，沿着它描');
-    readTarget();
-    return;
+  } else {
+    /* 作废还没跑完的「看一眼」计时器：老师接手之后答案就不该再被收走 */
+    PEEK.tok++;
+    /* 深色那一档（.peek）也走：老师按完是要照着写，浅色隔着笔画看不清 */
+    wgReveal(true);
+    toast('答案亮出来了，照着写（这次记一次辅助）');
   }
-  if (STATE.quiz.peeked){ toast('这一题已经看过一眼了，慢慢写'); return; }
-  wgPeek();
+  readTarget();
 }
 
 /* ------------------------- 看一眼（v38）-------------------------

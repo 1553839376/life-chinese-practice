@@ -481,13 +481,14 @@ def gate_static(html):
         and 'STATE.quiz.peeked = true;' in _peek
         and 'STATE.quiz.promptUsed++;' in _peek,
         ('wgPeek 少了 peeked / promptUsed') if _peek else '找不到 wgPeek')
-    # wgHint 是老入口（老师辅助栏「提示一下」）：v38 起和学生按钮走同一条，
-    # 里面如果还留着裸的 wgReveal() 就又变成「亮着关不掉」。
+    # wgHint 是老师入口（辅助栏「提示一下」）：老师按之前已经判断过「这孩子实在不会」，
+    # 所以这里必须**永久亮答案**给他照着写；孩子自己点的「看一眼」才限 3 秒。
+    # 两条路不许串成一条（老师 2026-11-03：「老师那个按钮不用改，那个就给实在不会的同学描就好了」）。
     _wh = html.split('function wgHint')[1].split('function wgPeek')[0] \
         if 'function wgHint' in html and 'function wgPeek' in html else ''
-    rec('G1', 'v38 老师「提示一下」也走一眼机制（不再自己在 wgHint 里永久亮答案）',
-        'wgPeek();' in _wh and 'wgReveal();' not in _wh,
-        ('wgHint 里还有裸的 wgReveal()') if _wh else '找不到 wgHint')
+    rec('G1', 'v38 老师「提示一下」永久亮答案（不走 3 秒自动合），且作废还没跑完的看一眼计时器',
+        'wgReveal(true);' in _wh and 'PEEK.tok++;' in _wh and 'wgPeek()' not in _wh,
+        ('wgHint 丢了永久亮答案 / 或串到 wgPeek 上了') if _wh else '找不到 wgHint')
     rec('G1', 'v38 窄屏四个按钮走 2×2 等宽网格，不折成 3+1；看一眼的答案比判分那次深',
         '.hw-acts.four{display:grid;grid-template-columns:1fr 1fr;' in html
         and '.wg-box.peek .wg-ans{opacity:.88}' in html,
