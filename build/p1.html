@@ -327,6 +327,9 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 /* 听写的答案：写在笔画底下（浅绿），孩子能直接对着看自己哪一笔不对 */
 .wg-ans{color:var(--green);opacity:0;transition:opacity .18s ease}
 .wg-box.reveal .wg-ans{opacity:.45}
+/* 「看一眼」（v38）：只亮 3 秒，必须比判分那次清楚得多，
+   否则隔着已经写上的笔画根本看不出是哪个字。 */
+.wg-box.peek .wg-ans{opacity:.88}
 .wg-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
   touch-action:none;cursor:crosshair}
 /* ---------- 手写操作条 .hw-acts（v33）----------
@@ -348,6 +351,9 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   box-shadow:0 3px 0 #E9E1CD;
   transition:transform .08s ease,background .12s ease,box-shadow .08s ease}
 .hw-btn:active{background:#F0EADC;transform:translateY(3px);box-shadow:0 1px 0 #E9E1CD}
+/* 「看一眼」看过一次就变灰停在「看过了」（v38）。没有禁用态样式时，
+   按下去没反应最容易被当成「坏了」，得让它在视觉上就写明「已经用过」。 */
+.hw-btn:disabled{opacity:.45;cursor:default;transform:none;box-shadow:0 3px 0 #E9E1CD}
 /* 主按钮：绿底白字 + 一道实心投影（不是模糊阴影）。宽度只比旁边那个宽一圈，
    够显眼了；铺满整行会变成 v31 之前那块「很长很生硬」的板子。 */
 .hw-btn.main{min-width:min(150px,40vw);padding:0 26px;border:none;border-radius:16px;
@@ -363,6 +369,12 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   .hw-btn.main{min-width:118px;padding:0 18px;font-size:18px}
   .hw-tip{font-size:13px;margin-top:12px}
   .ico-i{width:15px;height:15px}
+  /* 听写四个按钮（再听 / 看一眼 / 擦掉 / 写好了）：一行 4 个在 320 内宽里
+     只能靠折行，flex 折出来是 3+1 这种参差的样子。等宽两列网格，
+     固定 2×2，每个按钮一样宽，和「一行三个」是同一套观感。 */
+  .hw-acts.four{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .hw-acts.four .hw-btn{width:100%;min-width:0;padding:0 8px}
+  .hw-acts.four .hw-btn.main{min-width:0}
 }
 
 /* 跟读的大按钮：孩子不认字，按钮要有分量、要明确指向「下一步」 */

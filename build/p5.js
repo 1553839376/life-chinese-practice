@@ -526,13 +526,56 @@ function pickTargets(pool, n, stu){
   }
   return out;
 }
-function buildQuestions(pool, n, stu, focusPool){
+/* 读音键：去掉声调再比，hé 与 hē、lǜ 与 lü 都算同一个键。
+   为什么连声调一起去掉：合成音里的声调对特需孩子本来就分不清，
+   光靠声调区分「和 / 喝」等于还是在考听力，不是在认字。 */
+function pyKey(c){ return noTone(c && c.p ? c.p : ''); }
+/* 哪些题型必须避开同音字：题目给的是「声音」或「拼音」，屏幕上同时出现同音字，
+   孩子选哪个都对，可程序只认一个（老师 2026-11-03：读「和」，选项里有「禾」和「和」）。
+   找一样的字 / 图字配对给的是字形和实物，同音不构成第二个正确答案，不用改。 */
+var SAME_SOUND_TYPES = { '听音找字': 1, '看拼音写字': 1 };
+
+function allCharsOn(){
+  var out = [], i, c;
+  for (i = 0; i < STATE.chars.length; i++){
+    c = STATE.chars[i];
+    if (c.on && c.w) out.push(c);
+  }
+  return out;
+}
+/* 抽 3 个干扰项。三层，逐层放宽，保证一定凑够 4 个选项：
+     ① 学生字表里、读音跟目标字不同 —— 最理想，孩子全都认识；
+     ② 字表里的字同音太多（只有「和 / 禾 / 河」三个字）→ 从全库补读音不同的字。
+        干扰项是拿来排除的，不是要求孩子认的；出现一个生字，比出现第二个正确答案安全；
+     ③ 连全库都凑不够（不会发生）→ 只能允许同音，宁可有干扰项也不能只有两个选项。 */
+function pickDistract(pool, n, target, wide, avoidSame){
+  var out = [], used = {}, k = pyKey(target), i, j, c, idx;
+  function take(src, strict){
+    if (!src || !src.length) return;
+    idx = jitter(src.length);
+    for (j = 0; j < idx.length && out.length < n; j++){
+      c = src[idx[j]];
+      if (!c || !c.w || used[c.w]) continue;
+      if (strict && avoidSame && pyKey(c) === k) continue;
+      used[c.w] = 1;
+      out.push(c);
+    }
+  }
+  take(pool, true);
+  if (out.length < n) take(wide, true);
+  if (out.length < n) take(pool, false);
+  return out;
+}
+function buildQuestions(pool, n, stu, focusPool, type){
   /* focusPool 只在「抽练」时给：目标字从抽练名单里取，干扰项始终从整张字表取
      （否则只有 3 个字时凑不出 4 个选项，孩子会看到重复的字） */
   var targets = pickTargets(focusPool || pool, n, stu), qs = [], i, j, t, opts, d;
+  var t0 = type || STATE.curType;
+  var avoid = !!SAME_SOUND_TYPES[t0];
+  var wide = avoid ? allCharsOn() : null;
   for (i = 0; i < targets.length; i++){
     t = targets[i];
-    d = pickN(pool, 3, [t]);
+    d = avoid ? pickDistract(pool, 3, t, wide, true) : pickN(pool, 3, [t]);
     opts = [t];
     for (j = 0; j < d.length; j++) opts.push(d[j]);
     opts = shuffleArr(opts);
@@ -780,7 +823,7 @@ function startQuiz(type){
   STATE.quiz = { type: type,
                  qs: isWriteType(type)
                    ? buildWriteQuestions(type, tp, total, stu, isFocus ? tp : null)
-                   : buildQuestions(pool, total, stu, isFocus ? tp : null),
+                   : buildQuestions(pool, total, stu, isFocus ? tp : null, type),
                  i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
                  missed: 0, wrongLogged: false, retried: 0 };
   if (!STATE.quiz.qs.length){
@@ -1234,10 +1277,18 @@ function wgBoxHTML(i, ghost){
    之前这里分两行——一个 64px 的大绿按钮，右边挂一句 13px 小字，下面再一排小白按钮；
    大按钮被那行字挤得整体偏左，老师 2026-11-02 截图说「乱七八糟的很丑」。
    现在说明单独一行居中（读起来像写字区的提示），按钮等高同圆角。 */
-function hwFootHTML(mainTxt, tip){
+function hwFootHTML(mainTxt, tip, withPeek){
+  /* 听写多一个「看一眼」：孩子一时想不起来时点一下，答案亮 3 秒自动合上（v38）。
+     旧版只能靠老师辅助栏的「提示一下」，而它亮出来就再也关不掉。
+     按钮 = 再听一遍 · 看一眼 · 擦掉 · 写好了，主按钮仍在最后一个。 */
+  var seen = !!(STATE.quiz && STATE.quiz.peeked);
   return (tip ? '<p class="hw-tip">' + esc(tip) + '</p>' : '') +
-    '<div class="hw-acts">' +
+    '<div class="hw-acts' + (withPeek ? ' four' : '') + '">' +
       '<button type="button" class="hw-btn" data-wg-act="say">再听一遍</button>' +
+      (withPeek
+        ? '<button type="button" class="hw-btn peek" data-wg-act="peek"' +
+          (seen ? ' disabled' : '') + '>' + (seen ? '看过了' : '看一眼') + CLOSE('button')
+        : '') +
       '<button type="button" class="hw-btn" data-wg-act="clear">' + ICO_ERASE + '擦掉</button>' +
       '<button type="button" class="hw-btn main" data-wg-act="done">' + esc(mainTxt) + '</button>' +
     CLOSE('div');
@@ -1252,7 +1303,7 @@ function renderDictation(q, head){
      主按钮在最后一个（乐园也是这个顺序，两个界面手指记住的位置一样）。 */
   setHTML($('stage'), head +
     '<div class="wg-row" id="wgRow">' + boxes + CLOSE('div') +
-    '<div id="wgFoot">' + hwFootHTML('写好了', '写完点这里，我们一起看对不对') + CLOSE('div'));
+    '<div id="wgFoot">' + hwFootHTML('写好了', '想不起来就点「看一眼」，3 秒后自己合上', true) + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -1287,13 +1338,16 @@ function logWriteMiss(){
   STATE.quiz.wrongLogged = true;
   return true;
 }
-function wgReveal(){
+function wgReveal(peek){
   var q = curQ(), word = wgAnswerOf(q), i, b, el;
   for (i = 0; i < WG.boxes.length && i < word.length; i++){
     b = WG.boxes[i];
     el = b.el.querySelector('.wg-ans');
     if (el) el.textContent = word.charAt(i);
     if (b.el.classList) b.el.classList.add('reveal');
+    /* 看一眼时答案要够清楚：判分那次的 .reveal 只有 0.45 透明度，
+       3 秒里隔着笔画看不清就等于没给。 */
+    if (peek && b.el.classList) b.el.classList.add('peek');
   }
 }
 function wgHideAns(){
@@ -1302,11 +1356,11 @@ function wgHideAns(){
     b = WG.boxes[i];
     el = b.el.querySelector('.wg-ans');
     if (el) el.textContent = '';
-    if (b.el.classList) b.el.classList.remove('reveal');
+    if (b.el.classList){ b.el.classList.remove('reveal'); b.el.classList.remove('peek'); }
   }
 }
 function wgFootWrite(){
-  setHTML($('wgFoot'), hwFootHTML('写好了', '慢一点，一笔一笔写'));
+  setHTML($('wgFoot'), hwFootHTML('写好了', '慢一点，一笔一笔写', true));
 }
 function wgDone(){
   var q = curQ();
@@ -1352,21 +1406,65 @@ function wgFinishTrace(){
   STATE.quiz.promptUsed = 1;
   gradeAnswer(true);
 }
-/* 老师按「提示一下」：听写直接把答案亮出来（记一次辅助），描红把底字加深 */
+/* 老师按「提示一下」：听写走「看一眼」（3 秒自动合上、记一次辅助），描红把底字加深。
+   v38 之前听写这里是永久亮答案，老师 2026-11-03 说「目前现有的是无法关掉的」——
+   亮着不关等于把听写变成抄写，孩子照着抄完，档案里还记成「写对了」。 */
 function wgHint(){
   var q = curQ(), b;
   if (!q || !STATE.quiz) return;
-  STATE.quiz.promptUsed++;
-  sfxPop();
   if (STATE.quiz.type === '描红汉字'){
+    STATE.quiz.promptUsed++;
+    sfxPop();
     b = WG.boxes[0];
     if (b && b.el.classList) b.el.classList.add('hint');
     toast('底下的字加深了，沿着它描');
-  } else {
-    wgReveal();
-    toast('答案亮出来了，照着写（这次记一次辅助）');
+    readTarget();
+    return;
   }
-  readTarget();
+  if (STATE.quiz.peeked){ toast('这一题已经看过一眼了，慢慢写'); return; }
+  wgPeek();
+}
+
+/* ------------------------- 看一眼（v38）-------------------------
+   听写时孩子一时想不起来 → 点「看一眼」，答案亮 3 秒自动合上。
+   三个约束，都是有意的：
+     ① 只亮 3 秒、按钮上倒数 3→2→1：不数着数，孩子会一直盯着等，
+        到时间突然消失反而吓一跳；
+     ② 每题只能看一次：允许连点就等于「关不掉」，退化成抄写；
+     ③ 记一次 promptUsed（和老师按「提示一下」同一口径）：这是辅助完成，
+        不该记成独立写对，否则档案会把「看一眼写出来的」算进已掌握。
+   不念读音：读音本来就在题目里念过了，再念一遍等于又给一次答案。 */
+var PEEK_SEC = 3;
+var PEEK = { tok: 0 };
+function wgPeek(){
+  var q = curQ(), btn, tok, left;
+  if (!q || !STATE.quiz || STATE.quiz.answered || STATE.quiz.checked) return;
+  if (STATE.quiz.type === '描红汉字' || STATE.quiz.peeked) return;
+  STATE.quiz.peeked = true;
+  STATE.quiz.promptUsed++;
+  sfxPop();
+  wgReveal(true);
+  toast('看一眼，记住它');
+  btn = document.querySelector('#stage .hw-btn[data-wg-act="peek"]');
+  tok = ++PEEK.tok;
+  left = PEEK_SEC;
+  function tick(){
+    if (PEEK.tok !== tok) return;
+    /* 中途点了「写好了」→ 那一步要一直亮着答案对照，不能再合上 */
+    if (!STATE.quiz || STATE.quiz.answered || STATE.quiz.checked || curQ() !== q) return;
+    left--;
+    if (left > 0){
+      if (btn) btn.textContent = '看一眼 ' + left;
+      setTimeout(tick, 1000);
+      return;
+    }
+    wgHideAns();
+    if (btn){ btn.textContent = '看过了'; btn.disabled = true; }
+  }
+  /* 倒计时写成「看一眼 3」而不是光一个「3」：只剩数字时按钮会缩成一小块，
+     孩子会以为按坏了；保留文字，宽度只抖一次，之后 3→2→1 一样宽。 */
+  if (btn){ btn.textContent = '看一眼 ' + left; btn.disabled = true; }
+  setTimeout(tick, 1000);
 }
 
 function bindStage(){
@@ -1504,6 +1602,9 @@ function resetQState(){
   STATE.quiz.picked = '';
   /* 听写「亮过答案没有」。跟着题目走：上一题亮过，下一题不能继承 */
   STATE.quiz.checked = false;
+  /* v38：「看一眼」每题一次，倒计时也跟着作废（PEEK.tok 一变，旧定时器自己退出） */
+  STATE.quiz.peeked = false;
+  PEEK.tok++;
 }
 function optEl(ch){
   var all = document.querySelectorAll('#stage .opt'), i;

@@ -1289,6 +1289,7 @@ function wireEvents(){
       else if (wact === 'done'){ wgDone(); }
       else if (wact === 'ok'){ wgOk(); }
       else if (wact === 'miss'){ wgMiss(); }
+      else if (wact === 'peek'){ wgPeek(); }
       else if (wact === 'say'){ readTarget(); }
       return;
     }

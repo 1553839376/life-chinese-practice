@@ -1203,11 +1203,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelector('#stage [data-wg-act="clear"]').textContent.trim() === '擦掉',
     '图标不顶掉文字，文字就写「擦掉」：' +
     d.querySelector('#stage [data-wg-act="clear"]').textContent.trim());
-  /* 一行三个按钮：再听 / 擦掉 / 写好了。v32 之前是「大绿按钮 + 右边一句小字」一行、
-     下面再一排小白按钮一行，老师 2026-11-02 截图说「乱七八糟的很丑」。 */
+  /* 一行四个按钮（v38 加了「看一眼」）：再听 / 看一眼 / 擦掉 / 写好了。
+     v32 之前是「大绿按钮 + 右边一句小字」一行、下面再一排小白按钮一行，
+     老师 2026-11-02 截图说「乱七八糟的很丑」。 */
   const v33_row = d.querySelector('#stage .hw-acts');
-  ok(!!v33_row && v33_row.querySelectorAll('.hw-btn').length === 3,
-    '三个操作在同一行：' + (v33_row ? v33_row.querySelectorAll('.hw-btn').length : '没有 .hw-acts'));
+  ok(!!v33_row && v33_row.querySelectorAll('.hw-btn').length === 4,
+    '听写四个操作在同一行：' + (v33_row ? v33_row.querySelectorAll('.hw-btn').length : '没有 .hw-acts'));
+  ok(!!v33_row && v33_row.classList.contains('four'),
+    '四个按钮的这条挂 .four（窄屏走 2×2 等宽网格，不折成 3+1）');
   ok(!!v33_row && !v33_row.querySelector('.hw-tip'),
     '那句「写完点这里…」不在按钮行里挂着（会把这行挤歪），单独成行');
   ok(!!d.querySelector('#stage .hw-tip'), '说明单独一行居中显示');
@@ -2067,6 +2070,154 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '字表没有册次时只剩「全部」，第二级不出现（降级不报错）');
   w.LEARN.grade = ''; w.renderLearn();
   await wait(100);
+
+  /* ============ 32. 同音字不能当干扰项（v38）============
+     老师 2026-11-03：「听读音找汉字的时候要避免选项出现同音字。
+     刚刚读音读的是和，但是选项有禾、和，学生选错了。」
+     和 hé / 禾 hé / 河 hé / 合 hé / 喝 hē —— 听上去都是 he，
+     屏幕上只要出现第二个 he，这道题就有两个正确答案。 */
+  console.log('\n--- 32. 同音字干扰项 ---');
+  /* 前面的测试把 STATE.chars 换成了造的小样本，这里换回真实字库：
+     同音字要在真实拼音数据上才测得出来。
+     注意 CHARS 的字段是 {c:汉字, w:组词}，跟 STATE.chars 的 {w:汉字, words:组词}
+     正好相反 —— 直接 Object.assign 过去会变成「字表里一个字都没有」而静默出不了题。 */
+  w.STATE.chars = w.CHARS.map((c, i) => ({
+    id: 'v38_' + i, kind: '字', w: c.c, p: c.p || '', g: c.g || '',
+    img: '', words: c.w || '', sent: c.s || '', on: c.on !== false }));
+  const sameStu = { name: '同音生', chars: ['和', '禾', '河', '山', '水'], groups: [], count: 8,
+    status: '在读', photo: '', types: ['听音找字'] };
+  w.STATE.students.push(sameStu);
+  w.STATE.cur = sameStu;
+  w.preReset('同音生');
+  w.startQuiz('听音找字');
+  await wait(80);
+  ok(!!w.STATE.quiz && w.STATE.quiz.type === '听音找字', '同音字表也能进听音找字：' +
+    (w.STATE.quiz ? w.STATE.quiz.type : 'quiz=null') + ' pool=' + w.charsOf(sameStu).length);
+
+  const toneKeyOf = ch => w.noTone(String(ch.p || ''));
+  let sameBad = [], sameOpts = 0;
+  for (const q of (w.STATE.quiz.qs || [])){
+    const tk = toneKeyOf(q.target);
+    sameOpts = Math.max(sameOpts, q.opts.length);
+    for (const o of q.opts){
+      if (o.w !== q.target.w && toneKeyOf(o) === tk) sameBad.push(q.target.w + '/' + o.w);
+    }
+  }
+  ok(sameBad.length === 0, '四个选项里没有同音字（和/禾/河/合 只出现目标那一个）：' +
+    (sameBad.join(' ') || '干净'));
+  ok(sameOpts === 4, '不足 4 个不同音的字时从全库补，选项仍是 4 个：' + sameOpts);
+
+  /* 干扰项目标仍是学生字表里的字优先；字表凑不出不同音才借全库 —— 借来的不能是目标 */
+  const targetsInPool = (w.STATE.quiz.qs || []).every(q => sameStu.chars.indexOf(q.target.w) >= 0);
+  ok(targetsInPool, '目标字仍然只从学生字表里出（没有回退全库）');
+
+  /* 找一样的字 / 图字配对看的是字形和实图，同音不构成第二个正确答案，不该跟着改口径 */
+  w.startQuiz('找一样的字');
+  await wait(80);
+  const lookOpts = (w.STATE.quiz.qs || []).map(q => q.opts.length);
+  ok(lookOpts.every(n => n === 4), '「找一样的字」仍是 4 个选项：' + lookOpts.join(','));
+
+  w.QUIZ_FOCUS = null;
+  w.startQuiz('看拼音写字');
+  await wait(80);
+  let pyBad = [];
+  for (const q of (w.STATE.quiz.qs || [])){
+    const tk = toneKeyOf(q.target);
+    for (const o of q.opts){ if (o.w !== q.target.w && toneKeyOf(o) === tk) pyBad.push(q.target.w + '/' + o.w); }
+  }
+  ok(pyBad.length === 0, '「看拼音写字」同样不给同音干扰项（拼音摆在屏幕上，同音一样有两个答案）：' +
+    (pyBad.join(' ') || '干净'));
+
+  /* ============ 33. 听写「看一眼」：3 秒自动合上（v38）============
+     老师 2026-11-03：「听写要有个选项是给学生看一眼，然后就关掉的。
+     目前现有的是无法关掉的。」 */
+  console.log('\n--- 33. 听写看一眼 ---');
+  const peekStu = { name: '看一眼生', chars: ['小', '手', '大', '人', '山', '水'], groups: [], count: 6,
+    status: '在读', photo: '', types: ['汉字听写'] };
+  w.STATE.students.push(peekStu);
+  w.STATE.cur = peekStu;
+  w.preReset('看一眼生');
+  w.startQuiz('汉字听写');
+  await wait(60);
+  w.STATE.quiz.qs = [{ target: w.STATE.chars.filter(c => c.w === '小')[0] }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+
+  const peekBtn = () => d.querySelector('#stage [data-wg-act="peek"]');
+  ok(!!peekBtn(), '听写界面有「看一眼」按钮');
+  ok(peekBtn().textContent.trim() === '看一眼', '按钮就写「看一眼」：' +
+    peekBtn().textContent.trim());
+  ok(peekBtn().parentNode.querySelectorAll('.hw-btn').length === 4,
+    '看一眼和再听/擦掉/写好了排在同一条（不另起一排）');
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '', '没点之前答案不在页面上');
+
+  click(peekBtn());
+  await wait(40);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '小',
+    '点了就亮答案：' + d.querySelector('#stage .wg-box .wg-ans').textContent);
+  ok(d.querySelector('#stage .wg-box').classList.contains('peek'),
+    '这一下用的是「看一眼」的加深版（不是判分那个 0.45）');
+  ok(w.STATE.quiz.promptUsed === 1, '看一眼记一次辅助：promptUsed=' + w.STATE.quiz.promptUsed);
+  ok(peekBtn().disabled === true, '倒计时期间按钮不能连点');
+
+  await wait(1200);
+  ok(peekBtn().textContent.trim() === '看一眼 2', '第 2 秒在按钮上倒数（文字保留，只减数字）：' + peekBtn().textContent.trim());
+  await wait(2200);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '',
+    '3 秒到了答案自己合上：' + (d.querySelector('#stage .wg-box .wg-ans').textContent || '（空）'));
+  ok(!d.querySelector('#stage .wg-box').classList.contains('reveal') &&
+     !d.querySelector('#stage .wg-box').classList.contains('peek'),
+    '合上时把 reveal / peek 两个类一起摘掉');
+  ok(peekBtn().textContent.trim() === '看过了' && peekBtn().disabled === true,
+    '按钮停在「看过了」，每题只许看一次：' + peekBtn().textContent.trim());
+
+  click(peekBtn());
+  await wait(60);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '',
+    '再点也不会又亮出来（不然就等于关不掉）');
+  ok(w.STATE.quiz.promptUsed === 1, '重复点不重复记辅助：' + w.STATE.quiz.promptUsed);
+
+  /* 中途点「写好了」→ 答案要一直亮着对照，不能被定时器收走 */
+  click(d.querySelector('#stage [data-wg-act="clear"]'));
+  await wait(30);
+  w.startQuiz('汉字听写');
+  await wait(60);
+  w.STATE.quiz.qs = [{ target: w.STATE.chars.filter(c => c.w === '大')[0] }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+  /* 造一点笔迹再点写好了（jsdom 没 canvas，这里只验状态机） */
+  w.WG.boxes[0].strokes.push({});
+  click(d.querySelector('#stage [data-wg-act="done"]'));
+  await wait(40);
+  ok(w.STATE.quiz.checked === true, '点过「写好了」进入对照态');
+  await wait(3400);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '大',
+    '对照态下答案不被自动收走：' + d.querySelector('#stage .wg-box .wg-ans').textContent);
+
+  /* 老师辅助栏「提示一下」走同一条路，不再永久亮着 */
+  w.startQuiz('汉字听写');
+  await wait(60);
+  w.STATE.quiz.qs = [{ target: w.STATE.chars.filter(c => c.w === '山')[0] }];
+  w.STATE.quiz.i = 0;
+  w.renderStage();
+  await wait(50);
+  click(d.getElementById('btnHint'));
+  await wait(40);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '山',
+    '老师「提示一下」也亮答案（和学生的「看一眼」同一套）');
+  await wait(3400);
+  ok(d.querySelector('#stage .wg-box .wg-ans').textContent === '',
+    '老师的提示同样 3 秒自动合上，不再永久亮着');
+
+  /* 描红不出现「看一眼」：底字本来就在格子里 */
+  w.startQuiz('描红汉字');
+  await wait(80);
+  ok(!d.querySelector('#stage [data-wg-act="peek"]'), '描红没有「看一眼」（不需要，底字已经在）');
+  ok(d.querySelector('#stage .hw-acts').querySelectorAll('.hw-btn').length === 3,
+    '描红仍是三个按钮：' +
+    d.querySelector('#stage .hw-acts').querySelectorAll('.hw-btn').length);
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

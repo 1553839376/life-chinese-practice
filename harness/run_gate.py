@@ -445,6 +445,54 @@ def gate_static(html):
         "'square'" in _buzzbody and 'freq + (beatHz' in _buzzbody and 'synthBuzz(ctx' in sfbody,
         '' if _buzzbody else '找不到 synthBuzz')
 
+    # ---- v38：同音字不能当干扰项（老师 2026-11-03：「读的是和，选项有禾、和，学生选错了」）----
+    _bq = html.split('function buildQuestions')[1].split('var QUIZ_FOCUS')[0] \
+        if 'function buildQuestions' in html else ''
+    _pd = html.split('function pickDistract')[1].split('function buildQuestions')[0] \
+        if 'function pickDistract' in html else ''
+    rec('G1', 'v38 同音字只对「听音找字 / 看拼音写字」排除干扰项（这两种题给的是声音或拼音）',
+        "var SAME_SOUND_TYPES = { '听音找字': 1, '看拼音写字': 1 };" in html,
+        'SAME_SOUND_TYPES 不见了或被扩到别的题型')
+    rec('G1', 'v38 buildQuestions 按题型决定要不要避开同音（漏传 type 就等于没修）',
+        'SAME_SOUND_TYPES[t0]' in _bq and 'pickDistract(pool, 3, t, wide, true)' in _bq,
+        ('buildQuestions 里没走 pickDistract') if _bq else '找不到 buildQuestions')
+    rec('G1', 'v38 抽干扰项三层兜底（字表不同音 → 全库不同音 → 字表兜底），选项不会少',
+        "take(pool, true)" in _pd and "take(wide, true)" in _pd and "take(pool, false)" in _pd,
+        ('pickDistract 少了某一层') if _pd else '找不到 pickDistract')
+    # 声调一起去掉是有意的：合成音里的声调特需孩子本来就分不清，
+    # 只按声调区分「和 / 喝」还是在考听力。这里认的是「有没有走 noTone」。
+    rec('G1', 'v38 同音判定按去声调的拼音比（hé / hē 算同一组）',
+        'function pyKey(c){ return noTone(' in html and 'pyKey(c) === k' in _pd,
+        ('pyKey 没用 noTone') if _pd else '找不到 pyKey')
+
+    # ---- v38：听写「看一眼」（老师：「目前现有的是无法关掉的」）----
+    # 不能 split('function ')[0]：wgPeek 里面有个嵌套的 function tick，会当场截断
+    _peek = html.split('function wgPeek')[1].split('function bindStage')[0] \
+        if 'function wgPeek' in html and 'function bindStage' in html else ''
+    rec('G1', 'v38 听写操作条里有「看一眼」，和再听/擦掉/写好了排在同一条',
+        'data-wg-act="peek"' in html and "'看一眼'" in html
+        and 'wact === \'peek\'' in html,
+        '按钮或 data-wg-act 分支不见了')
+    rec('G1', 'v38 看一眼只亮 3 秒就自动合上（PEEK_SEC + wgHideAns），不是永久亮',
+        'var PEEK_SEC = 3;' in html and 'wgHideAns();' in _peek and 'setTimeout(tick, 1000)' in _peek,
+        ('wgPeek 里没有自动合上') if _peek else '找不到 wgPeek')
+    rec('G1', 'v38 看一眼每题只许一次、记一次辅助（连点等于关不掉，抄写不该记成写对）',
+        'if (STATE.quiz.type === \'描红汉字\' || STATE.quiz.peeked) return;' in _peek
+        and 'STATE.quiz.peeked = true;' in _peek
+        and 'STATE.quiz.promptUsed++;' in _peek,
+        ('wgPeek 少了 peeked / promptUsed') if _peek else '找不到 wgPeek')
+    # wgHint 是老入口（老师辅助栏「提示一下」）：v38 起和学生按钮走同一条，
+    # 里面如果还留着裸的 wgReveal() 就又变成「亮着关不掉」。
+    _wh = html.split('function wgHint')[1].split('function wgPeek')[0] \
+        if 'function wgHint' in html and 'function wgPeek' in html else ''
+    rec('G1', 'v38 老师「提示一下」也走一眼机制（不再自己在 wgHint 里永久亮答案）',
+        'wgPeek();' in _wh and 'wgReveal();' not in _wh,
+        ('wgHint 里还有裸的 wgReveal()') if _wh else '找不到 wgHint')
+    rec('G1', 'v38 窄屏四个按钮走 2×2 等宽网格，不折成 3+1；看一眼的答案比判分那次深',
+        '.hw-acts.four{display:grid;grid-template-columns:1fr 1fr;' in html
+        and '.wg-box.peek .wg-ans{opacity:.88}' in html,
+        '.hw-acts.four 或 .wg-box.peek 样式不见了')
+
     # 语音「三处同步」（2026-10-30 加）：老师原话「最近改的很多都没有语音…你是单字组合的很奇怪」。
     # 新题面只写进了 p5.js，没进 gen_doubao_voice.py 的 SENTS、也没进 p8.js 的 SENT_FULL，
     # 于是 sayParts 退回逐字拼（听 / 一 / 听 / 写 / 下 / 来），而「照」「遍」两个字
