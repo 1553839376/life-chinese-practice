@@ -7,7 +7,7 @@
 - 发布流程见 `docs/01-HARNESS.md`。死记四条：① 用 `upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**；③ 成功标志认 `KS_PAGE_COMMIT`（认错会白跑重试、后全报 `transaction not found`）；④ commit/publish/download 都随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；⑤ 两个入口（`index.html` + 中文名）都要传，md5 不同正常（pnid 不同）。
 - **线上不能字节比对**：平台注入 pnid、重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。静态直链用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录），给用户前 curl grep **`APP_VER` 的值**，别 grep 角标 `>v31<`。
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟（后台跑或跳过）。
-- **git**：`http.proxy` 每次开机都变 → fetch/push 一律 6~8 次重试。走沙箱代理打 GitHub 必 502 → 去掉 proxy 并 `env -u http_proxy …`；直连遇 POST git-upload-pack unexpected disconnect → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25 -c http.schannelCheckRevoke=false`。别在同一档参数上死磕。
+- **git**：代理端口每次开机都变，**`http.proxy` 和 `https.proxy` 两个都要设成当前 `$https_proxy`**（只清 `http.proxy` 会 `Could not resolve host`，两个指向不同端口也会挂）；走沙箱代理打 GitHub 必 502 → `env -u http_proxy …`；遇 POST git-upload-pack unexpected disconnect → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25 -c http.schannelCheckRevoke=false`。**判断成功要看 `git` 退出码，别 `| tail` 完看 `$?`**（管道永远是 0）；一次失败别判死，6~8 次重试。
 
 ## 二、教学口径与数据结构
 **字表**：出题**只认 `stu.chars`**，`groups` 只是来源标签；**空字表不回退全库**（G1 禁回潮）。字库 700 条仅 561 个不重复字 → 按字去重、走 `expandGroups`。云端 schema 无字表列 → `mergeCloudStudents` 必须继承本机 `chars`（`off` 同理）。`migrateStuChars` 是一次性快照（刻意）。测试字表必须在内置字库查得到，否则不足 4 个时 `startQuiz` 静默 return。
