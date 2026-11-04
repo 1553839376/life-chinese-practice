@@ -1459,7 +1459,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const v33_trow = d.querySelector('#traceMask .hw-acts');
   const v33_tvis = v33_trow ? Array.from(v33_trow.querySelectorAll('.hw-btn'))
     .filter(b => !b.hidden) : [];
-  ok(v33_tvis.length === 3, '描写屏一行三个按钮（第 4 个「下一个字」写完才出）：' +
+  /* v40：多了「默一默」，一行四个 —— 再看一遍 / 默一默 / 擦掉 / 写好了 */
+  ok(v33_tvis.length === 4, '描写屏一行四个按钮（「下一个字」写完才出）：' +
     v33_tvis.length);
   ok(!!v33_trow && v33_trow.querySelectorAll('.hw-btn.main').length === 2,
     '描写屏里「写好了 / 下一个字」共用一个主按钮样式（同一时刻只显示一个）');
@@ -1829,10 +1830,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('learnBody').hidden === true,
     '还没选玩法时，搜索 / 册次 / 字格先收起来（第一屏只有玩法）');
   const v35_gp = d.querySelectorAll('#gamePick [data-gp]');
-  ok(v35_gp.length === 5, '四款玩法 + 一张「随便玩」：' + v35_gp.length);
+  ok(v35_gp.length === 6, '四款玩法 + 听写 + 一张「随便玩」（v40 加的听写）：' + v35_gp.length);
   ok(d.querySelectorAll('#gamePick [data-gk]').length === 0,
     '玩法卡用自己的 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH，会空着开局）');
-  ok(!!d.querySelector('#gamePick [data-gp="any"]'), '第五张是「随便玩」');
+  ok(!!d.querySelector('#gamePick [data-gp="any"]'), '最后一张是「随便玩」');
+  ok(!!d.querySelector('#gamePick [data-gp="dict"]'), 'v40 多了「听写」卡');
   ok(!d.getElementById('gpMask'), '不再有遮罩弹窗（v36 把面板拆了）');
 
   click(d.querySelector('#gamePick [data-gp="fruit"]'));
@@ -2295,6 +2297,149 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(/全是一次就找到的/.test(v39b_txt), '没有试出来的就直说：' + v39b_txt);
   w.quitGame(true);
   await wait(120);
+
+  /* ---------- 35. 游戏乐园「听写」（v40） ---------- */
+  console.log('\n--- 35. 游戏乐园听写 ---');
+  /* 老师 2026-11-04：「游戏乐园我想加一个听写模式，差不多是和练习那个地方一样」。
+     确认口径：只听单字、不写学习记录（游戏乐园不污染测评成绩）。 */
+  const v40_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
+  w.startGame('dict', v40_chars);
+  await wait(180);
+  w.clearGameTimer();
+  ok(w.GAME.kind === 'dict', '进的是听写：' + w.GAME.kind);
+  ok(d.getElementById('scrGame').classList.contains('is-dict'),
+    '屏上打 is-dict（标题栏的字和拼音、会亮答案的「提示」都收起）');
+  ok(d.querySelectorAll('#gameField .wg-box').length === 1,
+    '只有一个田字格：' + d.querySelectorAll('#gameField .wg-box').length);
+  ok(d.querySelectorAll('#gameField .g-item').length === 0, '听写屏没有场景选项');
+  const v40_foot = d.querySelector('#gDictFoot');
+  ok(v40_foot && v40_foot.querySelectorAll('[data-dact]').length === 4,
+    '四个按钮：再听一遍 / 看一眼 / 擦掉 / 写好了');
+  ok(!!v40_foot.querySelector('[data-dact="peek"]') && !!v40_foot.querySelector('[data-dact="done"]'),
+    '有「看一眼」也有「写好了」');
+  ok(w.WG.boxes.length === 1, '手写格接上了练习页那套 canvas 逻辑（WG.boxes=' + w.WG.boxes.length + '）');
+  ok(w.GAME.queue.length >= 6, '一局题量照旧：' + w.GAME.queue.length);
+  ok(d.getElementById('gameAskLabel').textContent === '听一听，写下来',
+    '标题栏改成「听一听，写下来」：' + d.getElementById('gameAskLabel').textContent);
+
+  click(v40_foot.querySelector('[data-dact="done"]'));
+  await wait(40);
+  ok(w.GDICT.checked === false, '空格子上点「写好了」不算数');
+
+  click(v40_foot.querySelector('[data-dact="peek"]'));
+  await wait(50);
+  ok(w.GDICT.peeked === true, '「看一眼」亮出答案');
+  ok(d.querySelector('#gameField .wg-ans').textContent === w.GAME.queue[0].w,
+    '亮的是这一题要写的字：' + d.querySelector('#gameField .wg-ans').textContent);
+  ok(d.querySelector('#gDictFoot [data-dact="peek"]').disabled === true,
+    '「看一眼」每题只有一次');
+  await wait(3200);
+  ok(d.querySelector('#gameField .wg-ans').textContent === '', '3 秒后答案自己合上');
+
+  const v40_q0 = w.GAME.queue[0];
+  w.WG.boxes[0].strokes.push([{ x: 4, y: 4 }, { x: 30, y: 30 }]);
+  click(d.querySelector('#gDictFoot [data-dact="done"]'));
+  await wait(60);
+  ok(w.GDICT.checked === true, '有笔迹才进对照');
+  ok(d.querySelector('#gameField .wg-ans').textContent === v40_q0.w, '写完亮出正确字');
+  ok(!!d.querySelector('#gDictFoot [data-dact="miss"]'), '换成「写对了 / 没写好，重写」');
+
+  click(d.querySelector('#gDictFoot [data-dact="miss"]'));
+  await wait(80);
+  ok(w.GAME.miss === 1, '「没写好」记一次 miss：' + w.GAME.miss);
+  ok(w.GDICT.checked === false && w.WG.boxes[0].strokes.length === 0,
+    '清空格子、回到写字态（不判死）');
+  ok(d.querySelector('#gameField .wg-ans').textContent === '', '重写时答案收回去');
+
+  w.WG.boxes[0].strokes.push([{ x: 6, y: 6 }, { x: 28, y: 28 }]);
+  click(d.querySelector('#gDictFoot [data-dact="done"]'));
+  await wait(60);
+  click(d.querySelector('#gDictFoot [data-dact="ok"]'));
+  await wait(60);
+  ok(w.GAME.done === 1 && w.GAME.retried === 1 && w.GAME.oneTry === 0,
+    '重写后写对只算「重写过的」，不算一次写对（和 v39 一个口径）：'
+    + w.GAME.oneTry + '/' + w.GAME.retried);
+
+  for (let i = 1; i < w.GAME.queue.length; i++){
+    w.clearGameTimer();
+    w.GAME.i = i;
+    w.gameQuestion();
+    w.clearGameTimer();
+    w.WG.boxes[0].strokes.push([{ x: 5, y: 5 }]);
+    click(d.querySelector('#gDictFoot [data-dact="done"]'));
+    await wait(25);
+    click(d.querySelector('#gDictFoot [data-dact="ok"]'));
+    await wait(25);
+  }
+  w.clearGameTimer();
+  w.GAME.i = w.GAME.queue.length;
+  w.gameQuestion();
+  await wait(70);
+  const v40_box = d.getElementById('gameOverBox');
+  const v40_txt = v40_box ? v40_box.textContent : '';
+  ok(!!v40_box, '听写也能打完出结算');
+  ok(/正确率/.test(v40_txt), '结算报正确率：' + v40_txt);
+  ok(/写了 \d+ \/ \d+ 个/.test(v40_txt), '听写说「写了 N 个」，不是「找到」：' + v40_txt);
+  ok(/有 1 个是重写过的/.test(v40_txt), '重写过几个照实说');
+  w.quitGame(true);
+  await wait(140);
+  ok(!d.getElementById('scrGame').classList.contains('is-dict'), '退出后摘掉听写态');
+
+  /* ---------- 36. 描写屏「默一默」（v40） ---------- */
+  console.log('\n--- 36. 描写屏默一默 ---');
+  /* 老师 2026-11-04：「前面的字卡那里描一描我想再加一个默写在里面」。
+     流程：描完（或直接）点「默一默」→ 灰字收走、笔迹清空 → 凭记忆写 → 写完亮正确字对照。 */
+  const v40_c = w.STATE.chars.filter(x => x.w === '木')[0] || w.STATE.chars.filter(x => x.w)[0];
+  w.openTrace(v40_c);
+  await wait(140);
+  ok(d.getElementById('traceMask').hidden === false, '打开描写面板');
+  ok(d.getElementById('traceMem').hidden === false, '多了一个「默一默」');
+  ok(d.getElementById('traceMem').textContent === '默一默',
+    '按钮文案：' + d.getElementById('traceMem').textContent);
+  if (!w.TRACE.box) w.TRACE.box = { cv: null, ctx: null, strokes: [], cur: null,
+    w: 0, h: 0, free: true };
+  w.TRACE.box.strokes.push([{ x: 5, y: 5 }]);
+
+  click(d.getElementById('traceMem'));
+  await wait(70);
+  ok(w.TRACE.state === 'recite', '进入默写态：' + w.TRACE.state);
+  ok(d.getElementById('traceGrid').classList.contains('blind'), '灰字收起来了（.blind）');
+  ok(w.TRACE.box.strokes.length === 0, '默写前把描的笔迹清掉');
+  ok(d.getElementById('soAns').textContent === '', '答案还没亮');
+  ok(d.getElementById('traceMem').hidden === true, '默写中不再显示「默一默」');
+  ok(d.getElementById('traceDone').hidden === false, '默写时「写好了」还在');
+
+  click(d.getElementById('traceDone'));
+  await wait(50);
+  ok(w.TRACE.state === 'recite', '空格子点「写好了」不算写完');
+  w.TRACE.box.strokes.push([{ x: 8, y: 8 }]);
+  click(d.getElementById('traceDone'));
+  await wait(70);
+  ok(w.TRACE.state === 'recited', '默写完进对照态：' + w.TRACE.state);
+  ok(d.getElementById('soAns').textContent === v40_c.w,
+    '亮出正确字：' + d.getElementById('soAns').textContent);
+  ok(d.getElementById('traceGrid').classList.contains('blind'),
+    '灰字仍然收着（能描就不叫默写）');
+  ok(d.getElementById('traceNext').hidden === false, '默完可以点「下一个字」');
+  ok(d.getElementById('traceDone').hidden === true, '默完不再显示「写好了」');
+
+  /* 换字必须复位：灰字回来、答案清空、「默一默」回来（v32 那个「上一字的字跑到下一字」的教训） */
+  w.LEARN.list = [v40_c, w.STATE.chars.filter(x => x.w && x.w !== v40_c.w)[0]];
+  click(d.getElementById('traceNext'));
+  await wait(200);
+  ok(!d.getElementById('traceGrid').classList.contains('blind'), '换字后灰字回来');
+  ok(d.getElementById('soAns').textContent === '', '换字后答案清空');
+  ok(d.getElementById('traceMem').hidden === false, '换字后「默一默」回来');
+
+  click(d.getElementById('traceMem'));
+  await wait(50);
+  click(d.getElementById('traceReplay'));
+  await wait(70);
+  ok(!d.getElementById('traceGrid').classList.contains('blind'),
+    '默写中途点「再看一遍」：等于放弃这次默写，灰字放回来');
+  w.closeTrace();
+  await wait(80);
+  ok(d.getElementById('traceMask').hidden === true, '关掉描写面板');
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

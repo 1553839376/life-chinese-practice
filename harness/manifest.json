@@ -105,6 +105,15 @@
       "gameOpts",
       "gameRight",
       "gameWrong",
+      "gameAward",
+      "GDICT",
+      "dictScene",
+      "dictFit",
+      "dictReveal",
+      "dictDone",
+      "dictOk",
+      "dictMiss",
+      "dictAct",
       "gameHint",
       "gameOver",
       "GAME_KEYS",
@@ -255,6 +264,10 @@
       "profPick",
       "traceAgainTx",
       "pickBar",
+      "traceMem",
+      "traceMemTag",
+      "soAns",
+      "gDictFoot",
       "pickStart",
       "gamePick",
       "gameNow",
@@ -290,6 +303,9 @@
       "traceDoneTap",
       "traceAgainTap",
       "traceNextTap",
+      "traceMemReset",
+      "traceMemTap",
+      "traceReplayTap",
       "traceClearInk",
       "SO_START_MS",
       "SO_FRAMES",
@@ -341,7 +357,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 641
+      "min_cases": 688
     },
     {
       "name": "check_pair",

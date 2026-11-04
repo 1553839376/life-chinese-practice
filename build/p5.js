@@ -1219,13 +1219,14 @@ function wgBindOne(b){
 /* 方框多大：行宽除以个数。不用 CSS 的 aspect-ratio —— 教室那台平板是不是
    iOS 15 以上不确定，量出来再写死 px 最稳，顺带把底字的字号一起定下来
    （字要占格子约 76%，太大就画出格，太小又看不清笔画）。 */
-function wgLayout(){
-  var row = document.getElementById('wgRow'), n = WG.boxes.length, avail, size, i, gap = 14, el;
+function wgLayout(rowId, maxSize){
+  var row = document.getElementById(rowId || 'wgRow'), n = WG.boxes.length, avail, size, i, gap = 14, el;
+  var cap = maxSize || 300;
   if (!row || !n) return;
   avail = row.clientWidth || 0;
   if (!avail) return;                     /* 还没布局（或 jsdom）：留着 CSS 的兜底尺寸 */
   size = Math.floor((avail - gap * (n - 1)) / n);
-  if (size > 300) size = 300;
+  if (size > cap) size = cap;             /* 游戏乐园的听写场子比练习页矮，要能压下来 */
   if (size < 96) size = 96;
   for (i = 0; i < n; i++){
     el = WG.boxes[i].el;
@@ -1234,8 +1235,11 @@ function wgLayout(){
     if (el.style.setProperty) el.style.setProperty('--wg-fs', Math.round(size * 0.76) + 'px');
   }
 }
-function wgInit(){
-  var list = document.querySelectorAll('#stage .wg-box'), i, el, cv;
+/* 手写格初始化。默认扫练习页的 #stage；游戏乐园的「听写」也复用这一套
+   （同一个 .wg-box + canvas + 指针逻辑），所以留了 root / rowId 两个口子。 */
+function wgInit(root, rowId, maxSize){
+  var scope = root || $('stage');
+  var list = scope ? scope.querySelectorAll('.wg-box') : [], i, el, cv;
   WG.boxes = [];
   for (i = 0; i < list.length; i++){
     el = list[i];
@@ -1243,12 +1247,12 @@ function wgInit(){
     if (!cv) continue;
     WG.boxes.push({ el: el, cv: cv, ctx: null, strokes: [], cur: null, w: 0, h: 0 });
   }
-  wgLayout();
+  wgLayout(rowId, maxSize);
   for (i = 0; i < WG.boxes.length; i++){ wgSize(WG.boxes[i]); wgBindOne(WG.boxes[i]); }
   /* 首帧字号/滚动条还没落定，量到的宽度会差几像素；下一拍再量一次。
      不挂 requestAnimationFrame —— 后台标签页可能整页都不执行。 */
   setTimeout(function(){
-    wgLayout();
+    wgLayout(rowId, maxSize);
     for (var j = 0; j < WG.boxes.length; j++) wgSize(WG.boxes[j]);
   }, 80);
 }

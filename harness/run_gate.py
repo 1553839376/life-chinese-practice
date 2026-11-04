@@ -721,8 +721,8 @@ def gate_static(html):
     # 复用就等于「先弹一句『先选一个字』然后什么都不发生」。
     _gpbox = html.split('id="gamePick"')[1].split('id="gameNow"')[0] \
         if 'id="gamePick"' in html else ''
-    rec('G1', '五张玩法卡摆在乐园页里（四款玩法 + 随便玩），不再弹遮罩面板',
-        bool(_gpbox) and _gpbox.count('data-gp="') == 5
+    rec('G1', '六张玩法卡摆在乐园页里（四款玩法 + 听写 + 随便玩），不再弹遮罩面板',
+        bool(_gpbox) and _gpbox.count('data-gp="') == 6
         and 'data-gp="any"' in _gpbox and 'data-gk' not in _gpbox
         and 'id="gpMask"' not in html,
         '' if _gpbox else '找不到 gamePick')
@@ -886,10 +886,16 @@ def gate_static(html):
     # v39 游戏正确率（老师 2026-11-04）：「在游戏的时候如果点错了后来再点对，最后还是显示
     # 100% 正确率，有点不对吧」。原来 gameOver 只看 GAME.done（答对就 +1），错一遍再对也是
     # 满星满分。现在一题点错过再点对只算「找到」不算「答对」，正确率 = 一次就点对 / 总题数。
+    # v40 起计分收成一处 gameAward()（四款玩法 + 听写共用），两个账记在这儿。
+    _ga = html[html.find('function gameAward'):]
+    _ga = _ga[:max(_ga.find('function ', 10), 1)]
+    rec('G1', '答对时分开记「一次就对」与「试过才对」（GAME.miss > 0 判这一题错没过）',
+        'GAME.miss > 0' in _ga and 'GAME.retried++' in _ga and 'GAME.oneTry++' in _ga,
+        '' if _ga else '找不到 gameAward')
     _gr = html[html.find('function gameRight'):]
     _gr = _gr[:max(_gr.find('function ', 10), 1)]
-    rec('G1', '答对时分开记「一次就对」与「试过才对」（GAME.miss > 0 判这一题错没过）',
-        'GAME.miss > 0' in _gr and 'GAME.retried++' in _gr and 'GAME.oneTry++' in _gr,
+    rec('G1', '计分只有 gameAward 一处（gameRight / dictOk 都走它，不各记一份）',
+        'gameAward()' in _gr and 'GAME.oneTry' not in _gr and 'GAME.retried' not in _gr,
         '' if _gr else '找不到 gameRight')
     _go = html[html.find('function gameOver'):]
     _go = _go[:max(_go.find('function ', 10), 1)]
@@ -902,6 +908,36 @@ def gate_static(html):
         and '试了才找到的' in _go)
     rec('G1', '结算页多一行「找到 N / M 个」注脚（.go-note）',
         '.go-note{' in html and "mk('div', 'go-note'" in _go)
+
+    # v40（老师 2026-11-04）：「游戏乐园我想加一个听写模式，差不多是和练习那个地方一样。
+    # 还有前面的字卡那里描一描我想再加一个默写在里面」。听写＝乐园第六张卡，只听单字，
+    # 写对写错不记学习记录（游戏保持纯玩）；默写＝描写屏第四个按钮，灰字收走凭记忆写。
+    _do = html[html.find('function dictOk'):]
+    _do = _do[:max(_do.find('function ', 10), 1)]
+    _dict_ok_no_log = bool(_do) and not [w for w in (
+        'localStorage', 'logs', 'saveData(', 'saveState(', 'recordQuiz') if w in _do]
+    rec('G1', '乐园第六张卡是听写，整行实线（否则单独一行左边空一格）',
+        'data-gp="dict"' in html and '.sg-btn.gd{grid-column:1/-1;min-height:92px}' in html)
+    rec('G1', '听写不参与随机玩法（GAME_KEYS 只有四款，GAME_NAMES 里才有 dict）',
+        "var GAME_KEYS = ['bubble', 'fish', 'fruit', 'feed']" in html
+        and "dict: '听写'" in html)
+    rec('G1', '听写屏不许露出题目字和提示语（否则等于把答案摆出来）',
+        '#scrGame.is-dict .ga-word,#scrGame.is-dict #gameHint{display:none}' in html)
+    rec('G1', '听写走同一个手写区（wgInit 带 maxSize，不另写一套画布）',
+        "wgInit(field, 'gDictRow', dictFit())" in html)
+    rec('G1', '听写写对写错都不记学习记录（游戏保持纯玩）',
+        'function dictOk' in html and _dict_ok_no_log,
+        'dictOk 里混进了写存档的调用')
+    rec('G1', '默写把灰字和题目字一起收走（.blind 两处）并挂「默写」小标',
+        '.trace-grid.blind #soBase,.trace-grid.blind .so-ghost{display:none}' in html
+        and '#traceMask.blind .trace-name b,#traceMask.blind .trace-name i{visibility:hidden}'
+        in html and 'id="traceMemTag"' in html)
+    rec('G1', '默写进出都复位（openTrace / closeTrace 都调 traceMemReset）',
+        'function traceMemReset' in html
+        and html.count('traceMemReset();') >= 2)
+    rec('G1', '默写写完只亮答案对照，不偷偷判分（recited 与 done 一样只给「下一个字」）',
+        "TRACE.state === 'recite'" in html and "TRACE.state = 'recited'" in html
+        and "state !== 'done' && state !== 'recited'" in html)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

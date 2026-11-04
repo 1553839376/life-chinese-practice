@@ -39,6 +39,11 @@
       <button class="sg-btn ga" data-gp="feed" type="button">
         <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
       </button>
+      <!-- v40：第五张卡是「听写」——不玩场景，直接在田字格里默写。和练习里的
+           「汉字听写」同一套手写区，但**不写学习记录**（游戏乐园刻意不污染测评成绩）。 -->
+      <button class="sg-btn gd" data-gp="dict" type="button">
+        <span class="sg-ico dic"></span><span class="sg-nm">听写</span><span class="sg-d">听一个字，在格子里写下来</span>
+      </button>
       <button class="sg-btn gy game-any" data-gp="any" type="button">
         <span class="sg-ico any"></span><span class="sg-nm">随便玩</span><span class="sg-d">不用挑字，随机来一局</span>
       </button>
@@ -89,7 +94,7 @@
       </svg><span>读题</span>
     </button>
     <div class="game-ask-txt">
-      <div class="ga-label">找到这个字</div>
+      <div class="ga-label" id="gameAskLabel">找到这个字</div>
       <div class="ga-word"><b id="gameAskWord">—</b><i id="gameAskPy"></i></div>
     </div>
     <button id="gameHint" class="ghost-btn" type="button">提示</button>
@@ -139,7 +144,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v39</span>
+    <span id="appVer" class="app-ver">v40</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -436,7 +441,9 @@
 <div id="traceMask" class="trace-mask" hidden>
   <div class="trace-panel" role="dialog" aria-modal="true">
     <div class="trace-head">
-      <span class="trace-name"><b id="traceChar">—</b><i id="tracePy"></i></span>
+      <span class="trace-name"><b id="traceChar">—</b><i id="tracePy"></i>
+        <!-- 默写时那个字要藏起来，这里补一个「默写」小标，面板顶上不至于空一块 -->
+        <em id="traceMemTag" class="trace-tag" hidden>默写</em></span>
       <button id="traceClose" class="sheet-x" type="button" aria-label="关闭">关闭</button>
     </div>
     <p class="trace-tip" id="traceTip">看一遍笔顺</p>
@@ -444,9 +451,14 @@
       <canvas id="soBase"></canvas>
       <span id="soGhost" class="so-ghost" hidden></span>
       <canvas id="soInk"></canvas>
+      <!-- v40 默写：改成「默一默」时灰字收起来（.blind），写完把正确字浮在最上层，
+           和自己写的对一眼。半透明绿，压得住笔迹又不遮字。 -->
+      <span id="soAns" class="so-ans"></span>
     </div>
-    <div class="hw-acts">
+    <div class="hw-acts four">
       <button id="traceReplay" class="hw-btn" type="button">再看一遍</button>
+      <!-- v40：描完还能「默一默」——灰字收走、笔迹清空，凭记忆再写一遍 -->
+      <button id="traceMem" class="hw-btn" type="button">默一默</button>
       <!-- v32：擦掉按钮**一直显示**（原来只在写完才出现，孩子以为写错了没法改）。
            v33：文案固定「擦掉」，和练习里的听写/描红同一个词、同一套 .hw-btn 尺寸 ——
            原来这里写「擦掉」、练习里写「擦掉重写」、描红又写「擦掉重描」，三种说法同一件事。 -->

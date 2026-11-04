@@ -364,6 +364,9 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
 /* 手机竖屏：三个按钮要挤进描写弹窗（内宽约 320px）——收字号和左右留白，
    再不济才折成两行；宁可折行，也不要把「擦掉」挤到看不见。 */
 @media (max-width:520px){
+  /* 听写场子：手机上场高只有 ~390px，格子 + 一句说明 + 2×2 按钮刚好顶满，
+     把留白再收一档，别让「写好了」贴着场子底边 */
+  .game-field.g-dict{gap:10px;padding:12px}
   .hw-acts{gap:8px;margin-top:14px}
   .hw-btn{min-height:50px;padding:0 14px;font-size:15px;gap:6px;border-radius:14px}
   .hw-btn.main{min-width:118px;padding:0 18px;font-size:18px}
@@ -992,6 +995,14 @@ body.picking #scrLearn{padding-bottom:96px}
 .sg-btn.gf:hover{border-color:#7FB8DA}
 .sg-btn.gr:hover{border-color:#9CC7AC}
 .sg-btn.ga:hover{border-color:#E2C97E}
+/* v40：第六张卡「听写」——图标画成一个田字格，一眼看出是「在格子里写」。
+   它不是场景游戏（是手写屏），所以和「随便玩」一样独占一整行，但**用实线**：
+   虚线在这套界面里是「不算正式玩法」的意思，别混。 */
+.sg-btn.gd{grid-column:1/-1;min-height:92px}
+.sg-btn.gd:hover{border-color:#B79CE0}
+.sg-ico.dic{background:#F3ECFC;border:2px solid #B79CE0;border-radius:9px;
+  background-image:linear-gradient(to right,transparent 47%,#D3C2EF 47%,#D3C2EF 53%,transparent 53%),
+                   linear-gradient(to bottom,transparent 47%,#D3C2EF 47%,#D3C2EF 53%,transparent 53%)}
 /* 描写面板（v27）：先播笔顺、再照着灰字描。z-index 压在学字卡之上、toast 之下 */
 .trace-mask{position:fixed;inset:0;z-index:70;background:rgba(20,26,32,.5);
   display:flex;align-items:center;justify-content:center;padding:12px}
@@ -1014,8 +1025,25 @@ body.picking #scrLearn{padding-bottom:96px}
 .so-ghost{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;
   align-items:center;justify-content:center;font-family:"KaiTi","STKaiti","Kaiti SC",serif;
   font-size:min(240px,54vw);line-height:1;color:#DCD4BE}
+/* v40 默写：「默一默」把灰字整层收走（笔画层和字体兜底层都要收），
+   写完再把正确字浮到最上面——半透明绿，和笔迹叠在一起也能一眼比出来。 */
+.trace-grid.blind #soBase,.trace-grid.blind .so-ghost{display:none}
+/* 默写时面板顶上那个「木」也要藏起来：露着就等于把答案印在默写纸上。
+   用 visibility 不用 display，占位不动，面板不会跳一下。 */
+#traceMask.blind .trace-name b,#traceMask.blind .trace-name i{visibility:hidden}
+.trace-tag{font-style:normal;font-size:15px;font-weight:800;color:var(--green);
+  background:#E8F6ED;border-radius:999px;padding:3px 12px}
+.so-ans{position:absolute;inset:0;z-index:3;pointer-events:none;display:flex;
+  align-items:center;justify-content:center;
+  font-family:"KaiTi","STKaiti","Kaiti SC",serif;
+  font-size:min(240px,54vw);line-height:1;color:rgba(46,140,90,.5)}
 /* 描写弹窗里的操作条：面板本身 gap 10，再叠 16 就太散 */
-.trace-panel .hw-acts{margin-top:2px}
+.trace-panel .hw-acts{margin-top:2px;gap:10px}
+/* v40：多了「默一默」变成四个按钮，面板内宽只有 424px。原来那套（17px + 左右 22px、
+   主按钮 min-width 150）会折成 3+1，看着参差。这里把这四个收窄一档挤回一行：
+   字号 16、留白 15、主按钮 118 —— 高度仍是 56，按下去的手感没变。 */
+.trace-panel .hw-btn{padding:0 15px;font-size:16px}
+.trace-panel .hw-btn.main{min-width:118px;padding:0 18px}
 .sg-ico{width:34px;height:34px;border-radius:50%;margin-bottom:4px}
 .sg-ico.bub{background:radial-gradient(circle at 32% 28%,#fff 0%,#DCEFFC 40%,#B9DCF6 100%);
   border:2px solid #9CC2E4}
@@ -1047,6 +1075,13 @@ body.picking #scrLearn{padding-bottom:96px}
   max-height:min(620px,80vw);
   border-radius:24px;border:2px solid var(--line);overflow:hidden;
   background:var(--card);touch-action:manipulation;user-select:none;-webkit-user-select:none}
+/* v40 听写态：这一屏的「答案」就是那个汉字，标头上的字和拼音都要收起来，
+   「提示」会直接把答案点亮，也没意义。读题按钮留着（再听一遍靠它）。 */
+#scrGame.is-dict .ga-word,#scrGame.is-dict #gameHint{display:none}
+.game-field.g-dict{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;padding:16px;overflow:auto}
+.game-field.g-dict .wg-row{width:100%;max-width:300px}
+.game-field.g-dict .hw-tip{max-width:320px;margin-top:0}
 .game-foot{display:flex;align-items:center;justify-content:space-between;
   padding:10px 4px 0;font-size:14px;color:var(--ink3);font-weight:700}
 .game-tip{color:var(--ink3)}

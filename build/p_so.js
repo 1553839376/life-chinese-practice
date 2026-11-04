@@ -192,6 +192,9 @@ function openTrace(c){
      不清就会「上一个人写的字跟着跑到这个字上面」（老师 2026-11-02 报的就是这个）。
      **要在改字之前清**：清完重绘的是空白，随后 soPlay 重画灰底，不会闪出上一字的残影。 */
   traceClearInk();
+  /* v40：默写的「收走灰字」是 #traceGrid 上的 class，换字必须一起复位，
+     否则下一个字一打开就是空的（老师会以为画布坏了）。 */
+  traceMemReset();
   $('traceChar').textContent = c.w;
   $('tracePy').textContent = c.p || '';
   $('traceMask').hidden = false;
@@ -239,17 +242,64 @@ function traceLayout(){
   }
 }
 
+/* v40 默写：把灰字收走（.blind 同时藏笔画层和字体兜底层）、清空笔迹，凭记忆写。
+   写完 TraceDone 里再把正确字浮到最上层（#soAns）对一眼——不恢复灰字，
+   否则孩子写完发现灰字回来了，会以为「刚才那次不算」。 */
+function traceMemReset(){
+  var grid = $('traceGrid'), ans = $('soAns'), mem = $('traceMem'), mask = $('traceMask');
+  if (grid && grid.classList) grid.classList.remove('blind');
+  if (mask && mask.classList) mask.classList.remove('blind');
+  if (ans) ans.textContent = '';
+  if (mem) mem.hidden = false;
+  var tag = $('traceMemTag');
+  if (tag) tag.hidden = true;
+}
+function traceMemTap(){
+  if (!TRACE.c) return;
+  soStop();                       /* 正在播笔顺就先停下，别和默写抢画布 */
+  TRACE.state = 'recite';
+  traceClearInk();
+  var grid = $('traceGrid'), ans = $('soAns'), mask = $('traceMask');
+  if (grid && grid.classList) grid.classList.add('blind');
+  /* 面板顶上那个字是「这一格写什么」，默写时留着就是照抄 */
+  if (mask && mask.classList) mask.classList.add('blind');
+  /* 顶上那个字是「这一格写什么」，留着就是照抄；换成一个「默写」小标 */
+  var tag = $('traceMemTag');
+  if (tag) tag.hidden = false;
+  if (ans) ans.textContent = '';
+  sfxTap();
+  setHTML($('traceTip'), '灰字收起来了，凭记忆写一遍。');
+  traceButtons('recite');
+}
+function traceReplayTap(){
+  if (!TRACE.c) return;
+  /* 默写中途又想看笔顺：等于放弃这一次默写，灰字回来、从头播一遍 */
+  var grid = $('traceGrid'), ans = $('soAns'), mask = $('traceMask');
+  if (grid && grid.classList) grid.classList.remove('blind');
+  if (mask && mask.classList) mask.classList.remove('blind');
+  var tag = $('traceMemTag');
+  if (tag) tag.hidden = true;
+  if (ans) ans.textContent = '';
+  TRACE.state = 'demo';
+  traceClearInk();
+  traceButtons('demo');
+  soPlay(TRACE.c.w);
+  setHTML($('traceTip'), '再看一遍笔顺。');
+}
 function traceButtons(state){
   var replay = $('traceReplay'), done = $('traceDone'), again = $('traceAgain'),
-      next = $('traceNext');
+      next = $('traceNext'), mem = $('traceMem');
   if (!replay) return;
   replay.hidden = false;
-  done.hidden = (state === 'done');
+  /* 默写态和默写后的对照态都没有「写好了」——那一步已经走过了 */
+  done.hidden = (state === 'done' || state === 'recited');
   /* v32：「擦掉」随时可用（老师 2026-11-02：「没有擦掉，只有写完才能擦掉」）。
      v33：文案就固定是「擦掉」——之前写完那一刻会变成「擦掉重写」，而练习页写
      「擦掉重写」、描红写「擦掉重描」，同一件事三种说法，老师截图问过「为什么不一样」。 */
   if (again) again.hidden = false;
-  if (next) next.hidden = (state !== 'done');
+  if (next) next.hidden = (state !== 'done' && state !== 'recited');
+  /* 「默一默」：描完（done）才出现；已经在默写、或已经默完亮答案时不再给 */
+  if (mem) mem.hidden = (state === 'recite' || state === 'recited');
 }
 
 /* 播一遍笔顺：逐笔推进，每笔内部再分 6 步，看起来是「一笔一笔长出来」 */
@@ -330,8 +380,22 @@ function traceClearInk(){
   wgRedraw(TRACE.box);
 }
 function traceDoneTap(){
-  if (TRACE.state === 'done') return;
+  if (TRACE.state === 'done' || TRACE.state === 'recited') return;
   if (!TRACE.box || !TRACE.box.strokes.length){ sfxTap(); toast('先在方格里写一写'); return; }
+  if (TRACE.state === 'recite'){
+    /* 默写完：正确字浮到最上层（半透明绿），压在笔迹上也能一眼比出来。
+       灰字仍然收着——能描就不叫默写了。 */
+    TRACE.state = 'recited';
+    var ans = $('soAns'), mask = $('traceMask');
+    if (ans) ans.textContent = TRACE.c ? TRACE.c.w : '';
+    if (mask && mask.classList) mask.classList.remove('blind');   /* 题目字露回来对照 */
+    var tag = $('traceMemTag');
+    if (tag) tag.hidden = true;
+    sfxOk();
+    setHTML($('traceTip'), '写好啦！和上面的字对一对。');
+    traceButtons('recited');
+    return;
+  }
   TRACE.state = 'done';
   sfxOk();
   setHTML($('traceTip'), '写好啦！看看和灰字是不是一样。');
@@ -358,6 +422,7 @@ function traceNextTap(){
 }
 function closeTrace(){
   soStop();
+  traceMemReset();
   $('traceMask').hidden = true;
   TRACE.c = null;
   TRACE.state = 'demo';
@@ -367,9 +432,9 @@ function soWire(){
   var close = $('traceClose'), replay = $('traceReplay'), done = $('traceDone'),
       again = $('traceAgain'), next = $('traceNext'), ent = $('sheetTrace');
   if (close) close.addEventListener('click', closeTrace);
-  if (replay) replay.addEventListener('click', function(){
-    if (TRACE.c){ soPlay(TRACE.c.w); setHTML($('traceTip'), '再看一遍笔顺。'); }
-  });
+  if (replay) replay.addEventListener('click', traceReplayTap);
+  var mem = $('traceMem');
+  if (mem) mem.addEventListener('click', traceMemTap);
   if (done) done.addEventListener('click', traceDoneTap);
   if (again) again.addEventListener('click', traceAgainTap);
   if (next) next.addEventListener('click', traceNextTap);

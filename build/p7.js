@@ -288,8 +288,12 @@ var GAME = {
 };
 
 /* ============================ 游戏启动 ============================ */
-var GAME_NAMES = { bubble: '戳泡泡', fish: '钓鱼', fruit: '摘果子', feed: '喂小动物' };
+var GAME_NAMES = { bubble: '戳泡泡', fish: '钓鱼', fruit: '摘果子', feed: '喂小动物', dict: '听写' };
+/* 「随便玩」「换个玩法」只在四款场景游戏里转：听写不是场景，不参与随机 */
 var GAME_KEYS = ['bubble', 'fish', 'fruit', 'feed'];
+/* 听写的临时状态（不进 GAME 是因为它跟「这一题」绑，和计分不是一回事）。
+   看一眼限 3 秒、每题一次；checked 表示已经点过「写好了」、正等着人核对。 */
+var GDICT = { peeked: false, checked: false, timer: null };
 
 function startGame(kind, chars){
   if (!chars || !chars.length){ toast('先挑一个字再玩'); return; }
@@ -316,6 +320,14 @@ function startGame(kind, chars){
   closeCard();
   avUnlock();
   sayStop();
+  GDICT.peeked = false;
+  GDICT.checked = false;
+  if (GDICT.timer){ clearTimeout(GDICT.timer); GDICT.timer = null; }
+  /* 听写这一屏的「答案」就是那个字：标头上的字与拼音、以及会点亮答案的「提示」
+     都得收起来，不然等于把答案印在题目上（用 class 切，别逐题改 display）。 */
+  var sc = $('scrGame');
+  if (sc && sc.classList) sc.classList.toggle('is-dict', kind === 'dict');
+  $('gameAskLabel').textContent = (kind === 'dict') ? '听一听，写下来' : '找到这个字';
   $('gameName').textContent = GAME_NAMES[kind];
   $('gameScore').textContent = '0';
   $('gameMute').textContent = AV.sfx ? '音效开' : '音效关';
@@ -328,6 +340,11 @@ function clearGameTimer(){
 function quitGame(back){
   clearGameTimer();
   sayStop();
+  if (GDICT.timer){ clearTimeout(GDICT.timer); GDICT.timer = null; }
+  GDICT.peeked = false;
+  GDICT.checked = false;
+  var sc = $('scrGame');
+  if (sc && sc.classList) sc.classList.remove('is-dict');
   GAME.queue = [];
   GAME.locked = true;
   GAME.kind = '';
@@ -364,19 +381,27 @@ function gameQuestion(){
   if (!q){ gameOver(); return; }
   GAME.locked = false;
   GAME.miss = 0;
+  GDICT.peeked = false;
+  GDICT.checked = false;
+  if (GDICT.timer){ clearTimeout(GDICT.timer); GDICT.timer = null; }
   $('gameProg').textContent = (GAME.i + 1) + ' / ' + GAME.queue.length;
   $('gameScore').textContent = String(GAME.score);
   $('gameAskWord').textContent = q.w;
   $('gameAskPy').textContent = q.p || '';
 
-  var opts = gameOpts(q);
   var field = $('gameField');
   field.className = 'game-field g-' + GAME.kind;
   field.setAttribute('data-kind', GAME.kind);
-  if (GAME.kind === 'bubble') setHTML(field, bubbleScene(opts));
-  else if (GAME.kind === 'fish') setHTML(field, fishScene(opts));
-  else if (GAME.kind === 'fruit') setHTML(field, fruitScene(opts));
-  else setHTML(field, feedScene(q, opts));
+  if (GAME.kind === 'dict'){
+    setHTML(field, dictScene());
+    wgInit(field, 'gDictRow', dictFit());
+  } else {
+    var opts = gameOpts(q);
+    if (GAME.kind === 'bubble') setHTML(field, bubbleScene(opts));
+    else if (GAME.kind === 'fish') setHTML(field, fishScene(opts));
+    else if (GAME.kind === 'fruit') setHTML(field, fruitScene(opts));
+    else setHTML(field, feedScene(q, opts));
+  }
   /* 先让场景动起来，停一下再读题。
      定时器必须挂在 GAME.timer 上：否则退出游戏、或立刻换成另一种玩法时，
      上一局遗留的定时器会把新一局的字再读一遍（测试里表现为偶发多播一次）。 */
@@ -392,6 +417,9 @@ function gameQuestion(){
    不再一口气念两遍字然后再叫你找出来。 */
 function gameSay(kind, q){
   var w = (q && q.w) || '', act = '找出这个字。';
+  /* 听写：只报「写下来」+ 那个字。整句「听一听，写下来。」有整句录音（q_dict），
+     不用另录；写不出来自己也点「看一眼」，不靠读题念答案。 */
+  if (kind === 'dict') return [{ t: '听一听，写下来。', gap: PACE.afterAsk }, { t: w }];
   if (kind === 'bubble') act = '把这个字戳掉。';
   else if (kind === 'fish') act = '把这个字钓上来。';
   else if (kind === 'fruit') act = '把这个字摘下来。';
@@ -408,6 +436,8 @@ function readAsk(){
   var q = GAME.queue[GAME.i];
   if (!q) return;
   var ok = saySeq(gameSay(GAME.kind, q));
+  /* 听写屏上那个位置是空的（字和拼音都收起来了），readHint 会把答案又摆出来 */
+  if (GAME.kind === 'dict') return;
   readHint($('gameAskPy'), ok, q.p || q.w);
 }
 
@@ -674,6 +704,114 @@ function feedScene(q, opts){
   return html + CLOSE('div') + CLOSE('div') + lootHTML('feed', GAME.caught);
 }
 
+/* ---------------------------- 听写（v40） ----------------------------
+   练习页的「汉字听写」是 .wg-box + canvas + .hw-acts 那套，这里原样复用，
+   只是不写学习记录（游戏乐园刻意不污染测评成绩），也没有老师辅助栏。
+   判分同样不靠识别：亮出答案、人对着看，写对了自己点「写对了」。 */
+function dictFit(){
+  /* 游戏场子比练习页矮：场高 clamp(320px, 100vh-250, 620px)。
+     格子以外还要放下「一句说明 + 四个按钮（窄屏是 2×2）」实测 179px，
+     所以按 h-190 留余量；量不到高度（jsdom）时退回 300。 */
+  var f = $('gameField'), h = f ? (f.clientHeight || 0) : 0, cap = h ? (h - 190) : 300;
+  if (cap > 300) cap = 300;
+  if (cap < 120) cap = 120;
+  return cap;
+}
+function dictFootHTML(){
+  return '<p class="hw-tip">想不起来就点「看一眼」，3 秒后自己合上</p>' +
+    '<div class="hw-acts four">' +
+      '<button type="button" class="hw-btn" data-dact="say">再听一遍</button>' +
+      '<button type="button" class="hw-btn peek" data-dact="peek"' +
+        (GDICT.peeked ? ' disabled' : '') + '>' +
+        (GDICT.peeked ? '看过了' : '看一眼') + CLOSE('button') +
+      '<button type="button" class="hw-btn" data-dact="clear">' + ICO_ERASE + '擦掉' + CLOSE('button') +
+      '<button type="button" class="hw-btn main" data-dact="done">写好了' + CLOSE('button') +
+    CLOSE('div');
+}
+function dictScene(){
+  return '<div class="wg-row" id="gDictRow">' + wgBoxHTML(0, '') + CLOSE('div') +
+    '<div id="gDictFoot">' + dictFootHTML() + CLOSE('div');
+}
+/* 亮答案（看一眼 / 写好了 都用它）。不能借练习页的 wgReveal —— 那个读 STATE.quiz，
+   游戏里 STATE.quiz 是 null，共用只会静默什么都不做。 */
+function dictReveal(peek){
+  var q = GAME.queue[GAME.i], b = WG.boxes[0], el;
+  if (!q || !b) return;
+  el = b.el.querySelector('.wg-ans');
+  if (el) el.textContent = q.w;
+  if (b.el.classList){
+    b.el.classList.add('reveal');
+    if (peek) b.el.classList.add('peek');
+  }
+}
+function dictHideAns(){
+  var b = WG.boxes[0], el;
+  if (!b) return;
+  el = b.el.querySelector('.wg-ans');
+  if (el) el.textContent = '';
+  if (b.el.classList){ b.el.classList.remove('reveal'); b.el.classList.remove('peek'); }
+}
+function dictPeek(){
+  if (GDICT.peeked || GDICT.checked || GAME.locked) return;
+  GDICT.peeked = true;
+  dictReveal(true);
+  sfxTap();
+  setHTML($('gDictFoot'), dictFootHTML());     /* 按钮当场变成「看过了」 */
+  GDICT.timer = setTimeout(function(){
+    GDICT.timer = null;
+    if (!GDICT.checked) dictHideAns();         /* 3 秒到就自己合上，没核对就收走 */
+  }, 3000);
+}
+function dictDone(){
+  if (GAME.locked || GDICT.checked) return;
+  if (!wgHasInk()){ sfxTap(); toast('先在方格里写一写'); return; }
+  GDICT.checked = true;
+  if (GDICT.timer){ clearTimeout(GDICT.timer); GDICT.timer = null; }
+  dictReveal(false);
+  setHTML($('gDictFoot'),
+    '<p class="hw-tip">对照一下，写对了吗</p>' +
+    '<div class="hw-acts">' +
+      '<button type="button" class="hw-btn main" data-dact="ok">写对了' + CLOSE('button') +
+      '<button type="button" class="hw-btn" data-dact="miss">没写好，重写' + CLOSE('button') +
+    CLOSE('div'));
+  sfxPop();
+  toast('对照一下，写对了吗');
+}
+function dictOk(){
+  if (!GDICT.checked || GAME.locked) return;
+  GAME.locked = true;
+  gameAward();
+}
+function dictMiss(){
+  if (!GDICT.checked) return;
+  /* 重写＝这一题没一次写对：只记 miss，不判死也不结束题目。
+     GAME.miss 会被 gameAward 读成「这题重写过」，正确率照 v39 的口径降下来。 */
+  GAME.miss++;
+  GAME.combo = 0;
+  sfxNo();
+  GDICT.checked = false;
+  wgClear();
+  dictHideAns();
+  setHTML($('gDictFoot'), dictFootHTML());
+  toast('再写一次，慢慢来');
+  setTimeout(function(){
+    if (!GAME.locked && GAME.queue[GAME.i]) readAsk();
+  }, 520);
+}
+function dictClear(){
+  if (GAME.locked) return;
+  wgClear();
+  sfxTap();
+}
+function dictAct(act){
+  if (act === 'say'){ readAsk(); return; }
+  if (act === 'peek'){ dictPeek(); return; }
+  if (act === 'clear'){ dictClear(); return; }
+  if (act === 'done'){ dictDone(); return; }
+  if (act === 'ok'){ dictOk(); return; }
+  if (act === 'miss'){ dictMiss(); return; }
+}
+
 /* ============================ 作答 ============================ */
 function gamePick(el){
   if (GAME.locked) return;
@@ -797,16 +935,29 @@ function gameFx(el, kind){
     }
   }
 }
-function gameRight(el){
-  GAME.locked = true;
+/* 计分只有这一处，四款游戏和听写都走它。
+   一次就对才算「对」：这一题错过（GAME.miss > 0）再对，只算找到、不算答对。
+   老师 2026-11-04：「点错了后来再点对，最后还是显示 100% 正确率，有点不对吧」。
+   GAME.miss 在 gameQuestion() 里每题清零，所以它天然就是「这一题错了几次」。 */
+function gameAward(){
   GAME.combo++;
   GAME.done++;
-  /* 一次就点对才算「对」：这题点错过（GAME.miss > 0）再点对，只算找到、不算答对。
-     老师 2026-11-04：「点错了后来再点对，最后还是显示 100% 正确率，有点不对吧」。
-     GAME.miss 在 gameQuestion() 里每题清零，所以它天然就是「这一题错了几次」。 */
   if (GAME.miss > 0) GAME.retried++; else GAME.oneTry++;
   GAME.score += 10 + Math.min(GAME.combo - 1, 5) * 2;
   $('gameScore').textContent = String(GAME.score);
+  /* 连对三次起给一个音高递增的小奖励音，越玩越顺 */
+  if (GAME.combo >= 3){
+    setTimeout(function(){ sfxStreak(GAME.combo); }, 300);
+  }
+  clearGameTimer();
+  GAME.timer = setTimeout(function(){
+    GAME.timer = null;
+    GAME.i++;
+    gameQuestion();
+  }, 880);
+}
+function gameRight(el){
+  GAME.locked = true;
   var kind = GAME.kind;
   if (el.classList) el.classList.add('hit');
   if (kind === 'fruit'){
@@ -828,16 +979,7 @@ function gameRight(el){
   }
   gameFx(el, kind);
   sfxOk();
-  /* 连对三次起给一个音高递增的小奖励音，越玩越顺 */
-  if (GAME.combo >= 3){
-    setTimeout(function(){ sfxStreak(GAME.combo); }, 300);
-  }
-  clearGameTimer();
-  GAME.timer = setTimeout(function(){
-    GAME.timer = null;
-    GAME.i++;
-    gameQuestion();
-  }, 880);
+  gameAward();
 }
 function gameWrong(el){
   GAME.miss++;
@@ -883,14 +1025,18 @@ function gameOver(){
   var stars = (rate >= 90) ? 3 : (rate >= 70 ? 2 : (rate >= 40 ? 1 : 0));
   for (i = 0; i < 3; i++) txt += (i < stars) ? '★' : '☆';
 
-  var note = '找到 ' + done + ' / ' + total + ' 个';
-  if (GAME.retried && done >= total) note += '，有 ' + GAME.retried + ' 个是试了才找到的';
-  else if (!GAME.retried && done >= total) note += '，全是一次就找到的';
+  /* 听写说「写对」，四款场景游戏说「找到」——同一件事，孩子听的话不一样 */
+  var isDict = (GAME.kind === 'dict');
+  var note = (isDict ? '写了 ' : '找到 ') + done + ' / ' + total + ' 个';
+  if (GAME.retried && done >= total) note += isDict ? '，有 ' + GAME.retried + ' 个是重写过的'
+                                                   : '，有 ' + GAME.retried + ' 个是试了才找到的';
+  else if (!GAME.retried && done >= total) note += isDict ? '，全是一次就写对的' : '，全是一次就找到的';
 
   var field = $('gameField');
   var box = mk('div', 'game-over');
   box.id = 'gameOverBox';
-  box.appendChild(mk('div', 'go-title', rate >= 100 ? '全部一次就找到啦！' : '这一轮结束'));
+  box.appendChild(mk('div', 'go-title',
+    rate >= 100 ? (isDict ? '全部一次就写对啦！' : '全部一次就找到啦！') : '这一轮结束'));
   box.appendChild(mk('div', 'go-stars', txt));
   box.appendChild(mk('div', 'go-sub', '正确率 ' + rate + '% · 得了 ' + GAME.score + ' 分'));
   box.appendChild(mk('div', 'go-note', note));
@@ -1159,6 +1305,8 @@ function wireLearn(){
       startGame(el.getAttribute('data-gk'), [CARD_CH]);
       return;
     }
+    el = t.closest('#gameField [data-dact]');
+    if (el){ dictAct(el.getAttribute('data-dact')); return; }
     el = t.closest('#gameField .g-item');
     if (el){ gamePick(el); return; }
   });
