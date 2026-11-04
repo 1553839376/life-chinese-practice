@@ -280,6 +280,9 @@ function closeCard(){
 var GAME = {
   kind: '', queue: [], origin: null, i: 0,
   score: 0, done: 0, miss: 0, combo: 0,
+  /* oneTry = 一次就点对的题数，retried = 点错过才找到的题数。
+     v39 起正确率按 oneTry / 总题数算 —— 错一遍再对不能还是 100%。 */
+  oneTry: 0, retried: 0,
   caught: 0, seq: 0,
   locked: true, timer: null
 };
@@ -304,6 +307,8 @@ function startGame(kind, chars){
   GAME.done = 0;
   GAME.miss = 0;
   GAME.combo = 0;
+  GAME.oneTry = 0;
+  GAME.retried = 0;
   GAME.caught = 0;
   GAME.animal = null;
   GAME.locked = true;
@@ -796,6 +801,10 @@ function gameRight(el){
   GAME.locked = true;
   GAME.combo++;
   GAME.done++;
+  /* 一次就点对才算「对」：这题点错过（GAME.miss > 0）再点对，只算找到、不算答对。
+     老师 2026-11-04：「点错了后来再点对，最后还是显示 100% 正确率，有点不对吧」。
+     GAME.miss 在 gameQuestion() 里每题清零，所以它天然就是「这一题错了几次」。 */
+  if (GAME.miss > 0) GAME.retried++; else GAME.oneTry++;
   GAME.score += 10 + Math.min(GAME.combo - 1, 5) * 2;
   $('gameScore').textContent = String(GAME.score);
   var kind = GAME.kind;
@@ -866,15 +875,25 @@ function gameOver(){
   GAME.locked = true;
   clearGameTimer();
   var total = GAME.queue.length, done = GAME.done, i, txt = '';
-  var stars = (done >= total) ? 3 : (done >= Math.ceil(total * 0.7) ? 2 : (done > 0 ? 1 : 0));
+  /* 正确率 = 一次就点对的题数 / 总题数，口径与班级练习的结算页一致。
+     v38 之前这里只看 GAME.done（答对就 +1），点错一遍再点对也是满星满分，
+     老师看的是「全部找到啦 + 三颗星 + 100%」，等于作弊的满分。 */
+  var one = GAME.oneTry;
+  var rate = total ? Math.round(one * 100 / total) : 0;
+  var stars = (rate >= 90) ? 3 : (rate >= 70 ? 2 : (rate >= 40 ? 1 : 0));
   for (i = 0; i < 3; i++) txt += (i < stars) ? '★' : '☆';
+
+  var note = '找到 ' + done + ' / ' + total + ' 个';
+  if (GAME.retried && done >= total) note += '，有 ' + GAME.retried + ' 个是试了才找到的';
+  else if (!GAME.retried && done >= total) note += '，全是一次就找到的';
 
   var field = $('gameField');
   var box = mk('div', 'game-over');
   box.id = 'gameOverBox';
-  box.appendChild(mk('div', 'go-title', done >= total ? '全部找到啦！' : '这一轮结束'));
+  box.appendChild(mk('div', 'go-title', rate >= 100 ? '全部一次就找到啦！' : '这一轮结束'));
   box.appendChild(mk('div', 'go-stars', txt));
-  box.appendChild(mk('div', 'go-sub', '找到 ' + done + ' / ' + total + ' 个，得了 ' + GAME.score + ' 分'));
+  box.appendChild(mk('div', 'go-sub', '正确率 ' + rate + '% · 得了 ' + GAME.score + ' 分'));
+  box.appendChild(mk('div', 'go-note', note));
 
   var btns = mk('div', 'go-btns');
   var b1 = mk('button', 'primary', '再玩一次');

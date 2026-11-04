@@ -2221,6 +2221,81 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '描红仍是三个按钮：' +
     d.querySelector('#stage .hw-acts').querySelectorAll('.hw-btn').length);
 
+  /* ---------- 34. 游戏正确率：点错再点对不能算满分（v39） ---------- */
+  console.log('\n--- 34. 游戏正确率 ---');
+  /* 老师 2026-11-04：「在游戏的时候如果点错了后来再点对，最后还是显示 100% 正确率，
+     有点不对吧」。口径：一题点错过再点对，只算「找到」不算「答对」，正确率 =
+     一次就点对的题数 / 总题数。 */
+  const v39_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
+  const v39_pick = (q, same) => {
+    const all = d.querySelectorAll('#gameField .g-item');
+    for (let i = 0; i < all.length; i++){
+      const isRight = all[i].getAttribute('data-w') === q.w;
+      if (same ? isRight : !isRight) return all[i];
+    }
+    return null;
+  };
+  /* 把剩下的题一次点对（绕开每题 880ms 的推进定时器，直接把 i 摆到下一题） */
+  const v39_runClean = (from) => {
+    for (let i = from; i < w.GAME.queue.length; i++){
+      w.GAME.i = i;
+      w.gameQuestion();
+      w.clearGameTimer();
+      click(v39_pick(w.GAME.queue[i], true));
+    }
+    w.clearGameTimer();
+    w.GAME.i = w.GAME.queue.length;   /* 队列走完 → gameOver() */
+    w.gameQuestion();
+  };
+
+  w.startGame('bubble', v39_chars);
+  await wait(140);
+  w.clearGameTimer();
+  const v39_total = w.GAME.queue.length;
+  const v39_q0 = w.GAME.queue[0];
+  click(v39_pick(v39_q0, false));
+  await wait(30);
+  ok(w.GAME.miss === 1, '点错记一次 miss：' + w.GAME.miss);
+  ok(w.GAME.done === 0, '点错不推进题目，还能接着点');
+  click(v39_pick(v39_q0, true));
+  await wait(40);
+  ok(w.GAME.done === 1 && w.GAME.oneTry === 0 && w.GAME.retried === 1,
+    '试过才找到的不算「一次就对」：oneTry=' + w.GAME.oneTry + ' retried=' + w.GAME.retried);
+
+  v39_runClean(1);
+  await wait(60);
+  const v39_box = d.getElementById('gameOverBox');
+  ok(!!v39_box, '一局打完出结算框');
+  const v39_txt = v39_box ? v39_box.textContent : '';
+  ok(v39_txt.indexOf('正确率') >= 0, '结算页直接报正确率，不再只写「找到 X / X 个」：' + v39_txt);
+  const v39_rate = parseInt((v39_txt.match(/正确率 (\d+)%/) || [0, '0'])[1], 10);
+  const v39_expect = Math.round((v39_total - 1) * 100 / v39_total);
+  ok(v39_rate === v39_expect,
+    '正确率按「一次就对」算：期望 ' + v39_expect + '%，实际 ' + v39_rate + '%');
+  ok(v39_rate < 100, '点错再点对不再是 100%（老师报的就是这个）：' + v39_rate + '%');
+  const v39_stars = (v39_box.querySelector('.go-stars').textContent.match(/★/g) || []).length;
+  ok(v39_stars === 2, '错一个就掉一颗星：' + v39_stars + ' 颗');
+  ok(v39_box.querySelector('.go-title').textContent !== '全部一次就找到啦！',
+    '标题不再一律说「全部找到啦」：' + v39_box.querySelector('.go-title').textContent);
+  ok(/试了才找到的/.test(v39_txt), '注脚说清楚有几个是试出来的：' + v39_txt);
+
+  /* 一次就全对的一局：仍是 100% + 三颗星，别把好孩子也罚了 */
+  w.startGame('fruit', v39_chars);
+  await wait(140);
+  w.clearGameTimer();
+  v39_runClean(0);
+  await wait(60);
+  const v39b = d.getElementById('gameOverBox');
+  const v39b_txt = v39b ? v39b.textContent : '';
+  ok(v39b_txt.indexOf('正确率 100%') >= 0, '一次就全对仍报 100%：' + v39b_txt);
+  ok((v39b.querySelector('.go-stars').textContent.match(/★/g) || []).length === 3,
+    '一次就全对给三颗星');
+  ok(v39b.querySelector('.go-title').textContent === '全部一次就找到啦！',
+    '一次就全对的标题：' + v39b.querySelector('.go-title').textContent);
+  ok(/全是一次就找到的/.test(v39b_txt), '没有试出来的就直说：' + v39b_txt);
+  w.quitGame(true);
+  await wait(120);
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

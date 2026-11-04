@@ -1260,6 +1260,8 @@ body.picking #scrLearn{padding-bottom:96px}
 .go-title{font-size:30px;font-weight:800}
 .go-stars{font-size:46px;letter-spacing:8px;color:var(--amber);line-height:1.1}
 .go-sub{font-size:18px;color:var(--ink2);font-weight:700}
+/* v39：副标题上面一行直接报正确率，下面这行只交代「找到几个、有没有试出来的」 */
+.go-note{font-size:15px;color:var(--ink2);opacity:.82;line-height:1.5}
 .go-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:12px}
 .go-btns button{min-height:52px;padding:11px 24px;font-size:18px}
 
@@ -1440,6 +1442,15 @@ body.picking #scrLearn{padding-bottom:96px}
   /* 每行第一个切左半截、每行最后一个切右半截，线才不会戳到屏幕边 */
   .type-tabs .type-tab:nth-child(3n+1) .ts-track::before{left:50%}
   .type-tabs .type-tab:nth-child(3n) .ts-track::before{right:50%}
+}
+/* v39：游戏结算框多了一行「找到 N / M 个」注脚，手机上（场高 = 80vw，390 只有 312px）
+   四行字 + 按钮会顶到边上。这里把字号和留白收一档，按钮两行也放得下。 */
+@media (max-width:480px){
+  .game-over{gap:8px;padding:14px}
+  .go-title{font-size:24px}
+  .go-stars{font-size:38px}
+  .go-note{font-size:13.5px}
+  .go-btns button{min-height:46px;padding:9px 16px;font-size:16px}
 }
 </style>
 </head>

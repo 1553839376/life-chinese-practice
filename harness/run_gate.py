@@ -883,6 +883,26 @@ def gate_static(html):
         'function renderProfPick' in html and 'pp-card' in html
         and 'function renderProfRoute' in html)
 
+    # v39 游戏正确率（老师 2026-11-04）：「在游戏的时候如果点错了后来再点对，最后还是显示
+    # 100% 正确率，有点不对吧」。原来 gameOver 只看 GAME.done（答对就 +1），错一遍再对也是
+    # 满星满分。现在一题点错过再点对只算「找到」不算「答对」，正确率 = 一次就点对 / 总题数。
+    _gr = html[html.find('function gameRight'):]
+    _gr = _gr[:max(_gr.find('function ', 10), 1)]
+    rec('G1', '答对时分开记「一次就对」与「试过才对」（GAME.miss > 0 判这一题错没过）',
+        'GAME.miss > 0' in _gr and 'GAME.retried++' in _gr and 'GAME.oneTry++' in _gr,
+        '' if _gr else '找不到 gameRight')
+    _go = html[html.find('function gameOver'):]
+    _go = _go[:max(_go.find('function ', 10), 1)]
+    rec('G1', '游戏结算按「一次就对」算正确率，星数也按它给',
+        'GAME.oneTry' in _go and 'Math.round(one * 100 / total)' in _go
+        and "'正确率 '" in _go and 'rate >= 90' in _go,
+        '' if _go else '找不到 gameOver')
+    rec('G1', '点错过就不再是「全部找到啦」+ 满星',
+        '全部一次就找到啦！' in _go and "'全部找到啦！'" not in _go
+        and '试了才找到的' in _go)
+    rec('G1', '结算页多一行「找到 N / M 个」注脚（.go-note）',
+        '.go-note{' in html and "mk('div', 'go-note'" in _go)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。
