@@ -1,49 +1,51 @@
 # 生活语文练习台 · 项目长期约定
 
-（2026-11-02 压缩。数字以 `docs/STATE.md` 和脚本实跑为准，这里只留规则与踩过的坑。）
+（2026-11-04 压缩。数字以 `docs/STATE.md` 和脚本实跑为准，这里只留规则与踩过的坑。）
 
 ## 一、产物与发布
 - 产物 `build/生活语文练习台.html`：单文件全内联 15 段（`p1 p2 p_open p_sfx p_art p_stroke lib p4 p8 p5 p_so p6 p7 p_close` + `p_voice.json`）；节点 `nU41kHmAoelqM2mGxWRFll` → https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll
-- 构建 `cd build && python build_html.py`（`newline=''` 固定 LF，md5 可复现）。数据在本机 `localStorage['wb2_data_v1']`，云端只是镜像。
-- 发布细节见 `docs/01-HARNESS.md`，几条不能忘：① 用 `build/upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**，不给就直接 `{"error":"message 缺失"}` 退出（不是网络问题，别重试）；③ **成功标志认 `KS_PAGE_COMMIT`，不是 "COMMITTED"**——按 COMMITTED 判会白跑 6 次重试，后面全报 `transaction not found`；④ commit/publish 随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；⑤ 两个入口（`index.html` + 中文名）都要传，线上两份 md5 不同是正常的（每路径 pnid 不同），只对齐大小与版本。
+- 构建 `cd build && python build_html.py`（`newline=''` 固定 LF，md5 可复现）。数据在本机 `localStorage['wb2_data_v1']`，云端只是镜像（断网可用）。
+- 发布细节见 `docs/01-HARNESS.md`，几条不能忘：① 用 `build/upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**（缺了直接报错，不是网络问题）；③ **成功标志认 `KS_PAGE_COMMIT`，不是 "COMMITTED"**——认错会白跑重试、后面全报 `transaction not found`；④ commit/publish/download 都随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；⑤ 两个入口（`index.html` + 中文名）都要传，两份 md5 不同正常（每路径 pnid 不同），只对齐版本与大小。
 - **线上不能字节比对**：平台注入 pnid 并重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。
-- 静态直链：新版用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录）；给用户前 curl grep 一次 `APP_VER` 的**值**。**角标抓不到 `>v31<`**（平台往 `#appVer` 插了 `<!--pnid:…-->`），核版本只认 `APP_VER`。
+- 静态直链：新版用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录）；给用户前 curl grep 一次 **`APP_VER` 的值**。**别 grep 角标 `>v31<`**（平台往 `#appVer` 插了 pnid 注释）。
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过。
-- **分享卡 / 二维码**：`build/gen_share_card_v34.py`（segno 装在本机 default python env；HTML→本机 Chrome `--headless=new --force-device-scale-factor=2` 截图）。**量高度别用 `documentElement.scrollHeight`**（视口比内容高时返回视口高度，底下拖一大片空白），量 `卡片.getBoundingClientRect().height + body 上下 padding`；截完用 `build/decode_qr2.js`（jsQR+pngjs，`npm i jsqr pngjs --no-save`）解一遍核对内容，`sips -Z 620` 缩到微信缩略图尺寸再解一次。
-- **git**：`http.proxy` 每次开机都变，fetch/push 一律 6~8 次重试。**走沙箱代理打 GitHub 必 502**（`curl` 走代理 000 / `--noproxy '*'` 200）→ 去掉 `http(s).proxy` 并 `env -u http_proxy … git push`；直连 443/HTTP2 framing → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25`，别在同一档参数上死磕。
+- **分享卡 / 二维码**：`build/gen_share_card_v34.py`（segno 在本机 default python；HTML→本机 Chrome `--headless=new --force-device-scale-factor=2` 截图）。**量高度别用 `documentElement.scrollHeight`**（视口比内容高时返回视口高度，底下拖空白）→ 量 `卡片.getBoundingClientRect().height + body 上下 padding`；截完 `build/decode_qr2.js`（jsQR+pngjs）解一遍核对，`sips -Z 620` 缩到微信缩略图尺寸再解一次。
+- **git**：`http.proxy` 每次开机都变 → fetch/push 一律 6~8 次重试。**走沙箱代理打 GitHub 必 502**（`curl` 走代理 000 / `--noproxy '*'` 200）→ 去掉 proxy 并 `env -u http_proxy … git push`；直连遇 HTTP2 framing / 吊销检查 → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25 -c http.schannelCheckRevoke=false`。别在同一档参数上死磕。
 
 ## 二、教学口径与数据结构
 **字表**：出题**只认 `stu.chars`**，`groups` 只是来源标签；**空字表不回退全库**（G1 禁回潮）。字库 700 条仅 561 个不重复字 → 按字去重、走 `expandGroups`。云端 schema 无字表列 → `mergeCloudStudents` 必须继承本机 `chars`（`off` 同理）。`migrateStuChars` 是一次性快照（刻意）。测试字表必须在内置字库查得到，否则不足 4 个时 `startQuiz` 静默 return。
 
 **进度**：**分母永远是 `stu.chars`**。四态「已掌握/练习中/需巩固/待学」；`stuProfile()` 一次算计数、掌握率、逐字明细、建议顺序（需巩固 → 练习中 prompts≥2 → 练习中 → 待学）。抽练 `QUIZ_FOCUS` 只缩目标字，**干扰项仍取整张字表**。**百分比落代码前先手算期望值**（这类 bug 不报错、数还看着合理）。进度条容器别嵌套（`#profBar` 自带 `.prog-bar`；`progSegsHTML()` 只产 `<i>`）。
 
-**在学上限（v19）**：不新增 `cap`——`stu.count` 就是「在学字数」（3–10，默认 6），`stu.active` 名单、`stu.lock` 锁定、`stu.off` 手动移出。`levelOf` 与状态机是两个维度，档案页分两行写。**在学名单永远补满**；手动加入 unshift 到最前，移出记 `stu.off` 且补位跳过；`openStuProfile` 先 `syncActive` 再画。
+**在学上限（v19）**：不新增 `cap`——`stu.count` 就是「在学字数」（3–10，默认 6），`stu.active` 名单、`stu.lock` 锁定、`stu.off` 手动移出。`levelOf` 与状态机是两个维度，档案页分两行写。**在学名单永远补满**（学会让位 / 字表变大 / 上限调大三种空位都要补）；手动加入 unshift 到最前，移出记 `stu.off` 且补位跳过；`openStuProfile` 先 `syncActive` 再画。
 
-**今日字卡 / 主页（v18/v24）**：流程「点照片 → 主页 → 今日字卡 → 练习」，`enterStudent`/`homeGo` **不许直接 `startQuiz`**。预习**不写 `logs`**；字单按 `stuProfile().focus`，绝不用 `weightOf`（那里「待学」=0 排最前）。**出题必须收敛到 `PRE.list`**（否则刚认完 8 个、做题是另外 8 个）；`.is-pre` 藏「提示/读对了/跳过」。星星按掌握率每 20% 一颗；连续天数按**本地日**（`logs.last` 是 UTC），今天没练从昨天数不清零。点击委托里 `[data-pre]`/`#preGo`/`[data-wg-act]` 要排在 `.opt` 之前（那几屏 `STATE.quiz` 是 null）。
+**今日字卡 / 主页（v18/v24）**：流程「点照片 → 主页 → 今日字卡 → 练习」，`enterStudent`/`homeGo` **不许直接 `startQuiz`**。预习**不写 `logs`**；字单按 `stuProfile().focus`，绝不用 `weightOf`（那里「待学」=0 排最前）。**出题必须收敛到 `PRE.list`**；`.is-pre` 藏「提示/读对了/跳过」。星星按掌握率每 20% 一颗；连续天数按**本地日**（`logs.last` 是 UTC），今天没练从昨天数不清零。点击委托里 `[data-pre]`/`#preGo`/`[data-wg-act]` 要排在 `.opt` 之前（那几屏 `STATE.quiz` 是 null）。
 
 **答错可重试（v22）**：点错不判死，只加 `.opt.miss`（灰+虚线+shake+`pointer-events:none`）；**第一次错绝不念答案，连错 2 次**才 `.glow` 正确项并念读音。一题最多记 1 次错，保持 `alone+hinted+wrong===n`；重试答对算 `alone++` 但 `wrong` 也 +1 → 停在「练习中」（刻意）。不加 `retry` 字段落库；每道新题必须 `resetQState()`。
 
-**同音干扰项（v38）**：听音找字/看拼音写字的干扰项**不许同音**——读 hé 时选项里有「禾」和「和」，孩子选哪个都对、程序只认一个。判据 `pyKey = noTone(p)`（**声调一起去掉**，hé/hē 同组：特需孩子分不清声调）；`pickDistract` 三层「字表不同音 → 全库不同音 → 字表兜底」，保证 4 个选项，**目标字不许回退全库**。「找一样的字」「图字配对」不用改（线索是字形/实物）。`SAME_SOUND_TYPES` 只有这两个题型，扩到别的就是错口径。
+**同音干扰项（v38）**：听音找字/看拼音写字的干扰项**不许同音**——读 hé 时选项里有「禾」和「和」，孩子选哪个都对、程序只认一个。判据 `pyKey = noTone(p)`（**声调一起去掉**，hé/hē 同组）；`pickDistract` 三层「字表不同音 → 全库不同音 → 字表兜底」，保证 4 个选项，**目标字不许回退全库**。「找一样的字」「图字配对」不改（线索是字形/实物）。`SAME_SOUND_TYPES` 只有这两个题型。
 
-**手写三题型（v25/v27）**：`汉字听写`（听单字一框）、`词语听写`（听整词一字一格）、`描红汉字`（灰楷体照着描）。**没有手写识别就不假装判分**：亮答案 + 人核对。描红记 `hinted`/`prompts`、**不记 `alone`**。手写题型不要求 4 个字、一次最多 6 个、读题**念词不念单字**。画布按 DPR 放大再 `setTransform` 缩回；尺寸由 `wgLayout()` 算 px（**不用 `aspect-ratio`**），字号＝0.76 格宽；量宽两次（80ms 后），**不挂 rAF**。**jsdom 没有 canvas** → 绘制先判空。**「看一眼」（v38）**：想不起来点它，亮 **3 秒自动合上**、按钮倒数「看一眼 3→2→1」、**每题一次**、记 `promptUsed`；答案 `.peek` 用 0.88（判分那次 0.45）。**倒计时不能只显示数字**（按钮缩成小块像坏了）。老师辅助栏「提示一下」**反过来是永久亮**（`wgReveal(true)` + `PEEK.tok++` 作废计时器）：两条路的区别不是「同一动作」，而是**谁按的**——老师按之前已经判断过「实在不会」，要照着写；孩子自己点才限 3 秒。**别把这两条串成一条**（v38 初版串了，老师当天就退回来）。窄屏听写四个按钮必须 **2×2 等宽网格**（`flex-wrap` 会折成 3+1）。
+**手写三题型（v25/v27）**：`汉字听写`（听单字一框）、`词语听写`（听整词一字一格）、`描红汉字`（灰楷体照着描）。**没有手写识别就不假装判分**：亮答案 + 人核对。描红记 `hinted`/`prompts`、**不记 `alone`**。手写题型不要求 4 个字、一次最多 6 个、读题**念词不念单字**。画布按 DPR 放大再 `setTransform` 缩回；尺寸由 `wgLayout()` 算 px（**不用 `aspect-ratio`**），字号＝0.76 格宽；量宽两次（80ms 后），**不挂 rAF**。**jsdom 没有 canvas** → 绘制先判空。**「看一眼」（v38）**：亮 **3 秒自动合上**、按钮倒数、**每题一次**、记 `promptUsed`；老师辅助栏「提示一下」**反过来永久亮**——区别不是动作而是**谁按的**，**别把两条串成一条**（v38 初版串了当天被退回）。窄屏听写四个按钮 **2×2 等宽网格**（`flex-wrap` 会折成 3+1）。
+
+**游戏正确率（v39）**：`gameRight()` 按**这一题错没过**（`GAME.miss > 0`）分两个账：`oneTry`（一次就点对）/`retried`（试过才找到）；正确率 = `oneTry / 总题数`，星数 `>=90 / >=70 / >=40`（与练习结算页同尺）。点错过的**就不算对**（老师选的），结算框直接写「正确率 83% · 得了 90 分」+ `.go-note`「找到 6 / 6 个，有 1 个是试了才找到的」；**分数公式不动**（答错本来就断连击）。**练习结算页刻意不跟**：那边是 v22 口径「重试不扣分、只补一行『其中 N 题是试了再答对的』」——两处不同口径，别顺手统一。
 
 ## 三、语音与音效
-**语音（v21 豆包，定稿）**：`zh_female_zhixingnv_uranus_bigtts` + `speed_ratio 0.85`，**不要绘本腔/角色扮演**。24 kHz WAV → 只编码一次 **48 kbps AAC/mono/MP4**（旧 Safari 对 opus 不可靠）。链路 `gen_doubao_voice.py`（断点续传 `ONLY_KEYS=`）→ `pack_doubao_voice.py`（裁静音、RMS −20 dBFS；增量 `DOUBAO_MERGE=1`）→ 构建；`VERIFY=1` 必跑（接口偶发垃圾音频，**「0 失败」≠「全对」**）。判语速按 10ms RMS 去首尾，别看总时长；**词语必须整词合成**。共 1695 条（701 单字 + 972 整词 + 22 句），`p_voice.json` 12.90 MB，预算 16 MB。**加语音改三处**：`gen_doubao_voice.py` 的 SENTS、`p_voice.json`、`p8.js` 的 `SENT_FULL`——漏一处不是「没声」而是**逐字蹦**。
+**语音（v21 豆包，定稿）**：`zh_female_zhixingnv_uranus_bigtts` + `speed_ratio 0.85`，**不要绘本腔/角色扮演**。24 kHz WAV → 只编码一次 **48 kbps AAC/mono/MP4**（旧 Safari 对 opus 不可靠）。链路 `gen_doubao_voice.py`（断点续传 `ONLY_KEYS=`）→ `pack_doubao_voice.py`（裁静音、RMS −20 dBFS；增量 `DOUBAO_MERGE=1`）→ 构建；`VERIFY=1` 必跑（接口偶发垃圾音频，**「0 失败」≠「全对」**）。判语速按 10ms RMS 去首尾，别看总时长；**词语必须整词合成**。共 1695 条（701 单字 + 972 整词 + 22 句），`p_voice.json` 12.90 MB，预算 16 MB。**加语音改三处**：`gen_doubao_voice.py` 的 SENTS、`p_voice.json`、`p8.js` 的 `SENT_FULL`——漏一处不是「没声」而是**逐字蹦**。密钥走 `DOUBAO_APPID`/`DOUBAO_TOKEN` 环境变量，不落仓库。
 
 **音效（v23 A 版）**：总线增益 1，用每音 `vol`；正确音 0.26/0.24/0.21/0.18，连对 0.18/0.16，低于 0.15 教室听不见。错误音＝**方波两级下滑 + 闷响**（233→175→131→147→110，峰值 0.32/0.30/0.30，0.62 s）。**「响度够」≠「听得见」**：98 Hz 在小喇叭没声压 → 全部 ≥100 Hz、主音 ≥200 Hz；**音色比对错更重要**（triangle 下行＝叹气，方波差频＝嗡嗡）。试听页 `build/错误音对比.html`，被说「不明显/太吵」先翻它换档。
 
 ## 四、UI 与视觉
 **表单（v13）**：长列表**容器内滚动**（`.list-wrap{max-height:min(56vh,620px)}`），表单 DOM 排在列表之前，`revealForm()` 滚动+聚焦，保存行 sticky；校验失败用 `markField()` 红框+抖动+滚进视线，**别只靠 toast**。「按钮不能用」三种：①没跑 ②报错 ③跑了但结果在视口外——**③ 最常被误判成 ①**。
 
-**进度页 / 结算页（v17/v31）**：`ringHTML(rate)` 圆环 + `stackHTML(p)` 四段条 + `.slg` 数字 + `.hp` 胶囊，每人一行。**一屏只能有一个主按钮**；**`.next-type` 必须写在 `.primary` 之后**（同优先级后写者胜，已进 G1）。题型进度存 `wb2_sess_v1`（不进 STATE、不碰云端 schema），跨天清零、换学生换一份。**主按钮不要整行拉满**（`width:100%` 被评「很长很生硬很丑」）→ `inline-flex` + 按内容宽度圆角，小字 + 大字 + **SVG 箭头**（「→」字符基线会歪）。**进度条要长在被描述的东西上**：题型名下面挂圆点，每格自画一段横线（`::before{left:0;right:0}`），首格切左半、末格切右半；完成＝**填满**，不打勾不塞数字；`.on` 必须写在 `.done` **之后**。**「一多就折行」用等宽网格治**：`grid-auto-flow:column + minmax(0,1fr)`。
+**进度页 / 结算页（v17/v31）**：`ringHTML(rate)` 圆环 + `stackHTML(p)` 四段条 + `.slg` 数字 + `.hp` 胶囊，每人一行。**一屏只能有一个主按钮**；`.next-type` 必须写在 `.primary` **之后**（同优先级后写者胜，已进 G1）；鼓励语用 `.fb-say`（透明底），**不许用 `.feedback`**（有底色像按钮）。题型进度存 `wb2_sess_v1`（不进 STATE、不碰云端 schema），跨天清零、换学生换一份。**主按钮不要整行拉满** → `inline-flex` 圆角胶囊，小字 + 大字 + **SVG 箭头**（「→」字符基线会歪）。**进度条要长在被描述的东西上**：题型名下面挂圆点，每格自画一段横线，首格切左半、末格切右半；完成＝**填满**，不打勾不塞数字；`.on` 写在 `.done` **之后**。**「一多就折行」用等宽网格治**：`grid-auto-flow:column + minmax(0,1fr)`。
 
-**手写操作条（v33，两界面共用）**：`.hw-acts` 一行三个「再听/再看 → 擦掉 → 写好了」（主按钮最后），全部 `min-height:56 / radius:16`，`.hw-btn.main` 只比旁边宽一圈，**白按钮也垫 `0 3px 0` 实色**。说明**单独一行** `.hw-tip` 放按钮上方。**同一动作只许一套按钮、一个词**（v32 前三处各有尺寸和「擦掉/擦掉重写/擦掉重描」，老师截图问「为什么还搞的不一样」）。描红主按钮也叫「写好了」。
+**手写操作条（v33，两界面共用）**：`.hw-acts` 一行三个「再听/再看 → 擦掉 → 写好了」（主按钮最后），全部 `min-height:56 / radius:16`，主按钮只宽一圈，**白按钮也垫 `0 3px 0` 实色**。说明**单独一行** `.hw-tip`。**同一动作只许一套按钮、一个词**（擦掉就叫「擦掉」，不随状态改字）。
 
-**游戏美术（v9/v10）**：鱼头右尾左，`fishSVG` viewBox `200×116`；果树用整棵 `treeSVG()`。`.game-field` 有 `max-height:min(620px,80vw)`；动效要看得见幅度（±20px/3.4s、摆尾 ±13°），`transform-box:fill-box`。**先分「没播」和「幅度太小」**；报「画得不对」先核 SVG 坐标。
+**游戏美术（v9/v10）**：鱼头右尾左，`fishSVG` viewBox `200×116`；果树用整棵 `treeSVG()`。`.game-field` 有 `max-height:min(620px,80vw)`；动效要看得见幅度（±20px/3.4s、摆尾 ±13°），`transform-box:fill-box`。**先分「没播」和「幅度太小」**；报「画得不对」先核 SVG 坐标。**结算框窄屏**：390 的手机上场高只有 312px，四行字 + 按钮会顶边 → `@media(max-width:480px)` 收一档（title 24 / stars 38 / 按钮 46）。
 
-**先选游戏再选字（v35）**：乐园顶部「先选游戏」→ `#gpMask` 选玩法（`data-gp`）→ 字格进多选态（`PICK.on`，每卡 `.ch-ck` 圆圈）→ 底部 `#pickBar`「钓鱼 · 已选 3 个字」+「开始练习（N）」。**选字态复用同一张字格**（册次筛选/搜索照旧能用、`PICK.list` 独立不受重画影响），不另做字表。两条铁律：① 玩法面板**不许复用 `data-gk`**（那条委托读 `CARD_CH`，乐园里是 null → 只会弹「先选一个字」什么都不发生）；② 底部条是 `position:fixed`，**`showScreen` 里必须兜一道 `pickEnd()`**，否则飘到老师端/练习页上。`startGame(kind, chars)` 本来就收数组，整批交进去即可，**别改引擎签名**；`GAME.origin` 沿用 → 「再玩一次/换个玩法」还带这批字。
+**游戏乐园（v35→v36）**：顶部三个入口「认字 / 游戏乐园 / 学生练习」是**同一屏的两个模式**（`LEARN.mode`），**导航高亮必须看 mode 不看 phase**；字格/搜索/册次/勾选圆圈全部复用，不另做字表。玩法卡走 `data-gp`，**不许复用 `data-gk`**（那条委托读 `CARD_CH`，乐园里是 null → 只会弹「先选一个字」什么也不发生）。`#gpMask` 遮罩 v36 已拆（玩法卡直接摆页面），「全班一起玩」变第五张「随便玩」卡（`playAny`）。选字态 `PICK.on` + 底部 `#pickBar`（`position:fixed`）→ **`showScreen` 里必须兜一道 `pickEnd()`**，否则飘到老师端/练习页上。`startGame(kind, chars)` 本来就收数组，整批交进去即可，**别改引擎签名**。
 
-**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 窗口宽度被钳到 ~500px，判溢出读 `scrollWidth === innerWidth`；**要看真实 390 排版得套一个 390px 的 iframe**（直接开 `--window-size=390` 会「看起来溢出」，其实是截图裁掉了右边）。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 截图的 canvas 层不刷新** → 判 canvas 只信 `getImageData` 像素统计。
+**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 窗口宽度被钳到 **492**（`--window-size=390` 会「看起来溢出」，其实是截图裁掉了右边）→ 判溢出读 `scrollWidth === innerWidth`；**要验真实 390 排版：把场/容器 inline 设成 390 宽并量 `scrollHeight vs clientHeight`**，验媒体查询就把断点临时调大让 492 也命中。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 截图的 canvas 层不刷新** → 判 canvas 只信 `getImageData` 像素统计。
 
 **节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户敏感、多次返工——**调之前先问**。
 
@@ -51,35 +53,34 @@
 - 数据 `p_stroke.js`：561 字 / 4168 笔 / 558 KB，来自 hanzi-writer-data@2.0.1（Make Me a Hanzi，**Arphic Public License**）；编码「每数字 → 2 字符 base36（`v+128`）」，生成脚本带往返校验。
 - **数据 y 轴朝上、基线 y=900，canvas 朝下**：`soFit` 必须 `setTransform(dpr*w/1024, 0, 0, -dpr*h/1024, 0, dpr*h*900/1024)`，清屏先退回单位矩阵（第一版照抄导致「上」颠倒）。
 - **这类错 jsdom 测不出** → 无头截图 + `getImageData` 数像素；**肉眼判断 canvas 图形不可靠**。
-- 三层画法：灰底整字 → 已写完填红 → 当前笔 `ctx.clip(paths[lit])` 再画粗线（裁剪防糊笔）。播完红着停 `SO_HOLD_MS=700` 再淡回；`SO_GEN` 让上一轮定时器作废。
+- 三层画法：灰底整字 → 已写完填红 → 当前笔 `ctx.clip(paths[lit])` 再画粗线。播完红着停 `SO_HOLD_MS` 再淡回；`SO_GEN` 让上一轮定时器作废。节奏：一笔 640ms + 笔间 340ms + 起手 600ms。
 - 描写**不判分、不写记录**（G1 禁 `traceDoneTap` 里出现 `gradeAnswer`/`saveSnap`）。
 - 听写拆两题：`writesWord()` 只认「词语听写」、`isDictation()` 认两个；老学生 `migrateTypes()` 补一项（幂等 + `bak-T023`）。
 - **笔迹层只有一块**：`TRACE.box` 复用同一 canvas + 同一份 `strokes`；`openTrace` 换字必须**先 `traceClearInk()` 再改 `#traceChar`**（v32 修的 bug）。
 - **同一图形两处上线最容易漏**：橡皮擦在 `p2.html`（静态 SVG）与 `p5.js`（`ICO_ERASE`）各一份，改一处必须同步（已进 G1）。
-- 「擦掉」类按钮**不许随状态隐藏**、文案不随状态变（v33 只写「擦掉」）；空格子点它别说「擦掉了」。
 
 ## 六、工程纪律
-**文档**：`docs/` 的 `STATE.md`（先读）`00-功能清单` `01-HARNESS` `02-验收清单` `03-变更日志` `tasks/` `logs/`；每个任务一卡 + 一日志 + 变更一条，**不改文档等于没做完**。**发版铁律：先改 5 处 → 构建 → 门禁 → 发布**（`APP_VER`、`p2.html` 角标、`STATE.md` 现状、功能清单 4.3.8、`docs/README.md`）。`build/check_docs.py` 在 G1 里，**改完文档要复跑**（先跑门禁后改文档必红）。
+**文档**：`docs/` 的 `STATE.md`（先读）`00-功能清单` `01-HARNESS` `02-验收清单` `03-变更日志` `tasks/` `logs/`；每个任务一卡 + 一日志 + 变更一条，**不改文档等于没做完**。**发版铁律：先改 5 处 → 构建 → 门禁 → 发布**（`APP_VER`、`p2.html` 角标、`STATE.md` 现状、功能清单 4.3.8、`docs/README.md`）。`build/check_docs.py` 在 G1 里，**改完文档要复跑**（先门禁后改文档必红）。
 
-**门禁**：`python harness/run_gate.py`（G0 构建/体积/分片、G1 静态护栏、G2 五套测试、G3 报告），全绿才算做完；新增功能必须登记 `harness/manifest.json` 符号、抬 `min_cases`。**红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**。**核线上不必非截图**：把线上那份下载回来直接 `node smoke2.js /tmp/live_index.html`，627 项跑过＝「线上行为与本机测过的完全一致」，比截图硬；**无头 Chrome 在 15 MB 页面上会被 SIGKILL（exit 137）**，小页面正常就是页面太大，不是环境坏。
+**门禁**：`python harness/run_gate.py`（G0 构建/体积/分片、G1 静态护栏、G2 五套测试、G3 报告），全绿才算做完；新增功能必须登记 `harness/manifest.json` 符号、抬 `min_cases`。当前基线 **149 项 / 812 项测试**。**红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**。**核线上不必非截图**：把线上那份下载回来直接 `node smoke2.js <文件>`，比截图硬；**无头 Chrome 在 15 MB 页面上会被 SIGKILL（exit 137）**，不是环境坏。
 
-**「0 失败但项数少几条」＝有断言没跑到**：`for` 里 `ok()`、`if(...) ok()` 都是定时炸弹。取函数体 `split('function X')[1].split('function Y')[0]`——**Y 必须在 X 之后**。**判「旧类名/旧文案已清掉」别判裸词**：注释里的历史说明会假红，只判 `class="X"` / `.X{` / 带 ASCII 引号的字面量 / `>X<`；判样式先看选择器是否被 `@media` 或 `max-width:100%` 干扰。**先怀疑工具口径**；`smoke2.js`/`check_lib.js` 要传 HTML 文件名，需 `NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules`。
+**「0 失败但项数少几条」＝有断言没跑到**：`for` 里 `ok()`、`if(...) ok()` 都是定时炸弹，写成「循环只动手、末尾一次性核对」。取函数体 `split('function X')[1].split('function Y')[0]`——**Y 必须在 X 之后**。**判「旧类名/旧文案已清掉」别判裸词**：注释里的历史说明会假红，只判 `class="X"` / `.X{` / 带 ASCII 引号的字面量 / `>X<`；判样式先看是否被 `@media` 或 `max-width:100%` 干扰。**先怀疑工具口径**；`smoke2.js`/`check_lib.js` 要传 HTML 文件名，需 `NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules`。
 
-**数字与副作用**：数字必须脚本现算，别抄上一版。必须发生的副作用别挂 `requestAnimationFrame`，用 `setTimeout`。新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入；**云端 schema 没列的字段一律不落库**。
+**数字与副作用**：数字必须脚本现算，别抄上一版。必须发生的副作用别挂 `requestAnimationFrame`，用 `setTimeout`。新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入；**云端 schema 没列的字段一律不落库**（`GAME` 这类纯运行时对象也别写进字对象——`GAME.queue` 装的是 `STATE.chars` 的**引用**，写 `q.retried = 1` 会污染字表存档）。
 
 ## 七、词库与拼词语（细则 `docs/tasks/T-019`）
 - 词库页 = 只读派生 `builtinWords()` + `STATE.words` 两源；`wordBank()` 从字库组词栏现抽（969 双字词）。**另存副本必然分叉**：内置词绝不写进 `STATE.words`，要改就「收进词库」复制；窄屏**必须砍列**。
 - 拼词语：一屏 3 词 6 字块两两点选，同组不共用，反序也算对；**读题绝不念词**，拼对后才整词朗读。
-- **冲突分硬软**：硬＝同屏能拼出词库另一个词（永不接受）；软＝能拼出「常见搭配表」的词（一人/人头/人大，尽量避开）。`fillGroup()` **凑到 2 个词就收手**，预算 K 只在连 2 个都凑不出时才涨——**宁可少一个词也不放宽冲突**（一刀切放宽撞词率反升 75%）。`CROSS_TEXT` 只做互斥、不进题库。
+- **冲突分硬软**：硬＝同屏能拼出词库另一个词（永不接受）；软＝能拼出「常见搭配表」的词（一人/人头/人大，尽量避开）。`fillGroup()` **凑到 2 个词就收手**，预算 K 只在连 2 个都凑不出时才涨——**宁可少一个词也不放宽冲突**。`CROSS_TEXT` 只做互斥、不进题库。
 - **判分口径不许自己改**：拼不上照旧 `sfxNo()` + `.shake` + 「这两个字拼不成词，再试试」。
-- **词的难度是相对的**：`charStage()`（跨册取最早）＋ `stuStageLevel()`（字表册次**中间值**）＋ `wordFitsStu`（两字都在字表就放行；只一个在字表时超纲 ≤ `WB_STAGE_GAP`=4 册）。老师说「太难」先查 `charStage`，别加黑名单；**测量固定尺子**。
+- **词的难度是相对的**：`charStage()`（跨册取最早）＋`stuStageLevel()`（字表册次**中间值**）＋`wordFitsStu`（两字都在字表就放行；只一个在字表时超纲 ≤ `WB_STAGE_GAP`=4 册）。老师说「太难」先查 `charStage`，别加黑名单；**测量固定尺子**。
 - 老师报「词库空的」先分数据在不在 vs 界面没渲染；**同一症状第二次出现一定往下游找**。`repairCharWords()` **三处必调**（`boot`/`loadAllData`/`importBackup`），只在整表一条都没有时补，兜底界面直说「已用内置」。
-- 角标 `v34 · 内置词 969`（兜底标「（兜底）」）；报「还是老样子」先问这一句。
+- 角标 `v39 · 内置词 969`（兜底标「（兜底）」）；报「还是老样子」先问这一句。
 
 ## 八、用户偏好与不做清单
 - 特需学生：点击目标大、单指点击、**不要拖拽**；语音慢、句间有停顿。字卡主次：汉字 86px 主角、组词 22px 次要，没图不留空图位。图示覆盖 16%，**游戏不依赖图片**是刻意的。
 - **不做**：排行榜/花园墙、虚拟货币、枯萎饥饿、抽奖盲盒、多页签。**奖励机制（小火车/花园/厨房/集卡/宠物）用户已明确放弃，不要再提**。
-- 用户是特需班语文老师，讨厌重复手工排版，偏好「一键生成 + 可直接用」。
+- 用户是特需班语文老师，讨厌重复手工排版，偏好「一键生成 + 可直接用」；**判分口径、节奏这类敏感参数先问再改**，别自作主张「优化」。
 - **看截图判美观先归因再改**：说「乱」多半是对齐线不齐 / 同一动作多套样式，不是配色；改完必须自己截图看一遍。
 - 老师入口是「连点两下」（v34，520ms 内两次 `pointerup`、落点 40px 内）；长按已废弃，别再改回去。
-- **顶部导航三个入口**（v36）：认字 / 游戏乐园 / 学生练习。/ 窄屏两处收法缺一不可：≤640 字号 15 + 留白 12、≤420「学生练习」只显示「练习」，否则 360/390 上整条导航从 60px 折成 80px、按钮全被压窄（有实测表）。/ **认字和游戏乐园是同一屏的两个模式**（`LEARN.mode`），**导航高亮必须看 mode 不看 phase**（都是 `learn`）。/ 玩法卡走 `data-gp`，不碰学字卡的 `data-gk`（那条读 `CARD_CH`，乐园里是 null）。/ 「全班一起玩」已删，变第五张「随便玩」卡（随机玩法 + 当前册次 8 字，`playAny`）。/ 没选玩法时 `#learnBody` 整块收起是刻意的，否则点字卡会弹学字卡走错门。
+- 窄屏收法缺一不可：≤640 导航字号 15 + 留白 12、≤420「学生练习」只显示「练习」，否则 360/390 上导航从 60px 折成 80px。
