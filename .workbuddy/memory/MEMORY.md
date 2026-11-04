@@ -8,8 +8,7 @@
 - 发布细节见 `docs/01-HARNESS.md`，几条不能忘：① 用 `build/upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**（缺了直接报错，不是网络问题）；③ **成功标志认 `KS_PAGE_COMMIT`，不是 "COMMITTED"**——认错会白跑重试、后面全报 `transaction not found`；④ commit/publish/download 都随机 `TEMPORARY_ERROR`，**循环 1~6 次 + 10~12s 退避**，别单发一次判死；⑤ 两个入口（`index.html` + 中文名）都要传，两份 md5 不同正常（每路径 pnid 不同），只对齐版本与大小。
 - **线上不能字节比对**：平台注入 pnid 并重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。
 - 静态直链：新版用 `list_page_publish_artifacts.py` 取 `data.url`（`create_page_transaction` 给的是旧目录）；给用户前 curl grep 一次 **`APP_VER` 的值**。**别 grep 角标 `>v31<`**（平台往 `#appVer` 插了 pnid 注释）。
-- `lint_page_quality.py` 在 >2 MB 上要 16 分钟，后台跑或跳过。
-- **分享卡 / 二维码**：`build/gen_share_card_v34.py`（segno 在本机 default python；HTML→本机 Chrome `--headless=new --force-device-scale-factor=2` 截图）。**量高度别用 `documentElement.scrollHeight`**（视口比内容高时返回视口高度，底下拖空白）→ 量 `卡片.getBoundingClientRect().height + body 上下 padding`；截完 `build/decode_qr2.js`（jsQR+pngjs）解一遍核对，`sips -Z 620` 缩到微信缩略图尺寸再解一次。
+- `lint_page_quality.py` 在 >2 MB 上要 16 分钟（后台跑或跳过）；**分享卡/二维码**细则见 `DETAIL-语音笔顺词库.md`。
 - **git**：`http.proxy` 每次开机都变 → fetch/push 一律 6~8 次重试。**走沙箱代理打 GitHub 必 502**（`curl` 走代理 000 / `--noproxy '*'` 200）→ 去掉 proxy 并 `env -u http_proxy … git push`；直连遇 HTTP2 framing / 吊销检查 → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25 -c http.schannelCheckRevoke=false`。别在同一档参数上死磕。
 
 ## 二、教学口径与数据结构
@@ -30,9 +29,7 @@
 **游戏正确率（v39）**：`gameRight()` 按**这一题错没过**（`GAME.miss > 0`）分两个账：`oneTry`（一次就点对）/`retried`（试过才找到）；正确率 = `oneTry / 总题数`，星数 `>=90 / >=70 / >=40`（与练习结算页同尺）。点错过的**就不算对**（老师选的），结算框直接写「正确率 83% · 得了 90 分」+ `.go-note`「找到 6 / 6 个，有 1 个是试了才找到的」；**分数公式不动**（答错本来就断连击）。**练习结算页刻意不跟**：那边是 v22 口径「重试不扣分、只补一行『其中 N 题是试了再答对的』」——两处不同口径，别顺手统一。
 
 ## 三、语音与音效
-**语音（v21 豆包，定稿）**：`zh_female_zhixingnv_uranus_bigtts` + `speed_ratio 0.85`，**不要绘本腔/角色扮演**。24 kHz WAV → 只编码一次 **48 kbps AAC/mono/MP4**（旧 Safari 对 opus 不可靠）。链路 `gen_doubao_voice.py`（断点续传 `ONLY_KEYS=`）→ `pack_doubao_voice.py`（裁静音、RMS −20 dBFS；增量 `DOUBAO_MERGE=1`）→ 构建；`VERIFY=1` 必跑（接口偶发垃圾音频，**「0 失败」≠「全对」**）。判语速按 10ms RMS 去首尾，别看总时长；**词语必须整词合成**。共 1695 条（701 单字 + 972 整词 + 22 句），`p_voice.json` 12.90 MB，预算 16 MB。**加语音改三处**：`gen_doubao_voice.py` 的 SENTS、`p_voice.json`、`p8.js` 的 `SENT_FULL`——漏一处不是「没声」而是**逐字蹦**。密钥走 `DOUBAO_APPID`/`DOUBAO_TOKEN` 环境变量，不落仓库。
-
-**音效（v23 A 版）**：总线增益 1，用每音 `vol`；正确音 0.26/0.24/0.21/0.18，连对 0.18/0.16，低于 0.15 教室听不见。错误音＝**方波两级下滑 + 闷响**（233→175→131→147→110，峰值 0.32/0.30/0.30，0.62 s）。**「响度够」≠「听得见」**：98 Hz 在小喇叭没声压 → 全部 ≥100 Hz、主音 ≥200 Hz；**音色比对错更重要**（triangle 下行＝叹气，方波差频＝嗡嗡）。试听页 `build/错误音对比.html`，被说「不明显/太吵」先翻它换档。
+**细则见 `DETAIL-语音笔顺词库.md`**（豆包音色/链路/1695 条/「加语音改三处」；错误音方波参数与试听页）。改之前先读。
 
 ## 四、UI 与视觉
 **表单（v13）**：长列表**容器内滚动**（`.list-wrap{max-height:min(56vh,620px)}`），表单 DOM 排在列表之前，`revealForm()` 滚动+聚焦，保存行 sticky；校验失败用 `markField()` 红框+抖动+滚进视线，**别只靠 toast**。「按钮不能用」三种：①没跑 ②报错 ③跑了但结果在视口外——**③ 最常被误判成 ①**。
@@ -50,14 +47,7 @@
 **节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户敏感、多次返工——**调之前先问**。
 
 ## 五、笔顺与描写（v27）
-- 数据 `p_stroke.js`：561 字 / 4168 笔 / 558 KB，来自 hanzi-writer-data@2.0.1（Make Me a Hanzi，**Arphic Public License**）；编码「每数字 → 2 字符 base36（`v+128`）」，生成脚本带往返校验。
-- **数据 y 轴朝上、基线 y=900，canvas 朝下**：`soFit` 必须 `setTransform(dpr*w/1024, 0, 0, -dpr*h/1024, 0, dpr*h*900/1024)`，清屏先退回单位矩阵（第一版照抄导致「上」颠倒）。
-- **这类错 jsdom 测不出** → 无头截图 + `getImageData` 数像素；**肉眼判断 canvas 图形不可靠**。
-- 三层画法：灰底整字 → 已写完填红 → 当前笔 `ctx.clip(paths[lit])` 再画粗线。播完红着停 `SO_HOLD_MS` 再淡回；`SO_GEN` 让上一轮定时器作废。节奏：一笔 640ms + 笔间 340ms + 起手 600ms。
-- 描写**不判分、不写记录**（G1 禁 `traceDoneTap` 里出现 `gradeAnswer`/`saveSnap`）。
-- 听写拆两题：`writesWord()` 只认「词语听写」、`isDictation()` 认两个；老学生 `migrateTypes()` 补一项（幂等 + `bak-T023`）。
-- **笔迹层只有一块**：`TRACE.box` 复用同一 canvas + 同一份 `strokes`；`openTrace` 换字必须**先 `traceClearInk()` 再改 `#traceChar`**（v32 修的 bug）。
-- **同一图形两处上线最容易漏**：橡皮擦在 `p2.html`（静态 SVG）与 `p5.js`（`ICO_ERASE`）各一份，改一处必须同步（已进 G1）。
+**细则见 `DETAIL-语音笔顺词库.md`**（y 轴朝上基线 900 的 `soFit`、三层画法、笔迹层只有一块、橡皮擦两处同步）。改之前先读。
 
 ## 六、工程纪律
 **文档**：`docs/` 的 `STATE.md`（先读）`00-功能清单` `01-HARNESS` `02-验收清单` `03-变更日志` `tasks/` `logs/`；每个任务一卡 + 一日志 + 变更一条，**不改文档等于没做完**。**发版铁律：先改 5 处 → 构建 → 门禁 → 发布**（`APP_VER`、`p2.html` 角标、`STATE.md` 现状、功能清单 4.3.8、`docs/README.md`）。`build/check_docs.py` 在 G1 里，**改完文档要复跑**（先门禁后改文档必红）。
@@ -68,14 +58,8 @@
 
 **数字与副作用**：数字必须脚本现算，别抄上一版。必须发生的副作用别挂 `requestAnimationFrame`，用 `setTimeout`。新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入；**云端 schema 没列的字段一律不落库**（`GAME` 这类纯运行时对象也别写进字对象——`GAME.queue` 装的是 `STATE.chars` 的**引用**，写 `q.retried = 1` 会污染字表存档）。
 
-## 七、词库与拼词语（细则 `docs/tasks/T-019`）
-- 词库页 = 只读派生 `builtinWords()` + `STATE.words` 两源；`wordBank()` 从字库组词栏现抽（969 双字词）。**另存副本必然分叉**：内置词绝不写进 `STATE.words`，要改就「收进词库」复制；窄屏**必须砍列**。
-- 拼词语：一屏 3 词 6 字块两两点选，同组不共用，反序也算对；**读题绝不念词**，拼对后才整词朗读。
-- **冲突分硬软**：硬＝同屏能拼出词库另一个词（永不接受）；软＝能拼出「常见搭配表」的词（一人/人头/人大，尽量避开）。`fillGroup()` **凑到 2 个词就收手**，预算 K 只在连 2 个都凑不出时才涨——**宁可少一个词也不放宽冲突**。`CROSS_TEXT` 只做互斥、不进题库。
-- **判分口径不许自己改**：拼不上照旧 `sfxNo()` + `.shake` + 「这两个字拼不成词，再试试」。
-- **词的难度是相对的**：`charStage()`（跨册取最早）＋`stuStageLevel()`（字表册次**中间值**）＋`wordFitsStu`（两字都在字表就放行；只一个在字表时超纲 ≤ `WB_STAGE_GAP`=4 册）。老师说「太难」先查 `charStage`，别加黑名单；**测量固定尺子**。
-- 老师报「词库空的」先分数据在不在 vs 界面没渲染；**同一症状第二次出现一定往下游找**。`repairCharWords()` **三处必调**（`boot`/`loadAllData`/`importBackup`），只在整表一条都没有时补，兜底界面直说「已用内置」。
-- 角标 `v39 · 内置词 969`（兜底标「（兜底）」）；报「还是老样子」先问这一句。
+## 七、词库与拼词语
+**细则见 `DETAIL-语音笔顺词库.md`**（只读派生 `builtinWords()`、硬软冲突、按册次的相对难度、`repairCharWords()` 三处必调）。**判分口径不许自己改**。
 
 ## 八、用户偏好与不做清单
 - 特需学生：点击目标大、单指点击、**不要拖拽**；语音慢、句间有停顿。字卡主次：汉字 86px 主角、组词 22px 次要，没图不留空图位。图示覆盖 16%，**游戏不依赖图片**是刻意的。
