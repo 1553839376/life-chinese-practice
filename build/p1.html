@@ -1301,21 +1301,16 @@ body.picking #scrLearn{padding-bottom:96px}
 .go-btns button{min-height:52px;padding:11px 24px;font-size:18px}
 
 /* ---------- 首屏加载提示 ---------- */
-/* v41：加载页不再 2.4 秒自己消失（那会让老师看到一张「点一下自己的照片」却没有照片的空页），
-   改成由 boot() 真跑完再加 .out 淡出。万一脚本彻底没跑起来，12 秒后补一句提示（纯 CSS，不依赖 JS）。 */
 .boot-mask{position:fixed;inset:0;z-index:99;background:#FBF8EF;
-  display:flex;align-items:center;justify-content:center}
-.boot-mask.out{animation:bootFade .45s ease forwards}
+  display:flex;align-items:center;justify-content:center;
+  animation:bootFade .45s ease 2.4s forwards}
 @keyframes bootFade{to{opacity:0;visibility:hidden}}
 .bm-card{display:flex;flex-direction:column;align-items:center;gap:10px;
-  font-family:inherit;font-size:15px;color:var(--ink3);font-weight:700}
+  font-size:15px;color:var(--ink3);font-weight:700}
 .bm-card b{font-size:22px;color:var(--ink);letter-spacing:1px}
 .bm-dot{width:34px;height:34px;border-radius:50%;
   border:3px solid #DBE7D5;border-top-color:#2F6B4F;animation:bmSpin .9s linear infinite}
 @keyframes bmSpin{to{transform:rotate(360deg)}}
-.boot-slow{font-family:inherit;font-size:14px;font-weight:700;color:#8B7F66;
-  margin-top:2px;opacity:0;animation:bootSlow .4s ease 12s forwards}
-@keyframes bootSlow{to{opacity:1}}
 
 /* ---------- 声音设置面板 ---------- */
 .av-mask{position:fixed;inset:0;z-index:80;background:rgba(27,36,44,.45);

@@ -71,3 +71,6 @@ build/_cross_*.txt
 # 预览图是给人看的，重跑 build/_probe_v3?.py 就能再生成；_v3?_*.html 是注入了假数据的临时页
 build/预览-*.png
 build/_v3[0-9]_*.html
+
+# 发布后下载回来的线上副本（每次发版一份，校验用，不进仓库）
+_pub*/
