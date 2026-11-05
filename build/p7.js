@@ -313,6 +313,8 @@ function startGame(kind, chars){
   GAME.combo = 0;
   GAME.oneTry = 0;
   GAME.retried = 0;
+  /* v45：这一局错过的字（结算页要列出来）。存字对象，结算时直接取 .w / .p */
+  GAME.wrongs = [];
   GAME.caught = 0;
   GAME.animal = null;
   GAME.locked = true;
@@ -1078,7 +1080,15 @@ function gameFx(el, kind){
 function gameAward(){
   GAME.combo++;
   GAME.done++;
-  if (GAME.miss > 0) GAME.retried++; else GAME.oneTry++;
+  if (GAME.miss > 0){
+    GAME.retried++;
+    /* 这一题错过（点错了别的）→ 把**题目要的那个字**记下来，不是记点错的那个：
+       孩子没认出来的是目标字，点错的选项只是干扰项，列给老师没用。 */
+    var wq = GAME.queue[GAME.i];
+    if (wq && wq.w && GAME.wrongs.indexOf(wq) < 0) GAME.wrongs.push(wq);
+  } else {
+    GAME.oneTry++;
+  }
   GAME.score += 10 + Math.min(GAME.combo - 1, 5) * 2;
   $('gameScore').textContent = String(GAME.score);
   /* 连对三次起给一个音高递增的小奖励音，越玩越顺 */
@@ -1176,6 +1186,14 @@ function gameOver(){
   box.appendChild(mk('div', 'go-stars', txt));
   box.appendChild(mk('div', 'go-sub', '正确率 ' + rate + '% · 得了 ' + GAME.score + ' 分'));
   box.appendChild(mk('div', 'go-note', note));
+  /* v45：错过的字单独列一遍 —— 老师照着念、下次重点练。听写说「没写好」，
+     四款找字游戏说「没找出来」，同一件事两种说法。 */
+  var wbody = wrongBodyHTML(GAME.wrongs, isDict ? '这几个字没写好，再看看' : '这几个字没找出来，再看看');
+  if (wbody){
+    var wbox = mk('div', 'wrong-box');
+    setHTML(wbox, wbody);
+    box.appendChild(wbox);
+  }
 
   var btns = mk('div', 'go-btns');
   var b1 = mk('button', 'primary', '再玩一次');

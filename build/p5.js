@@ -798,7 +798,7 @@ function startQuiz(type){
     }
     STATE.quiz = { type: type, qs: wgs, i: 0, right: 0, prompts: 0,
                    answered: false, promptUsed: 0,
-                   missed: 0, wrongLogged: false, retried: 0 };
+                   missed: 0, wrongLogged: false, retried: 0, wrongChars: [] };
     $('qTotal').textContent = String(wgs.length);
     if (isDrill){
       var wl = [];
@@ -825,7 +825,7 @@ function startQuiz(type){
                    ? buildWriteQuestions(type, tp, total, stu, isFocus ? tp : null)
                    : buildQuestions(pool, total, stu, isFocus ? tp : null, type),
                  i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
-                 missed: 0, wrongLogged: false, retried: 0 };
+                 missed: 0, wrongLogged: false, retried: 0, wrongChars: [] };
   if (!STATE.quiz.qs.length){
     /* 词语听写最容易撞上这种：字表里的字在组词栏里一个词都没有 */
     setHTML($('stage'), '<div class="empty-tip">这位同学的字表还凑不出词语。请老师在「学哪些字」里多加几个字，或者到「词库」里给这些字补几个词。</div>');
@@ -1340,6 +1340,9 @@ function logWriteMiss(){
   r.dirty = true;
   flushLogs();
   STATE.quiz.wrongLogged = true;
+  if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
+    STATE.quiz.wrongChars.push(q.target);
+  }
   return true;
 }
 function wgReveal(peek){
@@ -1651,6 +1654,10 @@ function missOption(ch){
     r.dirty = true;
     flushLogs();
     STATE.quiz.wrongLogged = true;
+    /* v45：把这一题的目标字记进「这一轮错过的字」，结算页（听音找字）要列出来 */
+    if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
+      STATE.quiz.wrongChars.push(q.target);
+    }
   }
   sfxNo();
   el = optEl(ch);
@@ -1797,6 +1804,8 @@ function renderSummary(){
              '<button type="button" class="secondary" id="btnHome2">回我的主页</button>' +
            CLOSE('div');
   }
+  /* v45：听音找字这一轮错过的字，单独列一遍给老师（其它题型先不开，见 p4.js 的 WRONG_LIST_TYPES） */
+  var wrongBody = WRONG_LIST_TYPES[z.type] ? wrongBodyHTML(z.wrongChars, '这几个字没听出来，再看看') : '';
   var html = '<div class="q-head"><div class="q-ask">这一轮练完了</div></div>' +
     /* 全部做完时加一块大字提示，但**正确率照样留着** —— 只排了一个题型的学生，
        第一次做完就等于「全部完成」，不能因此让他看不到分数（v26 第一版踩过）。 */
@@ -1811,6 +1820,7 @@ function renderSummary(){
     /* 重试不扣分（结算页是给孩子的激励），但要让老师一眼看出这轮是靠试出来的 */
     (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
       z.retried + ' 题是试了再答对的</div>' : '') +
+    (wrongBody ? '<div class="wrong-box">' + wrongBody + CLOSE('div') : '') +
     '<div class="sum-actions">' + btns + CLOSE('div');
   $('qNow').textContent = String(done);
   setHTML($('stage'), html);

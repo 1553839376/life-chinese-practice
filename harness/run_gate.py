@@ -979,6 +979,36 @@ def gate_static(html):
     rec('G1', '旧的「鱼自己往右上飘」关键帧彻底清掉（fishCatch 不许回来）',
         'fishCatch' not in html and '.fish.hit{z-index:9}' in html)
 
+    # v45（老师 2026-11-05）：「凡是这种找字的游戏包括几个小游戏和后面的听音找字，
+    # 最后的结算页面要把错的字列出来」。四条护栏，都是这次容易写歪的地方：
+    # ① 记成孩子点错的那个字（干扰项列给老师没用，他没认出来的是目标字）；
+    # ② 全对时还硬塞一块「没有错字」；③ 一口气给所有题型都开（老师只点了听音找字）；
+    # ④ 同一个字列三遍 / 一屏塞二十个。
+    _wb = html[html.find('function wrongBodyHTML'):]
+    _wb = _wb[:max(_wb.find('function arr(', 10), 1)]
+    rec('G1', '「错过的字」只有一处组件（wrongBodyHTML：去重 + 最多 12 个 + 没字返回空串）',
+        'function wrongBodyHTML' in html
+        and 'if (!c || !c.w || seen[c.w]) continue;' in _wb
+        and 'n < 12' in _wb and "if (!n) return '';" in _wb)
+    rec('G1', '列哪些题型只有一处开关（WRONG_LIST_TYPES 里只放听音找字）',
+        "var WRONG_LIST_TYPES = { '听音找字': 1 };" in html)
+    rec('G1', '两处结算页（游戏乐园 + 班级练习）都调同一个组件，不各写一套',
+        html.count('wrongBodyHTML(GAME.wrongs') == 1
+        and 'wrongBodyHTML(z.wrongChars' in html
+        and html.count("mk('div', 'wrong-box')") == 1
+        and '<div class="wrong-box">\' + wrongBody' in html)
+    rec('G1', '游戏侧记的是「题目要的那个字」，不是点错的那个干扰项',
+        'var wq = GAME.queue[GAME.i];' in html
+        and 'if (wq && wq.w && GAME.wrongs.indexOf(wq) < 0) GAME.wrongs.push(wq);' in html)
+    rec('G1', '练习侧同一口径（记 q.target），且一题最多记一次（跟 wrongLogged 一起）',
+        html.count('STATE.quiz.wrongChars.indexOf(q.target) < 0') == 2
+        and 'STATE.quiz.wrongChars.push(q.target);' in html)
+    rec('G1', '「错过的字」按局/按轮清零（开局 GAME.wrongs = []、两处开题 wrongChars: []）',
+        'GAME.wrongs = [];' in html and html.count('wrongChars: []') == 2)
+    rec('G1', '错字卡片有样式，窄屏也收一档（不然 390 上结算框被挤爆）',
+        '.wrong-box{' in html and '.wrong-chs{' in html and '.wrong-ch b{' in html
+        and '.wrong-ch{min-width:40px' in html)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

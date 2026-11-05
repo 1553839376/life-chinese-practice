@@ -10,10 +10,14 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v44';
+var APP_VER = 'v45';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
+/* 结算页「把这几个字再看看」列在哪些题型后面（v45）。
+   老师 2026-11-05：「凡是这种找字的游戏包括几个小游戏和后面的听音找字，最后的结算页面要把错的字列出来」——
+   点名的就是听音找字，所以先只开这一个。要扩到别的题型往这里加一行，别处不用改。 */
+var WRONG_LIST_TYPES = { '听音找字': 1 };
 var TYPE_DESC = {
   '听音找字': '点喇叭听读音，再点出对应的字',
   '找一样的字': '看上面这个字，在下面找出一样的',
@@ -162,6 +166,25 @@ function esc(s){
     out += ESC_MAP[c] || c;
   }
   return out;
+}
+/* 结算页「把这几个字再看看」（v45）：把这一局 / 这一轮错过的字单独列出来。
+   只列字 + 拼音，不报「错了几个」——老师要的是「下次练哪几个」，孩子看到的是
+   一排可以再念一遍的字。list 里放字对象（带 .w / .p），重复的自动去重。
+   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。 */
+function wrongBodyHTML(list, label){
+  if (!list || !list.length) return '';
+  var seen = {}, i, c, chips = '', n = 0;
+  for (i = 0; i < list.length && n < 12; i++){
+    c = list[i];
+    if (!c || !c.w || seen[c.w]) continue;
+    seen[c.w] = 1;
+    n++;
+    chips += '<span class="wrong-ch"><b>' + esc(c.w) + '</b>' +
+      (c.p ? '<i>' + esc(c.p) + '</i>' : '') + CLOSE('span');
+  }
+  if (!n) return '';
+  return '<div class="wrong-t">' + esc(label) + CLOSE('div') +
+    '<div class="wrong-chs">' + chips + CLOSE('div');
 }
 function arr(v){ return Object.prototype.toString.call(v) === '[object Array]' ? v : (v ? [v] : []); }
 function firstImage(v){

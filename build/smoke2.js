@@ -2569,6 +2569,160 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     '收完线把竿上那条短线与浮标放回来（同一块 DOM 不重渲染时也回到「没点过」的样子）');
   w.clearGameTimer();
 
+
+  /* ---------- 38. 结算页列出「错过的字」（v45） ---------- */
+  console.log('\n--- 38. 结算页列出错过的字 ---');
+  /* 老师 2026-11-05：「凡是这种找字的游戏包括几个小游戏和后面的听音找字，
+     最后的结算页面要把错的字列出来」。
+     三件事要钉住：
+     ① 记的是**题目要的那个字**（孩子没认出来的），不是他点错的干扰项 —— 干扰项列给老师没用；
+     ② 全对时这块不出现（空着比写「没有错字」干净）；
+     ③ 只有老师点名的题型开（p4.js 的 WRONG_LIST_TYPES 里只放了「听音找字」）。 */
+
+  /* ---- ① 游戏乐园：四款找字游戏走 GAME.wrongs ---- */
+  const v45_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
+  w.startGame('fish', v45_chars);
+  await wait(140);
+  w.clearGameTimer();
+  ok(Array.isArray(w.GAME.wrongs) && w.GAME.wrongs.length === 0, '开局「错过的字」是空的');
+  const v45_q0 = w.GAME.queue[0];
+  const v45_items = () => Array.from(d.querySelectorAll('#gameField .g-item'));
+  const v45_bad = v45_items().filter(e => e.getAttribute('data-w') &&
+    e.getAttribute('data-w') !== v45_q0.w)[0];
+  ok(!!v45_bad, '场上有一个不是答案的选项可以点错');
+  click(v45_bad);
+  await wait(30);
+  ok(w.GAME.miss === 1, '点错记一次 miss（这条老口径没动，只用来算正确率）：' + w.GAME.miss);
+  ok(w.GAME.wrongs.length === 0, '点错当下先不记字，等这一题收尾时再记');
+  click(v45_items().filter(e => e.getAttribute('data-w') === v45_q0.w)[0]);
+  await wait(40);
+  ok(w.GAME.wrongs.length === 1 && w.GAME.wrongs[0].w === v45_q0.w,
+    '记的是题目要的那个字：' + (w.GAME.wrongs[0] || {}).w + '（点错的是 ' +
+    v45_bad.getAttribute('data-w') + '）');
+  ok(w.GAME.wrongs.every(c => c.w !== v45_bad.getAttribute('data-w')),
+    '点错的干扰项不进名单（列给老师没用）');
+  ok(!!w.GAME.wrongs[0].p, '记的是字对象，结算时直接读得到拼音：' + w.GAME.wrongs[0].p);
+
+  w.clearGameTimer();
+  w.GAME.i = w.GAME.queue.length;
+  w.gameQuestion();
+  await wait(90);
+  const v45_go = d.getElementById('gameOverBox');
+  ok(!!v45_go, '打完出结算');
+  const v45_wb = v45_go ? v45_go.querySelector('.wrong-box') : null;
+  ok(!!v45_wb, '结算页多了一块「错过的字」');
+  ok(v45_wb && v45_wb.textContent.indexOf('这几个字没找出来，再看看') === 0,
+    '找字游戏说「没找出来」，先说一句再排字：' + (v45_wb ? v45_wb.textContent : ''));
+  ok(!!(v45_wb && v45_wb.querySelector('.wrong-chs .wrong-ch')), '错字排成一排小卡片');
+  const v45_chip = v45_wb ? v45_wb.querySelector('.wrong-ch') : null;
+  ok(v45_chip && v45_chip.querySelector('b').textContent === v45_q0.w,
+    '卡片上是那个字：' + (v45_chip ? v45_chip.querySelector('b').textContent : ''));
+  ok(v45_chip && v45_chip.querySelector('i').textContent === v45_q0.p,
+    '字旁边就是它的拼音：' + (v45_chip ? v45_chip.querySelector('i').textContent : ''));
+  ok(v45_go && v45_go.querySelectorAll('.go-stars, .go-sub, .go-note').length === 3,
+    '正确率、星、分数照旧都在（不是拿错字列表顶掉原来的结算）');
+
+  /* ---- ② 全对时不出这一块 ---- */
+  w.quitGame(true);
+  await wait(140);
+  w.startGame('fish', v45_chars);
+  await wait(140);
+  w.clearGameTimer();
+  ok(w.GAME.wrongs.length === 0, '换一局「错过的字」重新清空（不带着上一局的）');
+  for (let i = 0; i < w.GAME.queue.length; i++){
+    w.clearGameTimer();
+    w.GAME.i = i;
+    w.gameQuestion();
+    w.clearGameTimer();
+    const v45_hit = v45_items().filter(e => e.getAttribute('data-w') === w.GAME.queue[i].w)[0];
+    if (v45_hit) click(v45_hit);
+    await wait(20);
+    w.clearGameTimer();
+  }
+  w.GAME.i = w.GAME.queue.length;
+  w.gameQuestion();
+  await wait(90);
+  const v45_go2 = d.getElementById('gameOverBox');
+  ok(!!v45_go2, '第二局也能出结算');
+  ok(v45_go2 && !v45_go2.querySelector('.wrong-box'), '一次没错时不出现这一块（不写「没有错字」凑数）');
+  w.quitGame(true);
+  await wait(140);
+
+  /* ---- ③ 班级练习「听音找字」：STATE.quiz.wrongChars ---- */
+  const v45_stu = { id: 'local_v45', name: '错字生', chars: ['日', '月', '山', '水'],
+    groups: [], count: 8, status: '在读', photo: '', types: ['听音找字'] };
+  w.STATE.students = w.STATE.students.filter(s => s.name !== v45_stu.name).concat([v45_stu]);
+  w.STATE.cur = v45_stu;
+  w.QUIZ_FOCUS = null;
+  w.preReset('错字生');
+  w.startQuiz('听音找字');
+  await wait(90);
+  ok(!!w.STATE.quiz && w.STATE.quiz.type === '听音找字',
+    '进了听音找字：' + (w.STATE.quiz ? w.STATE.quiz.type : 'quiz=null'));
+  ok(Array.isArray(w.STATE.quiz.wrongChars) && w.STATE.quiz.wrongChars.length === 0,
+    '开局「这一轮错过的字」是空的');
+  const v45_zq = w.STATE.quiz.qs[0];
+  const v45_opt = Array.from(d.querySelectorAll('#stage .opt'))
+    .filter(e => e.getAttribute('data-c') !== v45_zq.target.w)[0];
+  ok(!!v45_opt, '有一个不是答案的选项可以点错');
+  click(v45_opt);
+  await wait(40);
+  ok(w.STATE.quiz.wrongChars.length === 1 &&
+     w.STATE.quiz.wrongChars[0].w === v45_zq.target.w,
+    '练习侧同样记目标字：' + (w.STATE.quiz.wrongChars[0] || {}).w);
+  ok(w.STATE.quiz.wrongChars[0] !== v45_opt.getAttribute('data-c'),
+    '不是他点错的那个字：' + v45_opt.getAttribute('data-c'));
+  ok(w.STATE.quiz.answered !== true, '点错仍然不判死（老规矩没破）');
+
+  click(w.optEl(v45_zq.target.w));
+  await wait(60);
+  let v45_n = 0;
+  for (let i = 0; i < w.STATE.quiz.qs.length; i++){
+    v45_n += w.STATE.quiz.qs[i].words ? w.STATE.quiz.qs[i].words.length : 1;
+  }
+  w.STATE.quiz.i = w.STATE.quiz.qs.length;
+  w.STATE.quiz.right = v45_n - 1;
+  w.renderSummary();
+  await wait(70);
+  const v45_swb = d.querySelector('#stage .wrong-box');
+  ok(!!v45_swb, '听音找字的结算页也列出错过的字');
+  ok(v45_swb && v45_swb.textContent.indexOf('这几个字没听出来，再看看') === 0,
+    '练习侧说「没听出来」：' + (v45_swb ? v45_swb.textContent : ''));
+  const v45_schip = v45_swb ? v45_swb.querySelector('.wrong-ch') : null;
+  ok(v45_schip && v45_schip.querySelector('b').textContent === v45_zq.target.w,
+    '列的是这一轮没听出来的字：' + (v45_schip ? v45_schip.querySelector('b').textContent : ''));
+  ok(v45_schip && v45_schip.querySelector('i').textContent === v45_zq.target.p,
+    '带拼音：' + (v45_schip ? v45_schip.querySelector('i').textContent : ''));
+  ok(!!d.getElementById('btnNextType') || !!d.getElementById('btnAgain'),
+    '错字列表不占掉「再练一轮 / 下一个题型」的位置');
+
+  /* ---- ④ 其它题型不开（WRONG_LIST_TYPES 里只有听音找字） ---- */
+  w.startQuiz('描红汉字');
+  await wait(90);
+  ok(!!w.STATE.quiz, '描红汉字开得了题');
+  w.STATE.quiz.wrongChars = [v45_zq.target];
+  w.STATE.quiz.i = w.STATE.quiz.qs.length;
+  w.STATE.quiz.right = 0;
+  w.renderSummary();
+  await wait(70);
+  ok(!d.querySelector('#stage .wrong-box'),
+    '没点名的题型就算 wrongChars 里有字也不列（要开就往 WRONG_LIST_TYPES 加一行）');
+
+  /* ---- ⑤ 组件本身：去重、上限、空表 ---- */
+  const v45_dup = { w: '日', p: 'rì' };
+  const v45_h = w.wrongBodyHTML([v45_dup, v45_dup, { w: '月', p: 'yuè' }, { w: '' }, null], '看看这几个');
+  ok((v45_h.match(/class="wrong-ch"/g) || []).length === 2,
+    '同一个字只列一次、空的跳过：' + (v45_h.match(/class="wrong-ch"/g) || []).length + ' 个');
+  ok(v45_h.indexOf('<b>日</b>') > 0 && v45_h.indexOf('<i>rì</i>') > 0, '字和拼音都带上：' + v45_h);
+  const v45_many = [];
+  for (let i = 0; i < 20; i++) v45_many.push({ w: String.fromCharCode(0x4e00 + i), p: '' });
+  ok((w.wrongBodyHTML(v45_many, 'x').match(/class="wrong-ch"/g) || []).length === 12,
+    '最多列 12 个（再多一屏放不下）');
+  ok(w.wrongBodyHTML([], 'x') === '' && w.wrongBodyHTML(null, 'x') === '',
+    '没有字就返回空串（调用方据此不包那一层）');
+  ok(w.WRONG_LIST_TYPES && Object.keys(w.WRONG_LIST_TYPES).join(',') === '听音找字',
+    '开关里只开了听音找字：' + Object.keys(w.WRONG_LIST_TYPES).join(','));
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

@@ -1297,7 +1297,8 @@ body.picking #scrLearn{padding-bottom:96px}
 /* 游戏结束 */
 .game-over{position:absolute;inset:0;z-index:8;background:rgba(255,253,247,.95);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;padding:20px;text-align:center}
+  justify-content:safe center;   /* 内容比场子高时退回顶端对齐，否则上面的标题会被裁掉 */
+  gap:10px;padding:20px;text-align:center;overflow-y:auto}
 .go-title{font-size:30px;font-weight:800}
 .go-stars{font-size:46px;letter-spacing:8px;color:var(--amber);line-height:1.1}
 .go-sub{font-size:18px;color:var(--ink2);font-weight:700}
@@ -1305,6 +1306,16 @@ body.picking #scrLearn{padding-bottom:96px}
 .go-note{font-size:15px;color:var(--ink2);opacity:.82;line-height:1.5}
 .go-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:12px}
 .go-btns button{min-height:52px;padding:11px 24px;font-size:18px}
+/* 结算页「把这几个字再看看」（v45）：游戏结算框和练习结算页共用一套。
+   只列字 + 拼音，不写「错了几个」——老师要的是「下次练哪几个」。 */
+.wrong-box{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:10px}
+.wrong-t{font-size:14px;color:var(--ink2);opacity:.85}
+.wrong-chs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.wrong-ch{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:46px;padding:3px 9px 5px;border-radius:12px;background:#FFF6E2;
+  border:1.5px solid var(--amber-line);line-height:1.15}
+.wrong-ch b{font-size:24px;font-weight:800;color:var(--ink)}
+.wrong-ch i{font-size:11px;font-style:normal;color:var(--ink2)}
 
 /* ---------- 首屏加载提示 ---------- */
 .boot-mask{position:fixed;inset:0;z-index:99;background:#FBF8EF;
@@ -1492,6 +1503,11 @@ body.picking #scrLearn{padding-bottom:96px}
   .go-stars{font-size:38px}
   .go-note{font-size:13.5px}
   .go-btns button{min-height:46px;padding:9px 16px;font-size:16px}
+  .wrong-box{margin-top:6px;gap:5px}
+  .wrong-t{font-size:12.5px}
+  .wrong-ch{min-width:40px;padding:2px 7px 4px}
+  .wrong-ch b{font-size:20px}
+  .wrong-ch i{font-size:10px}
 }
 </style>
 </head>
@@ -1642,7 +1658,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v44</span>
+    <span id="appVer" class="app-ver">v45</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3523,10 +3539,14 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v44';
+var APP_VER = 'v45';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
+/* 结算页「把这几个字再看看」列在哪些题型后面（v45）。
+   老师 2026-11-05：「凡是这种找字的游戏包括几个小游戏和后面的听音找字，最后的结算页面要把错的字列出来」——
+   点名的就是听音找字，所以先只开这一个。要扩到别的题型往这里加一行，别处不用改。 */
+var WRONG_LIST_TYPES = { '听音找字': 1 };
 var TYPE_DESC = {
   '听音找字': '点喇叭听读音，再点出对应的字',
   '找一样的字': '看上面这个字，在下面找出一样的',
@@ -3675,6 +3695,25 @@ function esc(s){
     out += ESC_MAP[c] || c;
   }
   return out;
+}
+/* 结算页「把这几个字再看看」（v45）：把这一局 / 这一轮错过的字单独列出来。
+   只列字 + 拼音，不报「错了几个」——老师要的是「下次练哪几个」，孩子看到的是
+   一排可以再念一遍的字。list 里放字对象（带 .w / .p），重复的自动去重。
+   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。 */
+function wrongBodyHTML(list, label){
+  if (!list || !list.length) return '';
+  var seen = {}, i, c, chips = '', n = 0;
+  for (i = 0; i < list.length && n < 12; i++){
+    c = list[i];
+    if (!c || !c.w || seen[c.w]) continue;
+    seen[c.w] = 1;
+    n++;
+    chips += '<span class="wrong-ch"><b>' + esc(c.w) + '</b>' +
+      (c.p ? '<i>' + esc(c.p) + '</i>' : '') + CLOSE('span');
+  }
+  if (!n) return '';
+  return '<div class="wrong-t">' + esc(label) + CLOSE('div') +
+    '<div class="wrong-chs">' + chips + CLOSE('div');
 }
 function arr(v){ return Object.prototype.toString.call(v) === '[object Array]' ? v : (v ? [v] : []); }
 function firstImage(v){
@@ -6485,7 +6524,7 @@ function startQuiz(type){
     }
     STATE.quiz = { type: type, qs: wgs, i: 0, right: 0, prompts: 0,
                    answered: false, promptUsed: 0,
-                   missed: 0, wrongLogged: false, retried: 0 };
+                   missed: 0, wrongLogged: false, retried: 0, wrongChars: [] };
     $('qTotal').textContent = String(wgs.length);
     if (isDrill){
       var wl = [];
@@ -6512,7 +6551,7 @@ function startQuiz(type){
                    ? buildWriteQuestions(type, tp, total, stu, isFocus ? tp : null)
                    : buildQuestions(pool, total, stu, isFocus ? tp : null, type),
                  i: 0, right: 0, prompts: 0, answered: false, promptUsed: 0,
-                 missed: 0, wrongLogged: false, retried: 0 };
+                 missed: 0, wrongLogged: false, retried: 0, wrongChars: [] };
   if (!STATE.quiz.qs.length){
     /* 词语听写最容易撞上这种：字表里的字在组词栏里一个词都没有 */
     setHTML($('stage'), '<div class="empty-tip">这位同学的字表还凑不出词语。请老师在「学哪些字」里多加几个字，或者到「词库」里给这些字补几个词。</div>');
@@ -7027,6 +7066,9 @@ function logWriteMiss(){
   r.dirty = true;
   flushLogs();
   STATE.quiz.wrongLogged = true;
+  if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
+    STATE.quiz.wrongChars.push(q.target);
+  }
   return true;
 }
 function wgReveal(peek){
@@ -7338,6 +7380,10 @@ function missOption(ch){
     r.dirty = true;
     flushLogs();
     STATE.quiz.wrongLogged = true;
+    /* v45：把这一题的目标字记进「这一轮错过的字」，结算页（听音找字）要列出来 */
+    if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
+      STATE.quiz.wrongChars.push(q.target);
+    }
   }
   sfxNo();
   el = optEl(ch);
@@ -7484,6 +7530,8 @@ function renderSummary(){
              '<button type="button" class="secondary" id="btnHome2">回我的主页</button>' +
            CLOSE('div');
   }
+  /* v45：听音找字这一轮错过的字，单独列一遍给老师（其它题型先不开，见 p4.js 的 WRONG_LIST_TYPES） */
+  var wrongBody = WRONG_LIST_TYPES[z.type] ? wrongBodyHTML(z.wrongChars, '这几个字没听出来，再看看') : '';
   var html = '<div class="q-head"><div class="q-ask">这一轮练完了</div></div>' +
     /* 全部做完时加一块大字提示，但**正确率照样留着** —— 只排了一个题型的学生，
        第一次做完就等于「全部完成」，不能因此让他看不到分数（v26 第一版踩过）。 */
@@ -7498,6 +7546,7 @@ function renderSummary(){
     /* 重试不扣分（结算页是给孩子的激励），但要让老师一眼看出这轮是靠试出来的 */
     (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
       z.retried + ' 题是试了再答对的</div>' : '') +
+    (wrongBody ? '<div class="wrong-box">' + wrongBody + CLOSE('div') : '') +
     '<div class="sum-actions">' + btns + CLOSE('div');
   $('qNow').textContent = String(done);
   setHTML($('stage'), html);
@@ -9815,6 +9864,8 @@ function startGame(kind, chars){
   GAME.combo = 0;
   GAME.oneTry = 0;
   GAME.retried = 0;
+  /* v45：这一局错过的字（结算页要列出来）。存字对象，结算时直接取 .w / .p */
+  GAME.wrongs = [];
   GAME.caught = 0;
   GAME.animal = null;
   GAME.locked = true;
@@ -10580,7 +10631,15 @@ function gameFx(el, kind){
 function gameAward(){
   GAME.combo++;
   GAME.done++;
-  if (GAME.miss > 0) GAME.retried++; else GAME.oneTry++;
+  if (GAME.miss > 0){
+    GAME.retried++;
+    /* 这一题错过（点错了别的）→ 把**题目要的那个字**记下来，不是记点错的那个：
+       孩子没认出来的是目标字，点错的选项只是干扰项，列给老师没用。 */
+    var wq = GAME.queue[GAME.i];
+    if (wq && wq.w && GAME.wrongs.indexOf(wq) < 0) GAME.wrongs.push(wq);
+  } else {
+    GAME.oneTry++;
+  }
   GAME.score += 10 + Math.min(GAME.combo - 1, 5) * 2;
   $('gameScore').textContent = String(GAME.score);
   /* 连对三次起给一个音高递增的小奖励音，越玩越顺 */
@@ -10678,6 +10737,14 @@ function gameOver(){
   box.appendChild(mk('div', 'go-stars', txt));
   box.appendChild(mk('div', 'go-sub', '正确率 ' + rate + '% · 得了 ' + GAME.score + ' 分'));
   box.appendChild(mk('div', 'go-note', note));
+  /* v45：错过的字单独列一遍 —— 老师照着念、下次重点练。听写说「没写好」，
+     四款找字游戏说「没找出来」，同一件事两种说法。 */
+  var wbody = wrongBodyHTML(GAME.wrongs, isDict ? '这几个字没写好，再看看' : '这几个字没找出来，再看看');
+  if (wbody){
+    var wbox = mk('div', 'wrong-box');
+    setHTML(wbox, wbody);
+    box.appendChild(wbox);
+  }
 
   var btns = mk('div', 'go-btns');
   var b1 = mk('button', 'primary', '再玩一次');
