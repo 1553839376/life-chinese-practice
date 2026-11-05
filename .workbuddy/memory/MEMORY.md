@@ -28,6 +28,8 @@
 
 **游戏正确率（v39）**：`gameRight()` 按**这题错过没有**（`GAME.miss > 0`）分两账：`oneTry` / `retried`；正确率 = `oneTry / 总题数`，星数 `>=90 / >=70 / >=40`（与练习结算同尺）。点错过的**就不算对**（老师选的），结算写「正确率 83% · 得了 90 分」+ `.go-note`；**分数公式不动**。**练习结算页刻意不跟**（那边是「重试不扣分、只补一行」），两处不同口径，别顺手统一。
 
+**结算列错字（v45）**：一处组件 `wrongBodyHTML(list,label)`（`p4.js`：按 `c.w` 去重、`n<12`、空表返回 `''`）+ 一处开关 `WRONG_LIST_TYPES`（**只开听音找字**，要扩就加一行）。游戏侧 `GAME.wrongs` 在 `gameAward()` 里按 `GAME.miss>0` 记 **`GAME.queue[GAME.i]`（目标字）**，**绝不是点错的干扰项**；练习侧 `STATE.quiz.wrongChars` 记 `q.target`，跟 `wrongLogged` 一题一次（初始化两处都要加）。全对时整块不出现。`.game-over` 必须 `justify-content:safe center` + `overflow-y:auto`——390 上场高只有 312px，多这一块原来的 `center` 会把标题裁到屏外。
+
 ## 三、语音与音效 / 五、笔顺与描写 / 七、词库
 **细则全在 `DETAIL-语音笔顺词库.md`**（豆包音色与链路、1695 条、「加语音改三处」；错误音方波参数与试听页；`soFit` 基线 900 与三层画法；只读派生 `builtinWords()`、硬软冲突、按册次的相对难度、`repairCharWords()` 三处必调）。**改这三块之前先读它。**
 

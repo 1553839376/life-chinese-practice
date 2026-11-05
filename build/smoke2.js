@@ -2723,6 +2723,108 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.WRONG_LIST_TYPES && Object.keys(w.WRONG_LIST_TYPES).join(',') === '听音找字',
     '开关里只开了听音找字：' + Object.keys(w.WRONG_LIST_TYPES).join(','));
 
+  /* ---------- 39. 摘果子：简笔画的树 + 果篮接果子（v46） ---------- */
+  console.log('\n--- 39. 摘果子：树与果篮 ---');
+  /* 老师 2026-11-05：「首先要把树优化一下，这个不符合常见的树，有点宽。你可以模仿
+     简笔画的那种树的样子来画。其实要摘苹果就要有个篮子，可以把果篮放旁边，摘一个就掉到果篮里」。
+     三件事各有护栏：① 树不能再被拉伸、宽高比要像棵树；② 果篮要真的在树旁边（舞台里），
+     不是缩在场角；③ 果子要照着篮子的真实坐标落，不能写死一个固定位移。
+     jsdom 没有布局（rect 全 0），所以落点这条只测「有没有走真实坐标这条路 + 有没有兜底」。 */
+  const v46_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
+  w.startGame('fruit', v46_chars);
+  await wait(140);
+  w.clearGameTimer();
+
+  const v46_stage = d.querySelector('#gameField .tree-stage');
+  ok(!!v46_stage, '树、果子、果篮装在一个 .tree-stage 里（同一套坐标，果子才挂得准）');
+  ok(!!(v46_stage && v46_stage.querySelector('.tree-art')), '舞台里有树');
+  ok(!!(v46_stage && v46_stage.querySelector('.fruit-wrap')), '舞台里有果子');
+  ok(!!(v46_stage && v46_stage.querySelector('.basket')), '果篮也在舞台里（放在树旁边，不缩到场角）');
+  ok(!d.querySelector('#gameField > .basket'), '果篮不再直接挂在场这一层');
+  ok(!!d.querySelector('#gameField > .grass'), '草地仍铺满场（宽屏时地平线要通到底，不跟着树缩）');
+
+  const v46_svg = d.querySelector('#gameField .tree-art');
+  ok(v46_svg.getAttribute('viewBox') === '0 0 320 300',
+    '树的画布是近方的 320×300：' + v46_svg.getAttribute('viewBox'));
+  ok(v46_svg.getAttribute('preserveAspectRatio') === 'xMidYMid meet',
+    '树不再被拉伸（旧版 preserveAspectRatio="none" 就是"太宽"的元凶之一）：' +
+    v46_svg.getAttribute('preserveAspectRatio'));
+
+  /* 树冠：10 团叶簇 + 一层大 2.5 的深绿轮廓（并集外只露那圈） */
+  const v46_clip = d.querySelector('#crownClip');
+  const v46_crown = d.querySelector('#treeCrown');
+  ok(!!v46_clip && v46_clip.querySelectorAll('circle').length === 10,
+    '树冠 10 团叶簇：' + (v46_clip ? v46_clip.querySelectorAll('circle').length : '无'));
+  const v46_line = v46_crown ? v46_crown.querySelector('g[fill="#4E8B3A"]') : null;
+  ok(!!v46_line, '先铺一层深绿当轮廓线（简笔画的那条边）');
+  if (v46_clip && v46_line){
+    const c0 = v46_clip.querySelectorAll('circle')[0];
+    const l0 = v46_line.querySelectorAll('circle')[0];
+    ok(parseFloat(l0.getAttribute('r')) - parseFloat(c0.getAttribute('r')) === 2.5,
+      '轮廓圈比叶簇半径大 2.5（露出来的就是那条边）');
+    /* 并集范围：x 36..286、y 24..222 → 250×198（1.26:1）。旧版是 348×138 还被拉伸。 */
+    let x0 = 999, x1 = -999, y0 = 999, y1 = -999;
+    Array.from(v46_clip.querySelectorAll('circle')).forEach(c => {
+      const cx = parseFloat(c.getAttribute('cx')), cy = parseFloat(c.getAttribute('cy'));
+      const r = parseFloat(c.getAttribute('r'));
+      x0 = Math.min(x0, cx - r); x1 = Math.max(x1, cx + r);
+      y0 = Math.min(y0, cy - r); y1 = Math.max(y1, cy + r);
+    });
+    const ratio = (x1 - x0) / (y1 - y0);
+    ok(ratio > 1.05 && ratio < 1.45,
+      '树冠宽高比像棵树（1.05~1.45，宽 ' + Math.round(x1 - x0) + ' × 高 ' +
+      Math.round(y1 - y0) + ' = ' + ratio.toFixed(2) + '），不再是一堵扁绿墙');
+  } else {
+    ok(false, '轮廓圈比叶簇半径大 2.5（露出来的就是那条边）');
+    ok(false, '树冠宽高比像棵树');
+  }
+  ok(v46_svg.innerHTML.indexOf('M142 300 C144 274 150 256 148 238') > 0,
+    '树干从画面底部（y=300）长到 y=238，是短粗的一段');
+  ok(v46_svg.innerHTML.indexOf('M151 240 C145 222 135 210 122 202') > 0 &&
+     v46_svg.innerHTML.indexOf('M169 240 C175 224 185 212 198 204') > 0,
+    '树干上端分两叉插进树冠（旧版是一根直杆顶着一个绿饼）');
+
+  /* 果子：4 颗，都在舞台的果子网格里 */
+  ok(d.querySelectorAll('#gameField .fruit-wrap .fruit').length === 4,
+    '四颗果子挂在树冠的网格里：' + d.querySelectorAll('#gameField .fruit-wrap .fruit').length);
+  ok(d.querySelectorAll('#gameField .fruit').length === 4, '场上就这四颗，没有散粒');
+
+  /* 果篮：有提手、有篮口 */
+  const v46_bsk = d.querySelector('#gameField .basket');
+  ok(v46_bsk.innerHTML.indexOf('M16 29 Q22 8 40 8') > 0, '果篮有提手（简笔画那种提篮）');
+  ok(v46_bsk.querySelectorAll('ellipse').length >= 2, '果篮有篮口（两颗椭圆叠出来的沿）');
+
+  /* 落点：走真实坐标、并且先算落点再加 .hit */
+  const v46_fn = w.fruitDropTo.toString();
+  ok(v46_fn.indexOf('.basket') > 0, '落点取自 .basket 的真实位置');
+  ok(v46_fn.indexOf('--fd-x') > 0 && v46_fn.indexOf('--fd-y') > 0,
+    '落点写进 --fd-x / --fd-y（keyframes 只负责轨迹）');
+  ok(v46_fn.indexOf('getBoundingClientRect') > 0, '用 rect 量，不猜');
+  const v46_gr = w.gameRight.toString();
+  ok(v46_gr.indexOf('fruitDropTo(el)') > 0 &&
+     v46_gr.indexOf('fruitDropTo(el)') < v46_gr.indexOf("add('hit')"),
+    '先算落点再加 .hit（顺序反了第一帧会用旧默认值）');
+  ok(HTML.indexOf('translate(var(--fd-x,96px),var(--fd-y,148px))') > 0,
+    'keyframes 用变量（旧版写死 translate(96px,148px)，宽屏上根本落不进篮子）');
+  ok(HTML.indexOf('aspect-ratio:320/300') > 0,
+    '舞台按树的画布比例（320/300），果子才永远挂在树冠上');
+  ok(HTML.indexOf('--gh:min(clamp(320px,calc(100vh - 250px),620px),80vw)') > 0,
+    '舞台尺寸跟着场高走（宽屏按高度缩、窄屏按宽度缩）');
+
+  /* 点对一颗：不报错、加 .hit、计数 +1；jsdom 量不到布局，--fd-x 不能写成 0 */
+  const v46_q = w.GAME.queue[0];
+  const v46_el = Array.from(d.querySelectorAll('#gameField .fruit'))
+    .filter(e => e.getAttribute('data-w') === v46_q.w)[0];
+  ok(!!v46_el, '找得到这一题要摘的那颗果子');
+  click(v46_el);
+  await wait(50);
+  ok(v46_el.classList.contains('hit'), '点对以后加 .hit，果子往篮子飞');
+  ok(w.GAME.caught === 1, '果篮里的计数 +1：' + w.GAME.caught);
+  const v46_fx = v46_el.style.getPropertyValue ? v46_el.style.getPropertyValue('--fd-x') : '';
+  ok(v46_fx === '', '量不到布局时什么都不写（退回 keyframes 的默认值，不是写个 0 飞原地）');
+  w.quitGame(true);
+  await wait(140);
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

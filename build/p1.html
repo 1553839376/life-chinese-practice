@@ -1211,9 +1211,21 @@ body.picking #scrLearn{padding-bottom:96px}
 @keyframes basketBump{0%,100%{transform:translateY(0) scale(1)}
   45%{transform:translateY(-7px) scale(1.08)}}
 
-/* 摘果子 */
-.g-fruit{background:linear-gradient(180deg,#EFF9E6 0%,#D3ECBE 52%,#B4DA94 100%)}
-/* 整棵树（树干 + 树冠）在同一张 SVG 里，坐标统一，接缝被叶子盖住 */
+/* 摘果子（v46 重画）
+   老师 2026-11-05：「首先要把树优化一下，这个不符合常见的树，有点宽。你可以模仿
+   简笔画的那种树的样子来画。其实要摘苹果就要有个篮子，可以把果篮放旁边，摘一个就掉到果篮里」。
+   旧版三个毛病叠在一起：树画在 400×250 的画布上又被 preserveAspectRatio="none" 拉伸、
+   果子网格铺满整个场、果篮缩在右下角一个小角落。 */
+.g-fruit{background:linear-gradient(180deg,#F0FAE7 0%,#D8EEBF 52%,#B7DC97 100%)}
+/* 场高单独写一份给树用（宽屏按高度缩、窄屏按宽度缩都要它）。
+   ⚠ 必须和 .game-field 的 height/max-height 同一个公式，改一处就要改另一处：
+   height:clamp(320px,calc(100vh - 250px),620px)、max-height:min(620px,80vw) */
+.g-fruit{--gh:min(clamp(320px,calc(100vh - 250px),620px),80vw)}
+/* 树 + 果子 + 果篮共用的舞台：宽高比和树的 viewBox(320×300) 一样，
+   所以果子挂在哪一格永远落在树冠上，树也永远不被拉扁。 */
+.tree-stage{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);
+  width:88%;height:78%;z-index:1}                    /* 不认识下面那行的老浏览器兜底 */
+.tree-stage{width:min(96%,calc(var(--gh) * 0.9));height:auto;aspect-ratio:320/300}
 .tree-art{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .tree-crown{transform-box:fill-box;transform-origin:50% 92%;pointer-events:none}
 .tree-crown.shake{animation:treeShake .52s ease}
@@ -1222,24 +1234,33 @@ body.picking #scrLearn{padding-bottom:96px}
 /* 草地垫在树后面：树干底部保持实心，不会被渐变冲淡 */
 .grass{position:absolute;left:0;right:0;bottom:0;height:15%;z-index:0;
   background:linear-gradient(180deg,rgba(150,205,120,0),#8CC45C);pointer-events:none}
-.fruit-wrap{position:absolute;inset:2% 9% 46% 9%;display:grid;
+/* 果子只占树冠那一块（12% 的左右留白正好压住树冠的圆边） */
+.fruit-wrap{position:absolute;inset:16% 20% 34% 20%;display:grid;
   grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;z-index:3}
-.fruit{position:relative;width:clamp(84px,10.6vw,112px);height:clamp(84px,10.6vw,112px);
+/* 果子尺寸按视口走：百分比会跟着 grid 区域缩，宽窄屏差的太多（.fruit-wrap 只有舞台的 60%）。
+   字与果子用同一条曲线，比例恒定在 0.4 左右，宽窄屏都一样好看。 */
+.fruit{position:relative;width:clamp(78px,9.4vw,104px);height:clamp(78px,9.4vw,104px);
   display:flex;align-items:center;justify-content:center;transform-origin:top center;
   animation:swing 3.8s ease-in-out infinite;
   filter:drop-shadow(0 8px 10px rgba(110,70,20,.26))}
 .fruit-svg{position:absolute;inset:0;width:100%;height:100%}
-.fruit-ch{position:relative;z-index:2;font-size:clamp(34px,4.3vw,46px);font-weight:700;
+.fruit-ch{position:relative;z-index:2;font-size:clamp(30px,3.8vw,42px);font-weight:700;
   color:#4A2606;text-shadow:0 2px 0 rgba(255,255,255,.5)}
 @keyframes swing{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
-/* 摘下：先被拽一下，再落进右下的篮子 */
-.fruit.hit{animation:fruitDrop .66s cubic-bezier(.35,.9,.4,1) forwards}
-@keyframes fruitDrop{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}
-  20%{transform:translate(0,-18px) rotate(-12deg) scale(1.06)}
-  100%{transform:translate(96px,148px) rotate(30deg) scale(.5);opacity:0}}
+/* 摘下：先被拽一下，再自由落体到篮子（落点是 p7.js 的 fruitDropTo() 现算的，
+   写进 --fd-x / --fd-y；默认值只在量不到布局时兜底）。两段缓动：拉起慢出、下落渐快。 */
+.fruit.hit{animation:fruitDrop .72s cubic-bezier(.4,.05,.6,.95) forwards;z-index:9}
+@keyframes fruitDrop{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1;
+    animation-timing-function:cubic-bezier(.2,.8,.4,1)}
+  16%{transform:translate(0,-18px) rotate(-10deg) scale(1.06);
+    animation-timing-function:cubic-bezier(.55,0,.9,.5)}
+  86%{opacity:1}
+  100%{transform:translate(var(--fd-x,96px),var(--fd-y,148px)) rotate(26deg) scale(.42);
+    opacity:0}}
 .fruit.miss{animation:shake .4s ease;opacity:.35;filter:grayscale(1);pointer-events:none}
-/* 篮子 */
-.basket{position:absolute;right:5%;bottom:4%;width:clamp(66px,7.8vw,92px);z-index:3;
+/* 果篮：挂在舞台右下、探出树的外沿一点，就是「放在树旁边」；
+   尺寸跟着舞台宽走，窄屏也不至于缩成一个点 */
+.basket{position:absolute;right:-11%;bottom:-2%;width:clamp(80px,18%,118px);z-index:4;
   pointer-events:none;filter:drop-shadow(0 6px 8px rgba(90,60,20,.22))}
 .basket.bump{animation:basketBump .46s cubic-bezier(.3,1.6,.5,1)}
 

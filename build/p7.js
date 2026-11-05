@@ -493,12 +493,19 @@ function basketSVG(kind, n){
       '<path d="M17 26Q22 7 40 7t23 19" stroke="#9A6A32" stroke-width="3.4" fill="none"/>' +
       CLOSE('svg');
   }
+  /* 果篮（v46 重画）：老师要「摘苹果就要有个篮子，把果篮放旁边，摘一个就掉到果篮里」。
+     画成简笔画那种提篮：细提手 + 上宽下收的篮身 + 一圈深色篮沿，纹路只是三条短线。
+     篮口定在 cy=28（里面那几颗果子按 26/40/54、cy=25 排，正好卡在篮沿上），
+     gameFx 动态塞进去的果子也认这个坐标，改篮口就要一起改。 */
   return '<svg class="basket" viewBox="0 0 80 80" aria-hidden="true">' + open +
-    '<path d="M10 28h60l-6.6 39a8 8 0 0 1-8 7H24.6a8 8 0 0 1-8-7z" fill="url(#' + uid + ')"/>' +
-    '<ellipse cx="40" cy="28" rx="30" ry="7.6" fill="#EED2A4"/>' +
-    '<ellipse cx="40" cy="28" rx="24" ry="5.2" fill="#BF8A4B" opacity=".5"/>' +
+    '<path d="M16 29 Q22 8 40 8 T64 29" stroke="#8B5E2E" stroke-width="3.6" fill="none" ' +
+      'stroke-linecap="round"/>' +
+    '<path d="M12 30 h56 l-7 38 a7 7 0 0 1-7 6 H26 a7 7 0 0 1-7-6 Z" fill="url(#' + uid + ')" ' +
+      'stroke="#8B5E2E" stroke-width="3" stroke-linejoin="round"/>' +
+    '<path d="M18 43h44M20 55h40M23 66h34" stroke="#8B5E2E" stroke-width="2.6" opacity=".3"/>' +
+    '<ellipse cx="40" cy="28" rx="29" ry="7.4" fill="#F2D8AE" stroke="#8B5E2E" stroke-width="3"/>' +
+    '<ellipse cx="40" cy="28" rx="23" ry="4.8" fill="#B9834A" opacity=".55"/>' +
     extra +
-    '<path d="M19 42h42M21 54h38M23 65h34" stroke="#8E5F2C" stroke-width="3" opacity=".36"/>' +
     CLOSE('svg');
 }
 function heartSVG(){
@@ -753,47 +760,78 @@ function fruitSVG(i){
     '<ellipse cx="44" cy="50" rx="15" ry="9.5" fill="#FFFFFF" opacity=".42" transform="rotate(-28 44 50)"/>' +
     CLOSE('svg');
 }
-/* 整棵树画在一张 SVG 里：树干与树冠共用坐标系，顶端插进树冠内部，
-   连接处被叶子盖住，天然没有接缝（v8.1 修：原先是一根 38px 直棍顶在树冠最低点上）。
-   树冠由 9 团叶簇取并集后统一打光，轮廓有起伏，不再是一整块绿墙。 */
+/* 整棵树画在一张 SVG 里（v46 重画）：老师 2026-11-05「首先要把树优化一下，这个不符合
+   常见的树，有点宽。你可以模仿简笔画的那种树的样子来画」。
+   旧版 viewBox 400×250 还配 preserveAspectRatio="none"，被拉成 1050×560 的场里树冠
+   变成一堵 2.5:1 的绿墙——**宽是"画布被拉伸"和"树冠本身就是扁的"两件事叠出来的**。
+   新版三件事一起改：
+   ① 画布改成 320×300（近方）、`meet` 等比，靠外层 .tree-stage 的 aspect-ratio 决定大小，
+      树在任何屏宽下都不会被拉扁；
+   ② 树冠 9 团叶簇压成 242×190（1.27:1，常见简笔画树的头身比）；
+   ③ 树干短粗、上端分叉（两根斜枝插进树冠），符合"树干在树冠下面"的常识——
+      旧版树干有 126 单位长（占整棵树的 60%），看着像一根杆子顶着一个绿饼。
+   简笔画的"轮廓线"用一个小技巧画：先把 9 团叶簇连同描边（r+2.5）整体涂深绿，
+   再用 clip 成并集的渐变矩形盖在上面——里面的描边被盖掉，只剩最外面一圈轮廓。 */
 function treeSVG(){
-  return '<svg class="tree-art" viewBox="0 0 400 250" preserveAspectRatio="none" aria-hidden="true">' +
+  /* 10 团叶簇：比旧版更"圆"、更饱满，底部中间补一团把「裤裆」那种凹槽填平
+     （只有 9 团时中间比两侧高 26 单位，底部看着像两条腿）。并集范围 250×198（1.26:1）。 */
+  var CROWN = [
+    [160, 118, 80], [100, 142, 58], [222, 140, 58], [128, 76, 50], [200, 74, 50],
+    [72, 112, 36], [250, 110, 36], [120, 178, 44], [204, 176, 44], [160, 168, 40]
+  ];
+  var i, clip = '', line = '';
+  for (i = 0; i < CROWN.length; i++){
+    clip += '<circle cx="' + CROWN[i][0] + '" cy="' + CROWN[i][1] + '" r="' + CROWN[i][2] + '"/>';
+    /* 轮廓那圈：半径比叶簇大 2.5，填满深绿（并集外只露出这一圈） */
+    line += '<circle cx="' + CROWN[i][0] + '" cy="' + CROWN[i][1] + '" r="' + (CROWN[i][2] + 2.5) + '"/>';
+  }
+  return '<svg class="tree-art" viewBox="0 0 320 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
     '<defs>' +
-      '<clipPath id="crownClip">' +
-        '<circle cx="200" cy="74" r="64"/><circle cx="110" cy="88" r="52"/>' +
-        '<circle cx="290" cy="86" r="54"/><circle cx="146" cy="46" r="42"/>' +
-        '<circle cx="256" cy="42" r="40"/><circle cx="128" cy="104" r="36"/>' +
-        '<circle cx="272" cy="102" r="34"/><circle cx="62" cy="84" r="36"/>' +
-        '<circle cx="338" cy="82" r="36"/>' +
-      CLOSE('clipPath') +
-      '<radialGradient id="crownG" cx="34%" cy="16%" r="94%">' +
-        '<stop offset="0" stop-color="#D2F1B4"/>' +
-        '<stop offset=".46" stop-color="#94CF71"/>' +
-        '<stop offset="1" stop-color="#589741"/>' +
+      '<clipPath id="crownClip">' + clip + CLOSE('clipPath') +
+      '<radialGradient id="crownG" cx="34%" cy="16%" r="92%">' +
+        '<stop offset="0" stop-color="#D9F2BE"/>' +
+        '<stop offset=".46" stop-color="#9DD57A"/>' +
+        '<stop offset="1" stop-color="#63A34A"/>' +
       CLOSE('radialGradient') +
       '<linearGradient id="crownS" x1="0" y1="0" x2=".22" y2="1">' +
-        '<stop offset=".38" stop-color="#2C6533" stop-opacity="0"/>' +
-        '<stop offset="1" stop-color="#2C6533" stop-opacity=".34"/>' +
+        '<stop offset=".42" stop-color="#2C6533" stop-opacity="0"/>' +
+        '<stop offset="1" stop-color="#2C6533" stop-opacity=".30"/>' +
       CLOSE('linearGradient') +
       '<linearGradient id="trunkG" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#6B4524"/><stop offset=".28" stop-color="#BB8C59"/>' +
-        '<stop offset=".58" stop-color="#9E7040"/><stop offset="1" stop-color="#633D1D"/>' +
+        '<stop offset="0" stop-color="#8A5C2C"/><stop offset=".34" stop-color="#D8AC73"/>' +
+        '<stop offset=".66" stop-color="#C0925A"/><stop offset="1" stop-color="#7E5326"/>' +
       CLOSE('linearGradient') +
     CLOSE('defs') +
-    /* 树干：顶端 y=124 已在树冠内，底端 y=250 到画面底部（上细下粗，带一点根部的扩张） */
-    '<path d="M189 124 C187 160 184 210 181 250 L219 250 C216 210 213 160 211 124 Z" fill="url(#trunkG)"/>' +
-    '<path d="M195 152 C194 186 192 220 191 250" stroke="#583619" stroke-width="2" fill="none" opacity=".24"/>' +
+    /* 树干：从画面底部 y=300 长到 y=232，上端分叉（先粗深色打底、再细浅色盖上去，
+       等于给枝条画了一圈描边）。枝条顶端伸进树冠，被叶子盖住，天然没有接缝。 */
+    '<path d="M151 240 C145 222 135 210 122 202" stroke="#7A5230" stroke-width="16" ' +
+      'stroke-linecap="round" fill="none"/>' +
+    '<path d="M169 240 C175 224 185 212 198 204" stroke="#7A5230" stroke-width="16" ' +
+      'stroke-linecap="round" fill="none"/>' +
+    '<path d="M151 240 C145 222 135 210 122 202" stroke="url(#trunkG)" stroke-width="9" ' +
+      'stroke-linecap="round" fill="none"/>' +
+    '<path d="M169 240 C175 224 185 212 198 204" stroke="url(#trunkG)" stroke-width="9" ' +
+      'stroke-linecap="round" fill="none"/>' +
+    '<path d="M142 300 C144 274 150 256 148 238 L172 238 C170 256 176 274 178 300 Z" ' +
+      'fill="url(#trunkG)" stroke="#7A5230" stroke-width="5" stroke-linejoin="round"/>' +
+    '<path d="M154 268 v20 M166 254 v16" stroke="#7A5230" stroke-width="2.6" opacity=".3" ' +
+      'stroke-linecap="round"/>' +
     '<g class="tree-crown" id="treeCrown">' +
+      '<g fill="#4E8B3A">' + line + CLOSE('g') +
       '<g clip-path="url(#crownClip)">' +
-        '<rect x="0" y="0" width="400" height="250" fill="url(#crownG)"/>' +
-        '<rect x="0" y="0" width="400" height="250" fill="url(#crownS)"/>' +
+        '<rect x="0" y="0" width="320" height="300" fill="url(#crownG)"/>' +
+        '<rect x="0" y="0" width="320" height="300" fill="url(#crownS)"/>' +
       CLOSE('g') +
     CLOSE('g') +
     CLOSE('svg');
 }
+/* 树、果子、果篮装在同一个 .tree-stage 里（v46）：舞台有固定宽高比（320/300，
+   和树的 viewBox 一样），所以「果子挂在树冠上的哪一格」在任何屏宽下都是同一个相对位置。
+   果子不再铺满整个场——铺满场就是旧版那棵树被拉宽的直接原因之一。
+   草地留在场这一层（宽屏时草地要铺满整条地平线），篮子跟着舞台走（"放在树旁边"）。 */
 function fruitScene(opts){
-  var html = treeSVG() +
-    '<div class="grass"></div><div class="fruit-wrap">';
+  var html = '<div class="grass"></div>' +
+    '<div class="tree-stage" id="treeStage">' + treeSVG() + '<div class="fruit-wrap">';
   var i;
   for (i = 0; i < opts.length; i++){
     html += '<div class="g-cell"><button type="button" class="g-item fruit" data-w="' +
@@ -801,7 +839,7 @@ function fruitScene(opts){
       fruitSVG(i) + '<span class="fruit-ch">' + esc(opts[i].w) +
       CLOSE('span') + CLOSE('button') + CLOSE('div');
   }
-  html += CLOSE('div') + basketSVG('fruit', GAME.caught);
+  html += CLOSE('div') + basketSVG('fruit', GAME.caught) + CLOSE('div');
   return html + lootHTML('fruit', GAME.caught);
 }
 var FEED_ANIMALS = ['猫', '狗', '兔', '羊', '牛', '鸡', '鸭', '鸟', '熊', '猪', '鼠'];
@@ -1102,9 +1140,26 @@ function gameAward(){
     gameQuestion();
   }, 880);
 }
+/* 果子往哪落（v46）：老师 2026-11-05「摘一个就掉到果篮里」。
+   旧版 keyframes 写死 `translate(96px,148px)`，不管果子长在左上还是右下都往右下同一个点飞，
+   宽屏的场上那个点离篮子还有两百多像素，看着就是「果子掉到半路消失了」。
+   现在先量「果子中心 → 篮沿中心」的位移，写进元素上的 --fd-x / --fd-y，动画只负责轨迹。
+   jsdom 没有布局（rect 全是 0），量不到就退回 keyframes 里的默认值，测试照样跑。 */
+function fruitDropTo(el){
+  var bsk = document.querySelector('#gameField .basket');
+  if (!bsk || !el.getBoundingClientRect) return;
+  var er = el.getBoundingClientRect(), br = bsk.getBoundingClientRect();
+  if (!br.width || !er.width) return;
+  var dx = br.left + br.width / 2 - (er.left + er.width / 2);
+  var dy = br.top + br.height * 0.34 - (er.top + er.height / 2);
+  el.style.setProperty('--fd-x', Math.round(dx) + 'px');
+  el.style.setProperty('--fd-y', Math.round(dy) + 'px');
+}
 function gameRight(el){
   GAME.locked = true;
   var kind = GAME.kind;
+  /* 先算落点再加 .hit —— 动画一开始就在读 --fd-x / --fd-y，晚一步第一帧就用了旧默认值 */
+  if (kind === 'fruit') fruitDropTo(el);
   if (el.classList) el.classList.add('hit');
   if (kind === 'fruit'){
     var crown = $('treeCrown');

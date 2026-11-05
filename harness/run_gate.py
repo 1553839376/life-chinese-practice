@@ -1009,6 +1009,40 @@ def gate_static(html):
         '.wrong-box{' in html and '.wrong-chs{' in html and '.wrong-ch b{' in html
         and '.wrong-ch{min-width:40px' in html)
 
+    # v46（老师 2026-11-05）：「首先要把树优化一下，这个不符合常见的树，有点宽。你可以模仿
+    # 简笔画的那种树的样子来画。其实要摘苹果就要有个篮子，可以把果篮放旁边，摘一个就掉到果篮里」。
+    # 旧版「太宽」是两件事叠出来的：画布 400×250 还被 preserveAspectRatio="none" 拉伸、
+    # 树冠本身就是 2.5:1 的扁团。果子则是写死 translate(96px,148px)，宽屏根本落不进篮子。
+    _fd = html[html.find('function fruitDropTo'):]
+    _fd = _fd[:max(_fd.find('function gameRight', 10), 1)]
+    # 只认 <svg class="tree-art" …> 那个开标签的属性区：注释里写着历史原因（"旧版用 none"），
+    # 判裸串会被自己的说明文字命中——这一条曾经就红在这里。
+    _tv = html.find('class="tree-art"')
+    _tv = html[max(0, _tv - 12):_tv + 160] if _tv >= 0 else ''
+    rec('G1', '树的画布近方且等比（320×300 + meet），不再被 preserveAspectRatio="none" 拉宽',
+        _tv != '' and 'viewBox="0 0 320 300"' in _tv
+        and 'preserveAspectRatio="xMidYMid meet"' in _tv
+        and 'none' not in _tv)
+    rec('G1', '树冠宽高比像棵树（250×198 = 1.26:1），不是一堵扁绿墙',
+        '[160, 118, 80]' in html and '[72, 112, 36]' in html and '[160, 168, 40]' in html)
+    rec('G1', '树干短粗、上端分两叉插进树冠（旧版是一根直杆顶着一个绿饼）',
+        'M142 300 C144 274 150 256 148 238' in html
+        and 'M151 240 C145 222 135 210 122 202' in html
+        and 'M169 240 C175 224 185 212 198 204' in html)
+    rec('G1', '树、果子、果篮在同一个舞台里（.tree-stage 包住三者，果子才挂得准）',
+        'class="tree-stage" id="treeStage"' in html
+        and "basketSVG('fruit', GAME.caught) + CLOSE('div')" in html
+        and '.tree-stage{width:min(96%,calc(var(--gh) * 0.9))' in html)
+    rec('G1', '舞台尺寸和场高同一个公式（改一处必须改另一处，否则树会溢出场）',
+        '--gh:min(clamp(320px,calc(100vh - 250px),620px),80vw)' in html
+        and 'height:clamp(320px,calc(100vh - 250px),620px)' in html)
+    rec('G1', '果子照着 .basket 的真实坐标落（先算落点再加 .hit，否则第一帧用旧默认值）',
+        'getBoundingClientRect' in _fd and "'--fd-x'" in _fd and "'--fd-y'" in _fd
+        and 'fruitDropTo(el)' in html
+        and html.find('fruitDropTo(el)') < html.find("classList.add('hit')"))
+    rec('G1', '果子掉落的 keyframes 用变量，不再写死 translate(96px,148px)',
+        'translate(var(--fd-x,96px),var(--fd-y,148px))' in html)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。
