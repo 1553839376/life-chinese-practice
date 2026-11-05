@@ -1181,15 +1181,16 @@ body.picking #scrLearn{padding-bottom:96px}
   font-weight:700;color:#14384E;text-shadow:0 2px 0 rgba(255,255,255,.55)}
 @keyframes swim{0%,100%{transform:translate(-20px,3px) rotate(-2.6deg)}
   50%{transform:translate(20px,-13px) rotate(2.6deg)}}
-/* 钓中（v44）：不再「自己往上飘」，而是线从竿尖甩出去搭到鱼身上，
-   鱼顺着这条线被提到竿尖，再收进鱼篓。位移在 p7.js 的 fishReel() 里按真实坐标算，
-   这里只给线和鱼各一条缓动——两边用同一条曲线，线头才能一直贴着鱼。 */
+/* 钓中（v44）：线不是在鱼身上「接一根直棍」，而是竿子上那条线**延长**出去——
+   一条从钩子甩到鱼心的弧线（stroke 与竿子自带那段一致：奶油色、2.4px），
+   收线时用 stroke-dasharray 把看得见的那一段从弧长收到 0，鱼沿弦走同样的进度。
+   位移在 p7.js 的 fishReel() 里按真实坐标算，这里只管线长什么样。 */
 .fish.hit{z-index:9}
-.reel-line{position:absolute;z-index:7;width:3px;border-radius:0 0 2px 2px;
-  background:linear-gradient(180deg,#F4F0E4,rgba(238,234,222,.88));
-  box-shadow:0 0 0 1px rgba(28,72,104,.16);pointer-events:none;
-  transform-origin:0 0;transition:transform .18s cubic-bezier(.3,.9,.4,1)}
-.reel-line.pull{transition:transform .54s cubic-bezier(.45,.05,.55,.95)}
+.reel-svg{position:absolute;inset:0;width:100%;height:100%;z-index:7;
+  pointer-events:none;overflow:visible}
+.reel-line{fill:none;stroke:#F4F0E4;stroke-width:2.4;stroke-linecap:round;
+  vector-effect:non-scaling-stroke;transform-box:view-box;transform-origin:0 0;
+  transition:stroke-dashoffset .18s cubic-bezier(.3,.9,.4,1)}
 .fish.miss{animation:shake .4s ease;opacity:.35;filter:grayscale(1);pointer-events:none}
 /* 水花 */
 .catch-splash{position:absolute;z-index:8;width:9px;height:9px;border-radius:50%;

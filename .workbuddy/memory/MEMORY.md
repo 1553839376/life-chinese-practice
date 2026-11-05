@@ -40,12 +40,12 @@
 
 **手写操作条（v33，两界面共用）**：`.hw-acts` 一行三个「再听/再看 → 擦掉 → 写好了」（主按钮最后），全部 `min-height:56 / radius:16`，主按钮只宽一圈，**白按钮也垫 `0 3px 0` 实色**。说明**单独一行** `.hw-tip`。**同一动作只许一套按钮、一个词**（擦掉就叫「擦掉」）。
 
-**钓鱼「钓上来」（v44）**：`fishReel()` 里方向用「竿尖→鱼」、位移用「鱼→竿尖」，两个符号写反线就甩到画面外；竿上本来画着一条 57px 装饰曲线，截图里看着「像连上了」，**连看两轮都没发现**，只有量 `line.height == hypot(ax,ay)` 才抓得住。`.fish` 挂着 `animation:swim`，关键帧 transform 压过 inline → 必须先 `animation:none` + `void offsetWidth` 再量坐标（否则差 20~25px）。水花要等「钩住」（180ms）才炸，点下就炸等于鱼自己跳出水面。
+**钓鱼「钓上来」（v44）**：`fishReel()` 里方向用「竿尖→鱼」、位移用「鱼→竿尖」，两个符号写反线就甩到画面外；竿上本来画着一条 57px 装饰曲线，截图里看着「像连上了」，**连看两轮都没发现**，只有量 `line.height == hypot(ax,ay)` 才抓得住。`.fish` 挂着 `animation:swim`，关键帧 transform 压过 inline → 必须先 `animation:none` + `void offsetWidth` 再量坐标（否则差 20~25px）。水花要等「钩住」（180ms）才炸，点下就炸等于鱼自己跳出水面。**收线＝整条弧以钩子为心等比缩**（`translate(tip)·scale(k)·translate(-tip)`，`k` 1→0.02，鱼位移 `弦×(k−1)`）：弧画死只缩 `stroke-dasharray` 会让线头沿死弧滑、鱼沿弦走，中途偏出 `sag`≈40px。`k` 不能取 0（path bbox 退化）。线画在鱼**下面**（`.reel-svg` z-index 7 < 鱼 9），所以可见线头是「钻进鱼身」的那一点，别以为是断的。
 **游戏美术（v9/v10）**：鱼头右尾左，`fishSVG` viewBox `200×116`；果树用整棵 `treeSVG()`。`.game-field` 有 `max-height:min(620px,80vw)`；动效要看得见幅度（±20px/3.4s、摆尾 ±13°），`transform-box:fill-box`。**先分「没播」和「幅度太小」**；报「画得不对」先核 SVG 坐标。**结算框窄屏**：390 手机场高只有 312px → `@media(max-width:480px)` 收一档（title 24 / stars 38 / 按钮 46）。
 
 **游戏乐园（v35→v36）**：顶部三个入口「认字 / 游戏乐园 / 学生练习」是**同一屏的两个模式**（`LEARN.mode`），**导航高亮看 mode 不看 phase**；字格/搜索/册次/勾选全部复用。玩法卡走 `data-gp`，**不许复用 `data-gk`**（那条委托读 `CARD_CH`，乐园里是 null → 只弹「先选一个字」）。v36 已拆 `#gpMask`，第五张是「随便玩」卡（`playAny`）。选字态 `PICK.on` + 底部 `#pickBar`（`position:fixed`）→ **`showScreen` 里必须兜 `pickEnd()`**，否则飘到老师端/练习页上。`startGame(kind, chars)` 收数组，**别改引擎签名**。
 
-**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 宽度被钳到 **492**（`--window-size=390` 只是裁掉右边）→ 判溢出读 `scrollWidth === innerWidth`；**验真实 390：容器 inline 设 390 宽并量 `scrollHeight vs clientHeight`**，验媒体查询就临时调大断点让 492 命中。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 的 canvas 层不刷新** → 判 canvas 只信 `getImageData`。
+**截图探针**：造数据用 **`STATE.chars`，不是 `CHARS`**（`c.w` 是组词串 → 假 bug）。`--virtual-time-budget` 必加。headless 宽度被钳到 **492**（`--window-size=390` 只是裁掉右边）→ 判溢出读 `scrollWidth === innerWidth`；**验真实 390：容器 inline 设 390 宽并量 `scrollHeight vs clientHeight`**，验媒体查询就临时调大断点让 492 命中。量数值写进 `document.title` 再 `--dump-dom` 读；**headless 的 canvas 层不刷新** → 判 canvas 只信 `getImageData`。**同理「合成层」也不跟虚拟时间**：给元素摆帧（`transition:none` + 写 transform）后主线程 rect 已经变了，截出来的像素还是旧位置 —— 带 `filter:drop-shadow` 的元素必踩，`--screenshot` 靠不住，**要么去掉 filter 再拍、要么只信 rect 数值**；`.fish` 就是这种元素，两次误判「线没搭上鱼」都是它。
 
 **节奏**：全在 `p8.js` 的 `PACE`/`PACE_GAP`。用户敏感、多次返工——**调之前先问**。
 
