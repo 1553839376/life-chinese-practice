@@ -1023,8 +1023,8 @@ def gate_static(html):
         _tv != '' and 'viewBox="0 0 320 300"' in _tv
         and 'preserveAspectRatio="xMidYMid meet"' in _tv
         and 'none' not in _tv)
-    rec('G1', '树冠宽高比像棵树（250×198 = 1.26:1），不是一堵扁绿墙',
-        '[160, 118, 80]' in html and '[72, 112, 36]' in html and '[160, 172, 46]' in html)
+    rec('G1', '树冠宽高比像棵树（284×224 = 1.27:1），不是一堵扁绿墙',
+        '[160, 117, 90]' in html and '[60, 111, 41]' in html and '[160, 178, 52]' in html)
     rec('G1', '树干短粗、上端分两叉插进树冠（旧版是一根直杆顶着一个绿饼）',
         'M160 300 L160 236' in html
         and 'M159 240 L134 198' in html and 'M161 240 L186 198' in html)

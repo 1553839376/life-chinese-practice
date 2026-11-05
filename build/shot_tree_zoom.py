@@ -19,11 +19,11 @@ window.addEventListener('load', function(){
   setTimeout(function(){
     var box = document.createElement('div');
     box.style.cssText = 'position:fixed;left:0;top:0;z-index:99999;background:#EAF6E4;'
-      + 'width:900px;height:560px;display:flex;align-items:center;justify-content:center';
+      + 'width:900px;height:880px;display:flex;align-items:center;justify-content:center';
     var inner = document.createElement('div');
-    inner.style.cssText = 'width:900px;height:844px;transform:translateY(-40px)';
+    inner.style.cssText = 'width:840px;height:788px';
     inner.innerHTML = treeSVG();
-    inner.querySelector('svg').style.cssText = 'width:900px;height:844px;display:block';
+    inner.querySelector('svg').style.cssText = 'width:840px;height:788px;display:block';
     box.appendChild(inner);
     document.body.appendChild(box);
     document.title = 'ZOOM';
@@ -45,7 +45,7 @@ def main():
         EDGE, '--headless=new', '--disable-gpu', '--no-sandbox',
         '--user-data-dir=' + os.path.join(OUT, 'ud'), '--hide-scrollbars',
         '--force-device-scale-factor=1', '--virtual-time-budget=4000',
-        '--window-size=900,560', '--screenshot=' + shot,
+        '--window-size=900,880', '--screenshot=' + shot,
         'file:///' + page.replace('\\', '/')], capture_output=True)
     print('tree_zoom', os.path.exists(shot))
     print('DIR', OUT)

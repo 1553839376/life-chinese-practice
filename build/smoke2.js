@@ -2762,7 +2762,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const l0 = v46_line.querySelectorAll('circle')[0];
     ok(parseFloat(l0.getAttribute('r')) - parseFloat(c0.getAttribute('r')) === 2.5,
       '轮廓圈比叶簇半径大 2.5（露出来的就是那条边）');
-    /* 并集范围：x 36..286、y 24..222 → 250×198（1.26:1）。旧版是 348×138 还被拉伸。 */
+    /* 并集范围：x 19..303、y 11..235 → 284×224（1.27:1）。旧版是 348×138 还被拉伸。
+       v46 第三版按老师「这个树冠可以再大一点」整体放大 1.13 倍。 */
     let x0 = 999, x1 = -999, y0 = 999, y1 = -999;
     Array.from(v46_clip.querySelectorAll('circle')).forEach(c => {
       const cx = parseFloat(c.getAttribute('cx')), cy = parseFloat(c.getAttribute('cy'));
