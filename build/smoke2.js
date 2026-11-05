@@ -2778,11 +2778,19 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(false, '轮廓圈比叶簇半径大 2.5（露出来的就是那条边）');
     ok(false, '树冠宽高比像棵树');
   }
-  ok(v46_svg.innerHTML.indexOf('M142 300 C144 274 150 256 148 238') > 0,
-    '树干从画面底部（y=300）长到 y=238，是短粗的一段');
-  ok(v46_svg.innerHTML.indexOf('M151 240 C145 222 135 210 122 202') > 0 &&
-     v46_svg.innerHTML.indexOf('M169 240 C175 224 185 212 198 204') > 0,
-    '树干上端分两叉插进树冠（旧版是一根直杆顶着一个绿饼）');
+  /* 树干：主干 + 两根分叉**同一套画法**（粗圆头线段、深色打底浅色收窄）。
+     上一版主干是多边形填充、枝条是描边线段，交界处一条平顶两个尖角，老师截图指出「衔接生硬」。 */
+  ok(v46_svg.innerHTML.indexOf('M160 300 L160 236') > 0,
+    '主干从画面底部（y=300）长到 y=236，是短粗的一段');
+  ok(v46_svg.innerHTML.indexOf('M159 240 L134 198') > 0 &&
+     v46_svg.innerHTML.indexOf('M161 240 L186 198') > 0,
+    '上端对称分出两根短枝（旧版是一根直杆顶着一个绿饼）');
+  ok(v46_svg.innerHTML.indexOf('stroke-linecap="round" fill="none"') > 0 &&
+     v46_svg.innerHTML.indexOf('url(#trunkG)') < 0,
+    '主干和枝条走同一套线条画法（不再有多边形+渐变填充那套，两套拼一起就有平顶和尖角）');
+  /* 用选择器找，不比对 innerHTML 字符串——SVG 元素序列化时自闭合标签会被写成成对标签 */
+  ok(!!v46_svg.querySelector('circle[cx="160"][cy="234"]'),
+    '分叉的「腋窝」补一颗同色圆点，填掉两条描边交叉的小三角');
 
   /* 果子：4 颗，都在舞台的果子网格里 */
   ok(d.querySelectorAll('#gameField .fruit-wrap .fruit').length === 4,

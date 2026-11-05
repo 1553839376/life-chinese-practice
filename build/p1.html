@@ -1235,16 +1235,18 @@ body.picking #scrLearn{padding-bottom:96px}
 .grass{position:absolute;left:0;right:0;bottom:0;height:15%;z-index:0;
   background:linear-gradient(180deg,rgba(150,205,120,0),#8CC45C);pointer-events:none}
 /* 果子只占树冠那一块（12% 的左右留白正好压住树冠的圆边） */
-.fruit-wrap{position:absolute;inset:16% 20% 34% 20%;display:grid;
+/* 果子往四角再散一点、也更大一点：老师 2026-11-05「果子是不是稍大一些比较协调？
+   至少要和这个树冠大小协调一些，现在会显得整个树冠一片绿色就挂四个果子好空」 */
+.fruit-wrap{position:absolute;inset:17% 19% 33% 19%;display:grid;
   grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;z-index:3}
 /* 果子尺寸按视口走：百分比会跟着 grid 区域缩，宽窄屏差的太多（.fruit-wrap 只有舞台的 60%）。
    字与果子用同一条曲线，比例恒定在 0.4 左右，宽窄屏都一样好看。 */
-.fruit{position:relative;width:clamp(78px,9.4vw,104px);height:clamp(78px,9.4vw,104px);
+.fruit{position:relative;width:clamp(84px,11vw,118px);height:clamp(84px,11vw,118px);
   display:flex;align-items:center;justify-content:center;transform-origin:top center;
   animation:swing 3.8s ease-in-out infinite;
   filter:drop-shadow(0 8px 10px rgba(110,70,20,.26))}
 .fruit-svg{position:absolute;inset:0;width:100%;height:100%}
-.fruit-ch{position:relative;z-index:2;font-size:clamp(30px,3.8vw,42px);font-weight:700;
+.fruit-ch{position:relative;z-index:2;font-size:clamp(32px,4vw,46px);font-weight:700;
   color:#4A2606;text-shadow:0 2px 0 rgba(255,255,255,.5)}
 @keyframes swing{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
 /* 摘下：先被拽一下，再自由落体到篮子（落点是 p7.js 的 fruitDropTo() 现算的，

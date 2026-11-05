@@ -777,7 +777,7 @@ function treeSVG(){
      （只有 9 团时中间比两侧高 26 单位，底部看着像两条腿）。并集范围 250×198（1.26:1）。 */
   var CROWN = [
     [160, 118, 80], [100, 142, 58], [222, 140, 58], [128, 76, 50], [200, 74, 50],
-    [72, 112, 36], [250, 110, 36], [120, 178, 44], [204, 176, 44], [160, 168, 40]
+    [72, 112, 36], [250, 110, 36], [120, 178, 44], [204, 176, 44], [160, 172, 46]
   ];
   var i, clip = '', line = '';
   for (i = 0; i < CROWN.length; i++){
@@ -797,24 +797,28 @@ function treeSVG(){
         '<stop offset=".42" stop-color="#2C6533" stop-opacity="0"/>' +
         '<stop offset="1" stop-color="#2C6533" stop-opacity=".30"/>' +
       CLOSE('linearGradient') +
-      '<linearGradient id="trunkG" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#8A5C2C"/><stop offset=".34" stop-color="#D8AC73"/>' +
-        '<stop offset=".66" stop-color="#C0925A"/><stop offset="1" stop-color="#7E5326"/>' +
-      CLOSE('linearGradient') +
     CLOSE('defs') +
-    /* 树干：从画面底部 y=300 长到 y=232，上端分叉（先粗深色打底、再细浅色盖上去，
-       等于给枝条画了一圈描边）。枝条顶端伸进树冠，被叶子盖住，天然没有接缝。 */
-    '<path d="M151 240 C145 222 135 210 122 202" stroke="#7A5230" stroke-width="16" ' +
-      'stroke-linecap="round" fill="none"/>' +
-    '<path d="M169 240 C175 224 185 212 198 204" stroke="#7A5230" stroke-width="16" ' +
-      'stroke-linecap="round" fill="none"/>' +
-    '<path d="M151 240 C145 222 135 210 122 202" stroke="url(#trunkG)" stroke-width="9" ' +
-      'stroke-linecap="round" fill="none"/>' +
-    '<path d="M169 240 C175 224 185 212 198 204" stroke="url(#trunkG)" stroke-width="9" ' +
-      'stroke-linecap="round" fill="none"/>' +
-    '<path d="M142 300 C144 274 150 256 148 238 L172 238 C170 256 176 274 178 300 Z" ' +
-      'fill="url(#trunkG)" stroke="#7A5230" stroke-width="5" stroke-linejoin="round"/>' +
-    '<path d="M154 268 v20 M166 254 v16" stroke="#7A5230" stroke-width="2.6" opacity=".3" ' +
+    /* 树干（v46 第二版）：主干和两根分叉**用同一套画法**——粗圆头线段，先深色打底、
+       再浅色收窄，等于每条都自带一圈描边；三条线在分叉处靠圆头自然融合。
+       上一版主干是多边形填充、枝条是描边线段，两套画法拼在一起，交界处留下一条平顶
+       和两个尖角，老师 2026-11-05 截图指出「树干这里的衔接有点生硬」。
+       ① 主干基线在 y=252、枝条从同一点斜出去，分叉是对称的 Y；
+       ② 枝条顶端到 (116/204,190)，已经伸进树冠内部（树冠底缘在 x=116 处是 222），被叶子盖住；
+       ③ 分叉「腋窝」里补一颗同色圆点，把两枝描边交叉留下的小三角填平。 */
+    '<g stroke-linecap="round" fill="none">' +
+      '<path d="M160 300 L160 236" stroke="#7A5230" stroke-width="40"/>' +
+      '<path d="M159 240 L134 198" stroke="#7A5230" stroke-width="30"/>' +
+      '<path d="M161 240 L186 198" stroke="#7A5230" stroke-width="30"/>' +
+      '<path d="M160 300 L160 236" stroke="#C99A62" stroke-width="30"/>' +
+      '<path d="M159 240 L134 198" stroke="#C99A62" stroke-width="20"/>' +
+      '<path d="M161 240 L186 198" stroke="#C99A62" stroke-width="20"/>' +
+    CLOSE('g') +
+    '<circle cx="160" cy="234" r="14" fill="#C99A62"/>' +
+    /* 高光用 butt 收口、只到 y=250：圆头会从主干顶端多探出 4 个单位，在树冠底缘下面
+       留一个小浅色疙瘩（放大看很明显） */
+    '<path d="M151 296 L151 250" stroke="#E3BE8A" stroke-width="7" opacity=".5" ' +
+      'stroke-linecap="butt"/>' +
+    '<path d="M154 282 h13 M152 266 h12" stroke="#7A5230" stroke-width="2.6" opacity=".26" ' +
       'stroke-linecap="round"/>' +
     '<g class="tree-crown" id="treeCrown">' +
       '<g fill="#4E8B3A">' + line + CLOSE('g') +

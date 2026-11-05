@@ -1024,11 +1024,16 @@ def gate_static(html):
         and 'preserveAspectRatio="xMidYMid meet"' in _tv
         and 'none' not in _tv)
     rec('G1', '树冠宽高比像棵树（250×198 = 1.26:1），不是一堵扁绿墙',
-        '[160, 118, 80]' in html and '[72, 112, 36]' in html and '[160, 168, 40]' in html)
+        '[160, 118, 80]' in html and '[72, 112, 36]' in html and '[160, 172, 46]' in html)
     rec('G1', '树干短粗、上端分两叉插进树冠（旧版是一根直杆顶着一个绿饼）',
-        'M142 300 C144 274 150 256 148 238' in html
-        and 'M151 240 C145 222 135 210 122 202' in html
-        and 'M169 240 C175 224 185 212 198 204' in html)
+        'M160 300 L160 236' in html
+        and 'M159 240 L134 198' in html and 'M161 240 L186 198' in html)
+    # 「衔接生硬」的根因是主干（多边形填充 + 渐变）和枝条（描边线段）两套画法拼在一起：
+    # 主干顶是一条平顶、枝条是圆头，交界处必然出角。现在统一成同一种圆头线段。
+    rec('G1', '主干与两根枝条同一套画法（圆头线段 + 深色打底浅色收窄），不再混用多边形填充',
+        'stroke-linecap="round" fill="none"' in html
+        and 'url(#trunkG)' not in html
+        and '<circle cx="160" cy="234" r="14" fill="#C99A62"/>' in html)
     rec('G1', '树、果子、果篮在同一个舞台里（.tree-stage 包住三者，果子才挂得准）',
         'class="tree-stage" id="treeStage"' in html
         and "basketSVG('fruit', GAME.caught) + CLOSE('div')" in html
