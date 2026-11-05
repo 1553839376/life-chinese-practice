@@ -942,27 +942,34 @@ def gate_static(html):
     # v44（老师 2026-11-05）：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」，
     # 第二版又补「应该是竿子上的线延长到把鱼钓上来，现在是一个自然的曲线拼接一个生硬的直线」。
     # 所以线必须是一条从钩子甩出去的**弧线**：竿上本来就画着一条弯的短线，接一根直棍一眼就看得出是拼的。
-    # 四件事容易写错，各一条护栏：① 方向；② 写成直棍（第二版被打回的原因）；③ 鱼走不动；
-    # ④ 水花抢跑（鱼还没被钩住就炸＝鱼是自己跳出水的）。
+    # 五件事容易写错，各一条护栏：① 场上出现两根线；② 起点不是竿尖；③ 写成直棍；
+    # ④ 鱼走不动；⑤ 水花抢跑（鱼还没被钩住就炸＝鱼是自己跳出水的）。
     _fx = html[html.find('function fishReel'):]
     _fx = _fx[:max(_fx.find('function ', 10), 1)]
-    rec('G1', '钓线是一条从钩子甩出去的弧线（二次贝塞尔，锚点按 .rod 的钩子 116,88 换算）',
+    rec('G1', '钓线是一条从竿尖甩出去的三次贝塞尔（起点＝竿尖 112,29，不是钩子）',
         '.reel-svg{' in html and '.reel-line{' in html
-        and 'var ROD_HOOK = { x: 116 / 150, y: 88 / 110 }' in html
-        and "field.querySelector('.rod')" in _fx and "' Q'" in _fx)
-    rec('G1', '线的方向是「钩子→鱼」，鱼的位移是「鱼→钩子」（两个符号别写反）',
+        and 'var ROD_TIP = { x: 112 / 150, y: 29 / 110 }' in html
+        and "field.querySelector('.rod')" in _fx and " ' C'" in _fx)
+    rec('G1', '竿上原本那条短线与浮标在甩线时藏起来（不然场上就是两根线——老师 2026-11-05 点过）',
+        'class="rod-string"' in html and 'class="rod-bob"' in html
+        and "rod.querySelector('.rod-string')" in _fx
+        and "strEl.style.opacity = '0'" in _fx and "bobEl.style.opacity = '0'" in _fx)
+    rec('G1', '线的方向是「竿尖→鱼」，鱼的位移是「鱼→竿尖」（两个符号别写反）',
         'var ax = bx - tip.x, ay = by - tip.y' in _fx
-        and 'ax * (REEL_END - 1)' in _fx and 'ay * (REEL_END - 1)' in _fx
+        and 'ax * (kEnd - 1)' in _fx and 'ay * (kEnd - 1)' in _fx
         and 'Math.sqrt(ax * ax + ay * ay)' in _fx)
-    rec('G1', '收线是整条弧以钩子为心等比缩小（不是缩 dasharray、更不是一根直棍——第二版被老师打回的就是直棍）',
-        " scale(' + REEL_END + ') '" in _fx
-        and "'translate(' + tip.x + 'px,' + tip.y + 'px) scale('" in _fx
-        and "'translate(' + (-tip.x) + 'px,' + (-tip.y) + 'px)'" in _fx
+    rec('G1', '收线是整条线以竿尖为心等比缩小（不是缩 dasharray、更不是一根直棍——第二版被老师打回的就是直棍）',
+        " scale(' + kEnd.toFixed(3) + ') '" in _fx
+        and "'translate(' + tipX + 'px,' + tipY + 'px) scale('" in _fx
+        and "'translate(' + (-tipX) + 'px,' + (-tipY) + 'px)'" in _fx
         and 'scaleY' not in _fx
         and _fx.count('strokeDashoffset =') == 2)   # 只有「归位→0」两处；多一处就是又在拿 dasharray 收线
-    rec('G1', '弧朝下弯（重力方向），别朝上拱成一张弓',
-        'if (ny < 0){ nx = -nx; ny = -ny; }' in _fx
-        and 'Math.min(40, len * 0.06)' in _fx)
+    rec('G1', '起手切线接着竿上那条短线（方向取 ROD_TIP→ROD_CTL，接不上就拐一个折角）',
+        'var ROD_CTL = { x: 122 / 150, y: 58 / 110 }' in html
+        and 'var cdx = ctl.x - tip.x, cdy = ctl.y - tip.y' in _fx)
+    rec('G1', '线中段朝下垂（重力方向），别朝上拱成一张弓',
+        'var c1y = tip.y + cdy / cd * len * 0.30' in _fx
+        and 'var c2y = by - ay * 0.22' in _fx)
     rec('G1', '收线前先停掉游泳动画（否则关键帧压住 inline transform，鱼一步都不走）',
         "el.style.animation = 'none'" in _fx and 'void el.offsetWidth' in _fx)
     rec('G1', '水花等「钩住」那一刻才炸，不再点下就炸（否则像鱼自己跳出水面）',

@@ -1182,8 +1182,10 @@ body.picking #scrLearn{padding-bottom:96px}
 @keyframes swim{0%,100%{transform:translate(-20px,3px) rotate(-2.6deg)}
   50%{transform:translate(20px,-13px) rotate(2.6deg)}}
 /* 钓中（v44）：线不是在鱼身上「接一根直棍」，而是竿子上那条线**延长**出去——
-   一条从钩子甩到鱼心的弧线（stroke 与竿子自带那段一致：奶油色、2.4px），
-   收线时用 stroke-dasharray 把看得见的那一段从弧长收到 0，鱼沿弦走同样的进度。
+   起点就是竿尖（112,29），起手方向与竿上那条短线（112,29→122,58）同一切线，
+   形状是一条三次贝塞尔，一路垂到鱼心（stroke 与竿子自带那段一致：奶油色 2.4px）。
+   甩线用 stroke-dashoffset 从 0 画到全长；收线是整条线以竿尖为心等比缩小（见 p7.js）。
+   竿上原本那条短线与浮标在甩线时被藏起来，所以场上**只有一条线**。
    位移在 p7.js 的 fishReel() 里按真实坐标算，这里只管线长什么样。 */
 .fish.hit{z-index:9}
 .reel-svg{position:absolute;inset:0;width:100%;height:100%;z-index:7;
@@ -10075,11 +10077,13 @@ function fishScene(opts){
     html += '<span class="sea-bub" style="left:' + (5 + i * 13) + '%;animation-duration:' +
       (5.4 + (i % 3) * 0.9).toFixed(1) + 's;animation-delay:' + (i * 0.8).toFixed(1) + 's"></span>';
   }
-  /* 左上角的鱼竿，纯装饰，给孩子「我在钓鱼」的感觉 */
+  /* 左上角的鱼竿，纯装饰，给孩子「我在钓鱼」的感觉。
+     竿上那条短线（`.rod-string`）与黄色浮标（`.rod-bob`）平时就挂着；点对以后由 fishReel()
+     把它们藏起来，让新甩出去的那条线成为「同一条线的延长」——两个都留着就是两根线（老师点过）。 */
   html += '<svg class="rod" viewBox="0 0 150 110" aria-hidden="true">' +
     '<path d="M2 5 Q52 24 112 29" stroke="#8A6236" stroke-width="5" fill="none" stroke-linecap="round"/>' +
-    '<path d="M112 29 Q122 58 116 86" stroke="#F4F0E4" stroke-width="2" fill="none" opacity=".92"/>' +
-    '<circle cx="116" cy="88" r="4.2" fill="#E8A317"/>' +
+    '<path class="rod-string" d="M112 29 Q122 58 116 86" stroke="#F4F0E4" stroke-width="2" fill="none" opacity=".92"/>' +
+    '<circle class="rod-bob" cx="116" cy="88" r="4.2" fill="#E8A317"/>' +
     CLOSE('svg');
   for (i = 0; i < 4 && i < opts.length; i++){
     top = 4 + i * 23.5;
@@ -10096,19 +10100,26 @@ function fishScene(opts){
   html += basketSVG('fish', GAME.caught);
   return html + CLOSE('div') + lootHTML('fish', GAME.caught);
 }
-/* 钓鱼点对以后：钩子上的线甩出去、搭到鱼身上，再顺着这条线把鱼提到竿尖，收进鱼篓。
-   老师 2026-11-05 第一版：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」；
-   第二版又补：「应该是竿子上的线延长到把鱼钓上来，现在是一个自然的曲线拼接一个生硬的直线」。
-   所以线必须是一条**弧线**：竿子上本来就画着一条弯的短线，接一根直棍上去一眼就看得出是拼的。
-   几何 = 一条二次贝塞尔，从钩子甩到鱼心；弯度按长度取 6%（最少 10px、封顶 40px，太弯像钩子）。
-   收线 = 整条弧以钩子为中心**等比缩小**（画出来用 stroke-dashoffset，收线用 transform scale）；
-   鱼按同一个比例往钩子走，两边同一条缓动。等比缩放的好处：弧的一端永远钉在钩子上、
-   另一端永远等于「钩子 + k×弦」，跟鱼心逐帧重合（试过「固定弧线 + 缩 dasharray」的写法，
-   弧是死的、鱼沿弦走，中途线头会偏出 sag≈40px）。全程只动 transform / stroke-dashoffset，不挂 rAF。 */
-var ROD_HOOK = { x: 116 / 150, y: 88 / 110 };
-/* 收线收到原来的 2%（不是 0：0 会让 path 的 bbox 退化）。鱼也跟着走到 98% 处，
-   最后 760ms 淡出，所以看不出那 2% 的差。 */
-var REEL_END = 0.02;
+/* 钓鱼点对以后：竿子上的线**延长出去**、搭到鱼身上，再顺着这条线把鱼收上来。
+   老师 2026-11-05 三句话定下了这个效果：
+   ① 「这条钓竿的线拉到鱼上把学生钓上来」；② 「应该是竿子上的线延长到把鱼钓上来，
+   现在是一个自然的曲线拼接一个生硬的直线」；③ 「现在没有点击的时候钓竿上就有一条线，
+   点击了之后又会出现另一条线，要把这两条线统一为一条」。
+   所以：**只有一条线**，而且它就是竿上那条线的延长——
+   · 起点 = 竿尖（112,29），不是钩子；起手切线沿用竿上那条短线（112,29 → 控制点 122,58），
+     所以接上去的方向是一样的，读起来是「同一条线变长了」；
+   · 竿上原本那条短线（116,86 收尾）和黄色浮标在甩线时先藏起来（`.rod-string` / `.rod-bob`），
+     否则场上就同时有两条线——这正是老师第三次点出来的问题；
+   · 形状 = 一条三次贝塞尔：起点拉向「竿上那条线的方向」，终点沿弦方向接近鱼心，
+     中段自然下垂（收线时整条线以竿尖为心等比缩小，鱼按同一个 k 往竿尖走）。
+   全程只动 transform / stroke-dashoffset，不挂 rAF。 */
+var ROD_TIP = { x: 112 / 150, y: 29 / 110 };   /* 竿尖：线的起点 */
+var ROD_CTL = { x: 122 / 150, y: 58 / 110 };   /* 竿上那条短线的控制点：给出竿尖的切线方向 */
+var ROD_HOOK = { x: 116 / 150, y: 88 / 110 };  /* 浮标（钩子）：收线收到这儿，鱼就停在钩子上 */
+/* 收线比例 k = 竿尖到钩子的距离 / 弦长，夹在 [0.04, 0.30]：
+   0 会让 path 的 bbox 退化；太小（鱼离得远时）线会缩成一个点；太大又看不出在收线。 */
+var REEL_MIN = 0.04;
+var REEL_MAX = 0.30;
 function fishReel(el, fr){
   var field = $('gameField');
   if (!field || !el) return;
@@ -10121,35 +10132,47 @@ function fishReel(el, fr){
   var er = el.getBoundingClientRect();
   var bx = er.left - fr.left + er.width / 2;
   var by = er.top - fr.top + er.height / 2;
-  /* 竿尖：有 .rod 就按它的实际盒子换算，拿不到就退回样式里的默认值（left/top -6px、150×110） */
-  var tip = { x: -6 + 150 * ROD_HOOK.x, y: -6 + 110 * ROD_HOOK.y };
+  /* 竿尖（线从这里出来）、竿上那条短线在竿尖的切线、浮标位置：有 .rod 就按实际盒子换算，
+     拿不到就退回样式里的默认值（left/top -6px、150×110） */
+  var tip = { x: -6 + 150 * ROD_TIP.x, y: -6 + 110 * ROD_TIP.y };
+  var ctl = { x: -6 + 150 * ROD_CTL.x, y: -6 + 110 * ROD_CTL.y };
+  var hook = { x: -6 + 150 * ROD_HOOK.x, y: -6 + 110 * ROD_HOOK.y };
   var rod = field.querySelector('.rod');
   if (rod && rod.getBoundingClientRect){
     var rr = rod.getBoundingClientRect();
     if (rr.width && rr.height){
-      tip = { x: rr.left - fr.left + rr.width * ROD_HOOK.x,
-              y: rr.top - fr.top + rr.height * ROD_HOOK.y };
+      var rl = rr.left - fr.left, rt = rr.top - fr.top;
+      tip = { x: rl + rr.width * ROD_TIP.x, y: rt + rr.height * ROD_TIP.y };
+      ctl = { x: rl + rr.width * ROD_CTL.x, y: rt + rr.height * ROD_CTL.y };
+      hook = { x: rl + rr.width * ROD_HOOK.x, y: rt + rr.height * ROD_HOOK.y };
     }
   }
-  /* ax/ay = 钩子 → 鱼心（线的方向）；收线时鱼要往反方向走，所以下面用 -ax/-ay。
-     这两个方向别写混：写成「鱼 → 钩子」的话线会朝反方向甩出去，
-     而竿子上本来就画着一条 57px 的装饰线，贴着鱼看很像"连上了"，很容易误判（第一版栽过）。 */
+  /* 藏掉竿上原本那条短线与浮标：新画出去的这条线就是它的延长，两个都留着就成了两根线。
+     760ms 收完再放回来（下一题本来也会整块重渲染，这里兜住同一块 DOM 不重渲染的情况）。 */
+  var strEl = rod ? rod.querySelector('.rod-string') : null;
+  var bobEl = rod ? rod.querySelector('.rod-bob') : null;
+  if (strEl) strEl.style.opacity = '0';
+  if (bobEl) bobEl.style.opacity = '0';
+
+  /* ax/ay = 竿尖 → 鱼心（线的方向，也是鱼被拉回来的方向）；鱼往反方向走，所以下面用 k-1 */
   var ax = bx - tip.x, ay = by - tip.y;
   var len = Math.max(60, Math.sqrt(ax * ax + ay * ay));
-  /* 弧线：控制点在弦中点的法向上再偏 sag*2 —— 二次贝塞尔的中点只跑到控制点偏移的一半。
-     法向取「朝下」那一侧（重力方向）：不取的话长线会朝上拱，像一张拉满的弓。 */
-  var nx = -ay / len, ny = ax / len;
-  if (ny < 0){ nx = -nx; ny = -ny; }
-  var sag = Math.max(10, Math.min(40, len * 0.06));
-  var qx = tip.x + ax / 2 + nx * sag * 2;
-  var qy = tip.y + ay / 2 + ny * sag * 2;
+  /* 三次贝塞尔：起手沿「竿上那条短线」的方向离开竿尖（切线一致才接得上），
+     收尾沿弦方向接近鱼心（不在鱼身上拐一个钩）。两个控制点分别取弦长的 0.30 / 0.22。 */
+  var cdx = ctl.x - tip.x, cdy = ctl.y - tip.y;
+  var cd = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+  var c1x = tip.x + cdx / cd * len * 0.30;
+  var c1y = tip.y + cdy / cd * len * 0.30;
+  var c2x = bx - ax * 0.22;
+  var c2y = by - ay * 0.22;
   var NSV = 'http://www.w3.org/2000/svg';
   var svg = document.createElementNS(NSV, 'svg');
   svg.setAttribute('class', 'reel-svg');
   var line = document.createElementNS(NSV, 'path');
   line.setAttribute('class', 'reel-line');
   line.setAttribute('d', 'M' + tip.x.toFixed(1) + ' ' + tip.y.toFixed(1) +
-    ' Q' + qx.toFixed(1) + ' ' + qy.toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1));
+    ' C' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) +
+    ' ' + bx.toFixed(1) + ' ' + by.toFixed(1));
   svg.appendChild(line);
   field.appendChild(svg);
   /* 甩线要按真实弧长算（比弦长长一点点）；jsdom 没有 SVG 几何，取不到就退回弦长 */
@@ -10165,13 +10188,19 @@ function fishReel(el, fr){
   void svg.getBoundingClientRect();   /* 强制回流，否则起始值和目标值被合成一帧、线不会甩出去 */
   line.style.strokeDashoffset = '0';
 
-  /* 180ms：钩住了 —— 原地炸一朵水花，然后整条弧以钩子为心等比缩小，鱼按同一比例被拉过去 */
+  /* 180ms：钩住了 —— 原地炸一朵水花，然后整条线以竿尖为心等比缩小，鱼按同一比例被拉过去。
+     k 收到「竿尖到浮标」那个比例：鱼最后停在浮标的位置，跟收线前竿上那条短线一样长。 */
+  var hookD = Math.sqrt((hook.x - tip.x) * (hook.x - tip.x) + (hook.y - tip.y) * (hook.y - tip.y));
+  var kEnd = Math.max(REEL_MIN, Math.min(REEL_MAX, hookD / len));
+  /* 竿尖的坐标先取一位小数：110*29/110 这种换算会算出 22.999999999999996，
+     直接拼进 transform 会得到一长串小数（也害测试没法比） */
+  var tipX = tip.x.toFixed(1), tipY = tip.y.toFixed(1);
   setTimeout(function(){
-    /* transform-origin 在 (0,0)、SVG 又没有 viewBox，所以手动把缩放中心挪到钩子上：
-       translate(钩子) · scale(k) · translate(-钩子) */
+    /* transform-origin 在 (0,0)、SVG 又没有 viewBox，所以手动把缩放中心挪到竿尖上：
+       translate(竿尖) · scale(k) · translate(-竿尖) */
     line.style.transition = 'transform .54s cubic-bezier(.45,.05,.55,.95)';
-    line.style.transform = 'translate(' + tip.x + 'px,' + tip.y + 'px) scale(' + REEL_END + ') ' +
-      'translate(' + (-tip.x) + 'px,' + (-tip.y) + 'px)';
+    line.style.transform = 'translate(' + tipX + 'px,' + tipY + 'px) scale(' + kEnd.toFixed(3) + ') ' +
+      'translate(' + (-tipX) + 'px,' + (-tipY) + 'px)';
     for (i = 0; i < 6; i++){
       var ang = (Math.PI * 2 / 6) * i + Math.random() * 0.6;
       var dist = 26 + Math.random() * 40;
@@ -10187,14 +10216,17 @@ function fishReel(el, fr){
       })(node);
     }
     el.style.transition = 'transform .54s cubic-bezier(.45,.05,.55,.95)';
-    el.style.transform = 'translate(' + (ax * (REEL_END - 1)).toFixed(1) + 'px,' +
-      (ay * (REEL_END - 1)).toFixed(1) + 'px) rotate(-14deg) scale(.34)';
+    el.style.transform = 'translate(' + (ax * (kEnd - 1)).toFixed(1) + 'px,' +
+      (ay * (kEnd - 1)).toFixed(1) + 'px) rotate(-14deg) scale(.34)';
   }, 180);
 
-  /* 760ms：到竿尖了，化掉（鱼篓里那颗在 gameFx 里已经加过，别重复加）。
-     卡在 880ms 之内——gameAward() 到时候会推下一题、整块重渲染。 */
+  /* 760ms：到浮标上了，化掉（鱼篓里那颗在 gameFx 里已经加过，别重复加）。
+     卡在 880ms 之内——gameAward() 到时候会推下一题、整块重渲染。
+     竿上那条短线与浮标一起放回来：这时候鱼已经淡出，场上回到「没点过」的样子。 */
   setTimeout(function(){
     if (svg.parentNode) svg.parentNode.removeChild(svg);
+    if (strEl) strEl.style.opacity = '';
+    if (bobEl) bobEl.style.opacity = '';
     el.style.transition = 'opacity .14s linear';
     el.style.opacity = '0';
   }, 760);

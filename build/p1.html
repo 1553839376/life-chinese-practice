@@ -1182,8 +1182,10 @@ body.picking #scrLearn{padding-bottom:96px}
 @keyframes swim{0%,100%{transform:translate(-20px,3px) rotate(-2.6deg)}
   50%{transform:translate(20px,-13px) rotate(2.6deg)}}
 /* 钓中（v44）：线不是在鱼身上「接一根直棍」，而是竿子上那条线**延长**出去——
-   一条从钩子甩到鱼心的弧线（stroke 与竿子自带那段一致：奶油色、2.4px），
-   收线时用 stroke-dasharray 把看得见的那一段从弧长收到 0，鱼沿弦走同样的进度。
+   起点就是竿尖（112,29），起手方向与竿上那条短线（112,29→122,58）同一切线，
+   形状是一条三次贝塞尔，一路垂到鱼心（stroke 与竿子自带那段一致：奶油色 2.4px）。
+   甩线用 stroke-dashoffset 从 0 画到全长；收线是整条线以竿尖为心等比缩小（见 p7.js）。
+   竿上原本那条短线与浮标在甩线时被藏起来，所以场上**只有一条线**。
    位移在 p7.js 的 fishReel() 里按真实坐标算，这里只管线长什么样。 */
 .fish.hit{z-index:9}
 .reel-svg{position:absolute;inset:0;width:100%;height:100%;z-index:7;

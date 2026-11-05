@@ -78,4 +78,4 @@ _pub*/
 # ---------- 摆帧核对副本（产物 + 调试脚本，各 15 MB）----------
 # 由 build/_mk_reel.py 现生成，需要时再跑一次即可。
 build/_reel.html
-build/_reel_nofilter.html
+build/_click_only.html

@@ -2442,14 +2442,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('traceMask').hidden === true, '关掉描写面板');
 
 
-  /* ---------- 37. 钓鱼收线：一条弧线从钩子甩到鱼身上，再把鱼提到竿尖（v44） ---------- */
+  /* ---------- 37. 钓鱼收线：竿上那条线延长出去把鱼收上来（v44） ---------- */
   console.log('\n--- 37. 钓鱼收线 ---');
-  /* 老师 2026-11-05：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」，
-     紧接着补了第二句：「应该是竿子上的线延长到把鱼钓上来，现在是一个自然的曲线拼接一个生硬的直线」。
-     所以这里除了量「线搭到鱼身上」，还要量「它是弧线不是直棍」——那是第二版被打回的原因。
+  /* 老师 2026-11-05 三句话定下这个效果：
+     ① 「这条钓竿的线拉到鱼上把学生钓上来」；② 「应该是一个自然的曲线，不是曲线拼直线」；
+     ③ 「没点击时竿上就有一条线，点击后又出现另一条，要把这两条线统一为一条」。
+     所以这里量四件事：场上只有一条线（竿上那条被藏了）、起点是竿尖不是钩子、
+     起手切线接着竿上那条线、终点是鱼心且中段自然下垂。
      jsdom 没有布局（rect 全是 0）也没有 SVG 几何（getTotalLength 拿不到），
-     所以量的是「代码算出来的几何自不自洽」：起点=钩子、终点=鱼心、控制点离弦中点 = 2×sag。
-     真实坐标只能靠无头浏览器截图核。 */
+     所以量的是「代码算出来的几何自不自洽」；真实坐标只能靠无头浏览器核。 */
   const v44_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
   w.startGame('fish', v44_chars);
   await wait(140);
@@ -2462,41 +2463,64 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   }
   ok(!!v44_fish, '钓鱼局里能找到正确的那条鱼');
   ok(!d.querySelector('.reel-line'), '还没点对时场上没有钓线');
+  const v44_str = d.querySelector('.rod-string');
+  const v44_bob = d.querySelector('.rod-bob');
+  ok(!!v44_str && !!v44_bob, '竿上原本那条短线与浮标有类名（没有类名就藏不掉，场上会有两根线）');
+  ok(v44_str && v44_str.style.opacity === '', '没点对时竿上那条短线是亮着的（场上有且只有它一条线）');
 
-  /* 钩子：jsdom 里 .rod 的 rect 是 0，代码退回样式默认值（left/top -6px、150×110、钩子在 116,88） */
-  const v44_tip = { x: -6 + 150 * 116 / 150, y: -6 + 110 * 88 / 110 };
+  /* 竿尖 / 竿上短线的控制点 / 浮标：jsdom 里 .rod 的 rect 是 0，
+     代码退回样式默认值（left/top -6px、150×110） */
+  const v44_tip = { x: -6 + 150 * 112 / 150, y: -6 + 110 * 29 / 110 };
+  const v44_rodCtl = { x: -6 + 150 * 122 / 150, y: -6 + 110 * 58 / 110 };
+  const v44_hook = { x: -6 + 150 * 116 / 150, y: -6 + 110 * 88 / 110 };
   click(v44_fish);
   await wait(30);
   const v44_svg = d.querySelector('.reel-svg');
   const v44_line = d.querySelector('.reel-line');
   ok(!!v44_svg && !!v44_line, '点对之后立刻甩出一条钓线');
+  ok(d.querySelectorAll('#gameField .reel-line').length === 1, '甩出去以后场上只有一条钓线（不是两根）');
+  ok(v44_str.style.opacity === '0' && v44_bob.style.opacity === '0',
+    '甩线时把竿上那条短线与浮标藏起来——否则就是老师说的「点击后又出现另一条线」');
   ok(v44_svg.parentNode === d.getElementById('gameField'), '钓线挂在游戏场里（和鱼同一个坐标系）');
   ok(v44_line.tagName.toLowerCase() === 'path', '线是一条路径（path），不是方块拼出来的直条：' + v44_line.tagName);
 
   const v44_d = v44_line.getAttribute('d');
   const v44_nums = (v44_d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-  ok(v44_nums.length === 6, 'd 是「起点 + 一个控制点 + 终点」的二次曲线：' + v44_d);
+  ok(v44_nums.length === 8, 'd 是「起点 + 两个控制点 + 终点」的三次曲线：' + v44_d);
   const v44_p0 = { x: v44_nums[0], y: v44_nums[1] };
-  const v44_ctl = { x: v44_nums[2], y: v44_nums[3] };
-  const v44_p1 = { x: v44_nums[4], y: v44_nums[5] };
+  const v44_c1 = { x: v44_nums[2], y: v44_nums[3] };
+  const v44_c2 = { x: v44_nums[4], y: v44_nums[5] };
+  const v44_p1 = { x: v44_nums[6], y: v44_nums[7] };
   ok(Math.abs(v44_p0.x - v44_tip.x) < 0.6 && Math.abs(v44_p0.y - v44_tip.y) < 0.6,
-    '线的起点就是钩子：' + v44_p0.x + ',' + v44_p0.y);
+    '线的起点是竿尖，不是钩子（起点在竿上，读起来才是「竿上那条线延长了」）：' + v44_p0.x + ',' + v44_p0.y);
+  ok(Math.abs(v44_p0.x - v44_hook.x) > 1,
+    '起点和钩子不是同一个点（钩子只用来定收线收到哪儿）：' + v44_p0.x + ' vs ' + v44_hook.x);
   ok(Math.abs(v44_p1.x - 0) < 0.6 && Math.abs(v44_p1.y - 0) < 0.6,
     '线的终点是鱼心（jsdom 里鱼心就是原点）：' + v44_p1.x + ',' + v44_p1.y);
 
-  /* jsdom 里鱼心是 (0,0) → ax/ay 就是「钩子→原点」；弦长与 sag 按代码同一套公式推 */
+  /* 起手切线必须接着竿上那条短线（112,29→122,58）：c1 落在同一条射线上，叉积≈0、点积>0 */
   const v44_ax = 0 - v44_tip.x, v44_ay = 0 - v44_tip.y;
   const v44_len = Math.max(60, Math.sqrt(v44_ax * v44_ax + v44_ay * v44_ay));
-  const v44_sag = Math.max(10, Math.min(40, v44_len * 0.06));
-  const v44_mid = { x: (v44_p0.x + v44_p1.x) / 2, y: (v44_p0.y + v44_p1.y) / 2 };
-  const v44_off = Math.sqrt(Math.pow(v44_ctl.x - v44_mid.x, 2) + Math.pow(v44_ctl.y - v44_mid.y, 2));
-  ok(Math.abs(v44_off - v44_sag * 2) < 1.01,
-    '控制点离弦中点 = 2×弯度（二次贝塞尔的中点只跑到控制点的一半）：' + v44_off.toFixed(2) +
-    ' vs ' + (v44_sag * 2).toFixed(2));
-  ok(v44_off > 8, '是弧线不是直棍（老师第二版就是嫌「曲线拼接生硬直线」）：偏离 ' + v44_off.toFixed(2) + 'px');
-  ok(v44_ctl.y > v44_mid.y, '弧朝下弯（重力方向），不朝上拱成一张弓');
+  const v44_rdx = v44_rodCtl.x - v44_tip.x, v44_rdy = v44_rodCtl.y - v44_tip.y;
+  const v44_d1x = v44_c1.x - v44_p0.x, v44_d1y = v44_c1.y - v44_p0.y;
+  const v44_cross = v44_d1x * v44_rdy - v44_d1y * v44_rdx;
+  const v44_dot = v44_d1x * v44_rdx + v44_d1y * v44_rdy;
+  ok(Math.abs(v44_cross) < 2,   /* d 里的坐标只留一位小数，叉积会有零点几的舍入误差 */ '起手方向就是竿上那条短线的方向（切线接得上，不会拐个折角）：叉积 ' + v44_cross.toFixed(2));
+  ok(v44_dot > 0, '起手方向与竿上那条线同向（不是反着甩）：点积 ' + v44_dot.toFixed(2));
 
-  /* 甩线：dasharray 全长、dashoffset 已推到 0 → 整条弧都画出来了 */
+  /* 三次贝塞尔中点（t=0.5）：要落在弦的**下方**（重力方向），且明显离开弦——是弧不是直棍 */
+  const v44_bez = (a, b, c, e, t) => Math.pow(1 - t, 3) * a + 3 * Math.pow(1 - t, 2) * t * b +
+    3 * (1 - t) * t * t * c + Math.pow(t, 3) * e;
+  const v44_mx = v44_bez(v44_p0.x, v44_c1.x, v44_c2.x, v44_p1.x, 0.5);
+  const v44_my = v44_bez(v44_p0.y, v44_c1.y, v44_c2.y, v44_p1.y, 0.5);
+  const v44_mid = { x: (v44_p0.x + v44_p1.x) / 2, y: (v44_p0.y + v44_p1.y) / 2 };
+  const v44_off = Math.sqrt(Math.pow(v44_mx - v44_mid.x, 2) + Math.pow(v44_my - v44_mid.y, 2));
+  ok(v44_my > v44_mid.y, '线中段朝下（重力方向），不朝上拱成一张弓：中点 y ' + v44_my.toFixed(1) + ' vs 弦中点 ' + v44_mid.y.toFixed(1));
+  ok(v44_off > 8, '是弧线不是直棍（老师第二版就是嫌「曲线拼接生硬直线」）：偏离 ' + v44_off.toFixed(2) + 'px');
+  ok(v44_c1.y > v44_p0.y, '起手先往下垂（竿上那条线本来就是垂下来的）');
+  ok(v44_c2.y > v44_p1.y, '收尾从上方贴到鱼心（不在鱼身上拐钩）');
+
+  /* 甩线：dasharray 全长、dashoffset 已推到 0 → 整条线都画出来了 */
   const v44_dash = (v44_line.style.strokeDasharray.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
   ok(v44_dash.length === 2 && Math.abs(v44_dash[0] - v44_len) < 1.01 && v44_dash[0] === v44_dash[1],
     '甩线用 dasharray = 全长：' + v44_line.style.strokeDasharray);
@@ -2506,16 +2530,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.querySelectorAll('.catch-splash').length === 0,
     '刚点下去还没炸水花（要等钩住那一刻，先炸就变成"鱼还没被钩到就出水"）');
 
-  /* 180ms：钩住了 → 水花 + 从钩子那头收线 */
+  /* 180ms：钩住了 → 水花 + 整条线以竿尖为心收线，鱼按同一个 k 往竿尖走 */
   await wait(200);
   ok(d.querySelectorAll('.catch-splash').length > 0, '钩住的瞬间炸水花');
-  /* 收线 = 整条弧以钩子为心等比缩小（不是把 dasharray 收短）：弧的一端钉在钩子上、
-     另一端永远等于「钩子 + k×弦」，所以线头逐帧跟鱼心重合。 */
+  const v44_hookD = Math.sqrt(Math.pow(v44_hook.x - v44_tip.x, 2) + Math.pow(v44_hook.y - v44_tip.y, 2));
+  const v44_k = Math.max(0.04, Math.min(0.30, v44_hookD / v44_len));
   const v44_tfx = v44_line.style.transform;
-  ok(/scale\(0\.02\)/.test(v44_tfx), '收线：整条弧等比缩到 0.02（不是整条淡出）：' + v44_tfx);
-  ok(v44_tfx.indexOf('translate(' + v44_tip.x + 'px,' + v44_tip.y + 'px)') === 0 &&
-     v44_tfx.indexOf('translate(' + (-v44_tip.x) + 'px,' + (-v44_tip.y) + 'px)') > 0,
-    '缩放中心挪到钩子上（translate·scale·translate 反过来）：' + v44_tfx);
+  ok(v44_tfx.indexOf('scale(' + v44_k.toFixed(3) + ')') > 0,
+    '收线：整条线等比缩到「竿尖到浮标的比例」= ' + v44_k.toFixed(3) + '（不是整条淡出）：' + v44_tfx);
+  const v44_tx = v44_tip.x.toFixed(1), v44_ty = v44_tip.y.toFixed(1);
+  ok(v44_tfx.indexOf('translate(' + v44_tx + 'px,' + v44_ty + 'px)') === 0 &&
+     v44_tfx.indexOf('translate(' + (-v44_tx) + 'px,' + (-v44_ty) + 'px)') > 0,
+    '缩放中心挪到竿尖上（translate·scale·translate 反过来）：' + v44_tfx);
   ok(/transform \.54s/.test(v44_line.style.transition),
     '收线换 540ms 那条缓动（和鱼的位移同步）：' + v44_line.style.transition);
   const v44_dash3 = (v44_line.style.strokeDasharray.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
@@ -2526,19 +2552,21 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const v44_tf = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(v44_fish.style.transform);
   ok(!!v44_tf, '鱼身上写的是位移：' + v44_fish.style.transform);
   if (v44_tf){
-    /* 鱼必须和弧缩到同一个比例：位移 = 弦 × (k-1)，k=0.02 → 走到 98% 处 */
-    const v44_ex = v44_ax * (0.02 - 1), v44_ey = v44_ay * (0.02 - 1);
+    /* 鱼必须和线缩到同一个比例：位移 = 弦 × (k-1)，线头才不会脱开鱼 */
+    const v44_ex = v44_ax * (v44_k - 1), v44_ey = v44_ay * (v44_k - 1);
     ok(Math.abs(parseFloat(v44_tf[1]) - v44_ex) < 1.01 &&
        Math.abs(parseFloat(v44_tf[2]) - v44_ey) < 1.01,
-      '鱼和弧缩成同一个比例（位移 = 弦×0.98，不然线头会脱开鱼）：' + v44_tf[1] + ',' + v44_tf[2] +
+      '鱼和线缩成同一个比例（位移 = 弦×(k-1)，不然线头会脱开鱼）：' + v44_tf[1] + ',' + v44_tf[2] +
       ' vs ' + v44_ex.toFixed(1) + ',' + v44_ey.toFixed(1));
   } else {
-    ok(false, '鱼和弧缩成同一个比例（位移 = 弦×0.98，不然线头会脱开鱼）');
+    ok(false, '鱼和线缩成同一个比例（位移 = 弦×(k-1)，不然线头会脱开鱼）');
   }
 
-  /* 760ms：线收完撤掉，鱼已经化在钩子上（下一题会整块重渲染） */
+  /* 760ms：线收完撤掉，鱼已经化在浮标上（下一题会整块重渲染） */
   await wait(620);
   ok(!d.querySelector('.reel-svg'), '收完线连 svg 一起撤掉，不留在场上');
+  ok(v44_str.style.opacity === '' && v44_bob.style.opacity === '',
+    '收完线把竿上那条短线与浮标放回来（同一块 DOM 不重渲染时也回到「没点过」的样子）');
   w.clearGameTimer();
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
