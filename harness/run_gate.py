@@ -939,6 +939,33 @@ def gate_static(html):
         "TRACE.state === 'recite'" in html and "TRACE.state = 'recited'" in html
         and "state !== 'done' && state !== 'recited'" in html)
 
+    # v44（老师 2026-11-05）：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」。
+    # 点对以后线从竿尖甩出去、搭到鱼身上，鱼顺着这条线被提到竿尖（旧的 fishCatch 是
+    # 「鱼自己往右上飘」，跟竿子没关系）。三件事容易写错，各一条护栏：
+    # ① 方向（竿尖→鱼 还是 鱼→竿尖）；② 鱼走不动（CSS 关键帧压住 inline transform）；
+    # ③ 水花抢跑（鱼还没被钩住就炸＝鱼是自己跳出水的）。
+    _fx = html[html.find('function fishReel'):]
+    _fx = _fx[:max(_fx.find('function ', 10), 1)]
+    rec('G1', '钓线锚在竿尖（比例取自 .rod 的钩子 116,88，不写死像素）',
+        '.reel-line{' in html and 'transform-origin:0 0' in html
+        and 'var ROD_HOOK = { x: 116 / 150, y: 88 / 110 }' in html
+        and "field.querySelector('.rod')" in _fx)
+    rec('G1', '线的方向是「竿尖→鱼」，鱼的位移是「鱼→竿尖」（两个符号别写反）',
+        'var ax = bx - tip.x, ay = by - tip.y' in _fx
+        and "-ax).toFixed(1)" in _fx and "-ay).toFixed(1)" in _fx
+        and 'Math.atan2(ay, ax)' in _fx)
+    rec('G1', '收线只动 transform / scaleY，不动 width/height/top/left',
+        'scaleY(' in _fx and '.style.height = len' in _fx
+        and not [k for k in ('el.style.width =', 'el.style.top =', 'el.style.left =') if k in _fx])
+    rec('G1', '收线前先停掉游泳动画（否则关键帧压住 inline transform，鱼一步都不走）',
+        "el.style.animation = 'none'" in _fx and 'void el.offsetWidth' in _fx)
+    rec('G1', '水花等「钩住」那一刻才炸，不再点下就炸（否则像鱼自己跳出水面）',
+        "if (kind === 'fish') fishReel(el, fr);" in html
+        and "if (kind === 'bubble'){" in html
+        and "'fish' || kind === 'bubble'" not in html)
+    rec('G1', '旧的「鱼自己往右上飘」关键帧彻底清掉（fishCatch 不许回来）',
+        'fishCatch' not in html and '.fish.hit{z-index:9}' in html)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

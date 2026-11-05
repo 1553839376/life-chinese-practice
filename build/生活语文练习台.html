@@ -1181,12 +1181,15 @@ body.picking #scrLearn{padding-bottom:96px}
   font-weight:700;color:#14384E;text-shadow:0 2px 0 rgba(255,255,255,.55)}
 @keyframes swim{0%,100%{transform:translate(-20px,3px) rotate(-2.6deg)}
   50%{transform:translate(20px,-13px) rotate(2.6deg)}}
-/* 钓中：鱼被拉出水面，甩尾、变向、缩小收进鱼篓 */
-.fish.hit{animation:fishCatch .68s cubic-bezier(.25,.8,.35,1) forwards}
-@keyframes fishCatch{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}
-  28%{transform:translate(4px,-30px) rotate(-12deg) scale(1.05)}
-  62%{transform:translate(46px,-104px) rotate(12deg) scale(.78)}
-  100%{transform:translate(104px,-186px) rotate(-8deg) scale(.22);opacity:0}}
+/* 钓中（v44）：不再「自己往上飘」，而是线从竿尖甩出去搭到鱼身上，
+   鱼顺着这条线被提到竿尖，再收进鱼篓。位移在 p7.js 的 fishReel() 里按真实坐标算，
+   这里只给线和鱼各一条缓动——两边用同一条曲线，线头才能一直贴着鱼。 */
+.fish.hit{z-index:9}
+.reel-line{position:absolute;z-index:7;width:3px;border-radius:0 0 2px 2px;
+  background:linear-gradient(180deg,#F4F0E4,rgba(238,234,222,.88));
+  box-shadow:0 0 0 1px rgba(28,72,104,.16);pointer-events:none;
+  transform-origin:0 0;transition:transform .18s cubic-bezier(.3,.9,.4,1)}
+.reel-line.pull{transition:transform .54s cubic-bezier(.45,.05,.55,.95)}
 .fish.miss{animation:shake .4s ease;opacity:.35;filter:grayscale(1);pointer-events:none}
 /* 水花 */
 .catch-splash{position:absolute;z-index:8;width:9px;height:9px;border-radius:50%;
@@ -1636,7 +1639,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v43</span>
+    <span id="appVer" class="app-ver">v44</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3517,7 +3520,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v43';
+var APP_VER = 'v44';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -10092,6 +10095,83 @@ function fishScene(opts){
   html += basketSVG('fish', GAME.caught);
   return html + CLOSE('div') + lootHTML('fish', GAME.caught);
 }
+/* 钩子在 .rod 里的相对位置（viewBox 150×110，钩子画在 116,88）。
+   用比例而不是死像素：竿子尺寸以后调了，线还能搭在钩上。 */
+var ROD_HOOK = { x: 116 / 150, y: 88 / 110 };
+/* 钓鱼点对以后：线从竿尖甩出去搭到鱼身上，鱼顺着这条线被提到竿尖，再收进鱼篓。
+   老师 2026-11-05：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」。
+   几何：线锚在竿尖，长度 = 竿尖到鱼心的距离；收线靠 scaleY，鱼同时沿同一条线
+   平移到竿尖，两边共用一条缓动，所以线头始终贴着鱼，不用逐帧算。
+   全程只动 transform / 不动 width/height/top/left，也不挂 rAF。 */
+function fishReel(el, fr){
+  var field = $('gameField');
+  if (!field || !el) return;
+  var i, node;
+  /* 先停掉游泳动画：CSS 关键帧的 transform 优先级高于 inline transform，不停掉下面
+     设的位移根本不生效。停完再量——游泳会让鱼左右浮 ±20px，把浮动偏移算进端点，
+     线就会搭在鱼旁边。 */
+  el.style.animation = 'none';
+  void el.offsetWidth;   /* 先把「停掉浮动」落实到布局，再量；否则量到的还是浮动中的位置，线会差出一截 */
+  var er = el.getBoundingClientRect();
+  var bx = er.left - fr.left + er.width / 2;
+  var by = er.top - fr.top + er.height / 2;
+  /* 竿尖：有 .rod 就按它的实际盒子换算，拿不到就退回样式里的默认值（left/top -6px、150×110） */
+  var tip = { x: -6 + 150 * ROD_HOOK.x, y: -6 + 110 * ROD_HOOK.y };
+  var rod = field.querySelector('.rod');
+  if (rod && rod.getBoundingClientRect){
+    var rr = rod.getBoundingClientRect();
+    if (rr.width && rr.height){
+      tip = { x: rr.left - fr.left + rr.width * ROD_HOOK.x,
+              y: rr.top - fr.top + rr.height * ROD_HOOK.y };
+    }
+  }
+  /* ax/ay = 竿尖 → 鱼心（线的方向）；收线时鱼要往反方向走，所以下面用 -ax/-ay。
+     这两个方向别写混：写成「鱼 → 竿尖」的话线会朝反方向甩出去，
+     而竿子上本来就画着一条 57px 的装饰线，贴着鱼看很像"连上了"，很容易误判（第一版就栽在这）。 */
+  var ax = bx - tip.x, ay = by - tip.y;
+  var len = Math.max(24, Math.sqrt(ax * ax + ay * ay));
+  /* 线是一根从竿尖往下长的 div，默认朝 +y（正下方、屏幕角 90°）。CSS 的正角度是顺时针，
+     所以 rotate 的角度 = 方向角 - 90°。 */
+  var deg = Math.atan2(ay, ax) * 180 / Math.PI - 90;
+  var line = mk('div', 'reel-line');
+  line.style.left = tip.x + 'px';
+  line.style.top = tip.y + 'px';
+  line.style.height = len + 'px';
+  line.style.transform = 'rotate(' + deg.toFixed(2) + 'deg) scaleY(.02)';
+  field.appendChild(line);
+  void line.offsetWidth;   /* 强制回流，否则起始值和目标值被合成一帧、线不会甩出去 */
+  line.style.transform = 'rotate(' + deg.toFixed(2) + 'deg) scaleY(1)';
+
+  /* 180ms：钩住了 —— 原地炸一朵水花，然后鱼和线一起收短，鱼被拉到竿尖 */
+  setTimeout(function(){
+    if (line.classList) line.classList.add('pull');
+    line.style.transform = 'rotate(' + deg.toFixed(2) + 'deg) scaleY(' + (6 / len).toFixed(4) + ')';
+    for (i = 0; i < 6; i++){
+      var ang = (Math.PI * 2 / 6) * i + Math.random() * 0.6;
+      var dist = 26 + Math.random() * 40;
+      node = mk('span', 'catch-splash');
+      node.style.left = bx + 'px';
+      node.style.top = by + 'px';
+      node.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+      node.style.setProperty('--dy', (Math.sin(ang) * dist - 18) + 'px');
+      node.style.animationDelay = (i * 0.02) + 's';
+      field.appendChild(node);
+      (function(n){
+        setTimeout(function(){ if (n.parentNode) n.parentNode.removeChild(n); }, 700);
+      })(node);
+    }
+    el.style.transition = 'transform .54s cubic-bezier(.45,.05,.55,.95)';
+    el.style.transform = 'translate(' + (-ax).toFixed(1) + 'px,' + (-ay).toFixed(1) + 'px) rotate(-14deg) scale(.34)';
+  }, 180);
+
+  /* 760ms：到竿尖了，化掉（鱼篓里那颗在 gameFx 里已经加过，别重复加）。
+     卡在 880ms 之内——gameAward() 到时候会推下一题、整块重渲染。 */
+  setTimeout(function(){
+    if (line.parentNode) line.parentNode.removeChild(line);
+    el.style.transition = 'opacity .14s linear';
+    el.style.opacity = '0';
+  }, 760);
+}
 /* 果子：径向渐变 + 高光 + 梗和叶，四种果色轮换 */
 function fruitSVG(i){
   var pal = [
@@ -10374,9 +10454,12 @@ function gameFx(el, kind){
     }
   }
 
-  /* 钓鱼溅水花 / 泡泡炸成水珠 */
-  if (kind === 'fish' || kind === 'bubble'){
-    var cls = (kind === 'fish') ? 'catch-splash' : 'bub-bit';
+  /* 钓鱼：线甩出去、把鱼提到竿尖（水花在「钩住」那一刻才炸，落在 fishReel 里） */
+  if (kind === 'fish') fishReel(el, fr);
+
+  /* 泡泡炸成水珠 */
+  if (kind === 'bubble'){
+    var cls = 'bub-bit';
     for (i = 0; i < 6; i++){
       var ang = (Math.PI * 2 / 6) * i + Math.random() * 0.6;
       var dist = 30 + Math.random() * 44;

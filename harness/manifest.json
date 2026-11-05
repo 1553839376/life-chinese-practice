@@ -125,7 +125,9 @@
       "basketSVG",
       "gameFx",
       "treeCrown",
-      "feedAnimal"
+      "feedAnimal",
+      "fishReel",
+      "ROD_HOOK"
     ],
     "班级练习": [
       "buildQuestions",
@@ -357,7 +359,7 @@
       "args": [
         "生活语文练习台.html"
       ],
-      "min_cases": 688
+      "min_cases": 703
     },
     {
       "name": "check_pair",

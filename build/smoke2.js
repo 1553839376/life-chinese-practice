@@ -2441,6 +2441,74 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(80);
   ok(d.getElementById('traceMask').hidden === true, '关掉描写面板');
 
+
+  /* ---------- 37. 钓鱼收线：点对以后线真的拉到鱼上，再把鱼提到竿尖（v44） ---------- */
+  console.log('\n--- 37. 钓鱼收线 ---');
+  /* 老师 2026-11-05：「能不能在学生点对之后，这个钓竿的线拉到鱼上把学生钓上来呢」。
+     jsdom 没有布局（rect 全是 0），所以这里量的是「代码自己算出来的几何自不自洽」：
+     线长必须等于竿尖到鱼心的距离、角度必须指回鱼、鱼必须朝竿尖走。
+     真正的坐标对不对，只能靠无头浏览器截图——已经在 1100×800 上核过。 */
+  const v44_chars = w.STATE.chars.filter(c => c.w).slice(0, 4);
+  w.startGame('fish', v44_chars);
+  await wait(140);
+  w.clearGameTimer();
+  const v44_q = w.GAME.queue[0];
+  const v44_all = d.querySelectorAll('#gameField .g-item');
+  let v44_fish = null;
+  for (let i = 0; i < v44_all.length; i++){
+    if (v44_all[i].getAttribute('data-w') === v44_q.w) v44_fish = v44_all[i];
+  }
+  ok(!!v44_fish, '钓鱼局里能找到正确的那条鱼');
+  ok(!d.querySelector('.reel-line'), '还没点对时场上没有钓线');
+
+  /* 竿尖：jsdom 里 .rod 的 rect 是 0，代码会退回样式默认值（left/top -6px、150×110、钩子在 116,88） */
+  const v44_tip = { x: -6 + 150 * 116 / 150, y: -6 + 110 * 88 / 110 };
+  click(v44_fish);
+  await wait(30);
+  const v44_line = d.querySelector('.reel-line');
+  ok(!!v44_line, '点对之后立刻甩出一条钓线');
+  ok(v44_line.parentNode === d.getElementById('gameField'), '钓线挂在游戏场里（和鱼同一个坐标系）');
+  ok(Math.abs(parseFloat(v44_line.style.left) - v44_tip.x) < 1.01 &&
+     Math.abs(parseFloat(v44_line.style.top) - v44_tip.y) < 1.01,
+    '线的起点就是竿尖：' + v44_line.style.left + ' / ' + v44_line.style.top);
+
+  /* jsdom 里鱼的 rect 是 0 → 鱼心就是 (0,0)，于是 ax/ay 就是「竿尖→原点」 */
+  const v44_ax = 0 - v44_tip.x, v44_ay = 0 - v44_tip.y;
+  const v44_len = Math.sqrt(v44_ax * v44_ax + v44_ay * v44_ay);
+  ok(Math.abs(parseFloat(v44_line.style.height) - v44_len) < 1.01,
+    '线长 = 竿尖到鱼心的距离：' + v44_line.style.height + ' vs ' + v44_len.toFixed(2));
+  const v44_deg = Math.atan2(v44_ay, v44_ax) * 180 / Math.PI - 90;
+  const v44_got = parseFloat(/rotate\(([-\d.]+)deg/.exec(v44_line.style.transform)[1]);
+  ok(Math.abs(v44_got - v44_deg) < 0.05,
+    '线的角度指回鱼（方向不能反）：' + v44_got.toFixed(2) + ' vs ' + v44_deg.toFixed(2));
+
+  ok(v44_fish.style.animation === 'none',
+    '先把游泳动画停掉（不停掉的话关键帧压住 inline transform，鱼根本走不动）');
+  ok(d.querySelectorAll('.catch-splash').length === 0,
+    '刚点下去还没炸水花（要等钩住那一刻，先炸就变成"鱼还没被钩到就出水"）');
+
+  /* 180ms：钩住了 → 水花 + 开始收线 */
+  await wait(200);
+  ok(d.querySelectorAll('.catch-splash').length > 0, '钩住的瞬间炸水花');
+  ok(v44_line.classList.contains('pull'),
+    '线进入收线态（换一条 540ms 的缓动，和鱼同步）');
+  /* 鱼身上这时候才有位移：位移必须是「鱼 → 竿尖」，写反的话鱼会往远处跑 */
+  ok(v44_fish.style.transform.indexOf('scale(.34)') > 0, '鱼被缩小收线：' + v44_fish.style.transform);
+  const v44_tf = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(v44_fish.style.transform);
+  ok(!!v44_tf, '鱼身上写的是位移：' + v44_fish.style.transform);
+  if (v44_tf){
+    ok(Math.abs(parseFloat(v44_tf[1]) + v44_ax) < 1.01 &&
+       Math.abs(parseFloat(v44_tf[2]) + v44_ay) < 1.01,
+      '鱼朝竿尖走（位移 = 鱼→竿尖，不是反方向）：' + v44_tf[1] + ',' + v44_tf[2]);
+  } else {
+    ok(false, '鱼朝竿尖走（位移 = 鱼→竿尖，不是反方向）');
+  }
+
+  /* 760ms：线收完撤掉，鱼已经化在竿尖（下一题会整块重渲染） */
+  await wait(620);
+  ok(!d.querySelector('.reel-line'), '收完线自动撤掉，不留在场上');
+  w.clearGameTimer();
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);
