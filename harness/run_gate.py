@@ -903,14 +903,15 @@ def gate_static(html):
     # 现在语音块挪到文档最末尾 + 由紧跟的一行小脚本触发解析；加载页改成 boot() 跑完才撤。
     _TRIG = '<script>if (window.voicePackWarm) voicePackWarm();</script>'
     _body = html.replace(_TRIG, '')          # 触发脚本本身也在末尾，不算「前面的脚本」
-    _vi = _body.find('<script type="application/json" id="voicePack">')
+    # 注意用 rfind：p8.js 的注释里也写着这个标签名，find 会命中那一处（不在文档结构里）
+    _vi = _body.rfind('<script type="application/json" id="voicePack">')
     _last_plain = max(m.start() for m in re.finditer(r'<script(?![^>]*application/json)',
                                                      _body)) if _vi >= 0 else -1
     rec('G1', '语音包排在所有脚本之后（首屏只等 1.7 MB，不再等 12.9 MB 音频）',
         _vi > 0 and _last_plain < _vi,
         'voicePack@%d lastPlainScript@%d' % (_vi, _last_plain))
     rec('G1', '语音包下完会自动解析（末尾那行小脚本调 voicePackWarm）',
-        html.rfind(_TRIG) > html.find('<script type="application/json" id="voicePack">') > 0)
+        html.rfind(_TRIG) > html.rfind('<script type="application/json" id="voicePack">') > 0)
     rec('G1', '加载页不再自己定时淡出（改成 boot() 真跑完才撤）',
         'animation:bootFade .45s ease 2.4s forwards' not in html
         and '.boot-mask.out{animation:bootFade .45s ease forwards}' in html

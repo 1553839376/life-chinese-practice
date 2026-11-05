@@ -27,11 +27,18 @@ def read(p):
     return io.open(p, encoding='utf-8').read()
 
 
-parts = [read(p) for p in HEAD]
-parts += [read(p) for p in TAIL]
 voice = read(VOICE)
-parts.append('<script type="application/json" id="voicePack">' + voice + '</script>\n')
-parts.append('<script>if (window.voicePackWarm) voicePackWarm();</script>\n')
+block = ('<script type="application/json" id="voicePack">' + voice + '</script>\n'
+         '<script>if (window.voicePackWarm) voicePackWarm();</script>\n')
+
+# p_close.txt = '</script>\n</body>\n</html>\n'。语音块必须落在「主脚本关闭之后、</body> 之前」：
+# 放在 </html> 后面浏览器虽然会容错解析，但那是不合规的文档结构（也容易被平台重排）。
+close = read(TAIL[-1])
+cut = close.index('</body>')
+
+parts = [read(p) for p in HEAD]
+parts += [read(p) for p in TAIL[:-1]]
+parts.append(close[:cut] + block + close[cut:])
 
 html = ''.join(parts)
 io.open(OUT, 'w', encoding='utf-8', newline='').write(html)
