@@ -1509,9 +1509,14 @@ function boot(){
   renderLearn();
   showScreen('learn');
   if (!STATE.students.length && !last){ $('pickEmpty').hidden = false; }
-  /* 首屏已经可用：收起加载提示，语音包留到空闲时再解析（4 MB，不挡首屏） */
+  /* 首屏已经可用：这才撤加载页（v41 前是 2.4 秒自己淡出，脚本还没到就露了空页）。
+     先加 .out 让它淡出，460ms 后从 DOM 摘掉。语音包挪到文档末尾了，本地文件打开时
+     这里调用是空转，网络打开时由语音块后面那行小脚本负责解析。 */
   var bm = $('bootMask');
-  if (bm && bm.parentNode) bm.parentNode.removeChild(bm);
+  if (bm && bm.classList){
+    bm.classList.add('out');
+    setTimeout(function(){ if (bm.parentNode) bm.parentNode.removeChild(bm); }, 460);
+  }
   voicePackWarm();
 
   if (!dbApi()){

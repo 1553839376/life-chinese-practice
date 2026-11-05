@@ -70,7 +70,10 @@
       "spkPick",
       "readHint",
       "avSave",
-      "avLoad"
+      "avLoad",
+      "voicePackLoad",
+      "voicePackWarm",
+      "bootMask"
     ],
     "认字乐园": [
       "renderLearn",

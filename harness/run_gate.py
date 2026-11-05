@@ -897,6 +897,28 @@ def gate_static(html):
     rec('G1', '计分只有 gameAward 一处（gameRight / dictOk 都走它，不各记一份）',
         'gameAward()' in _gr and 'GAME.oneTry' not in _gr and 'GAME.retried' not in _gr,
         '' if _gr else '找不到 gameRight')
+    # v41 加载手术（老师 2026-11-05「帮我优化一下我看看是什么效果」）：语音包原来夹在
+    # 结构和脚本之间，12.9 MB 音频把后面 2.5 MB 的脚本全堵住 —— 教室 10 Mbps 要等约 8 秒
+    # 才出现第一张照片，而加载页 2.4 秒就自己淡出，露出「点一下自己的照片」却没有照片的空页。
+    # 现在语音块挪到文档最末尾 + 由紧跟的一行小脚本触发解析；加载页改成 boot() 跑完才撤。
+    _TRIG = '<script>if (window.voicePackWarm) voicePackWarm();</script>'
+    _body = html.replace(_TRIG, '')          # 触发脚本本身也在末尾，不算「前面的脚本」
+    _vi = _body.find('<script type="application/json" id="voicePack">')
+    _last_plain = max(m.start() for m in re.finditer(r'<script(?![^>]*application/json)',
+                                                     _body)) if _vi >= 0 else -1
+    rec('G1', '语音包排在所有脚本之后（首屏只等 1.7 MB，不再等 12.9 MB 音频）',
+        _vi > 0 and _last_plain < _vi,
+        'voicePack@%d lastPlainScript@%d' % (_vi, _last_plain))
+    rec('G1', '语音包下完会自动解析（末尾那行小脚本调 voicePackWarm）',
+        html.rfind(_TRIG) > html.find('<script type="application/json" id="voicePack">') > 0)
+    rec('G1', '加载页不再自己定时淡出（改成 boot() 真跑完才撤）',
+        'animation:bootFade .45s ease 2.4s forwards' not in html
+        and '.boot-mask.out{animation:bootFade .45s ease forwards}' in html
+        and "bm.classList.add('out')" in html)
+    rec('G1', '慢网络时加载页会多一句提示（纯 CSS 12 秒，不依赖 JS）',
+        '.boot-slow{' in html and 'animation:bootSlow .4s ease 12s forwards' in html
+        and '网络有点慢，再等几秒' in html)
+
     _go = html[html.find('function gameOver'):]
     _go = _go[:max(_go.find('function ', 10), 1)]
     rec('G1', '游戏结算按「一次就对」算正确率，星数也按它给',
