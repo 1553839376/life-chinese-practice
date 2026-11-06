@@ -4,7 +4,7 @@
 
 ## 一、产物与发布
 - 产物 `build/生活语文练习台.html`：15 段全内联（`p1 p2 p_open p_sfx p_art p_stroke lib p4 p8 p5 p_so p6 p7 p_close` + `p_voice.json`）；节点 `nU41kHmAoelqM2mGxWRFll`。构建 `cd build && python build_html.py`（`newline=''` 固定 LF，md5 可复现）。数据在本机 `localStorage['wb2_data_v1']`，云端只当镜像。
-- 发布流程见 `docs/01-HARNESS.md`。① 用 `upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**；③ 成功标志认 `KS_PAGE_COMMIT`；④ commit/publish/download 都随机 `TEMPORARY_ERROR` → **循环 1~6 次 + 10~12s 退避**；⑤ 两个入口都要传，md5 不同正常（pnid 不同）。
+- 发布流程见 `docs/01-HARNESS.md`。① 用 `upload_curl.py`，**别用 `upload_page_artifact.py`**（urllib 走代理必 502）；② `commit_page_transaction.py` **必须带 `--message`**；③ 成功标志认 `KS_PAGE_COMMIT`；④ commit/publish/download 都随机 `TEMPORARY_ERROR` → **循环 1~6 次 + 10~12s 退避**；⑤ 两个入口都要传，md5 不同正常（pnid 不同）。⑥ 本机 curl 走 schannel，上传/下载**都要加 `--ssl-no-revoke`**（否则 `CRYPT_E_REVOCATION_OFFLINE`、HTTP 000 且「上传 0 字节」，看着像代理挂了）；⑦ 静态直链**目录 URL 直接取是 404，要带 `index.html`**。
 - **线上不能字节比对**：平台注入 pnid、重排属性（大 ~24 KB 正常）→ 抽 `<style>`/各 `<script>` 逐块比，**两边都过滤空块**（线上多一个空 `inject.js`）。静态直链用 `list_page_publish_artifacts.py` 取 `data.url`；给用户前 curl grep **`APP_VER` 的值**，别 grep 角标。
 - `lint_page_quality.py` 在 >2 MB 上要 16 分钟（后台跑或跳过）。
 - **git**：`http.proxy` 和 `https.proxy` **两个都要设**成当前 `$https_proxy`（只设一个会 `Could not resolve host`）；走沙箱代理打 GitHub 必 502 → `env -u http_proxy …`；遇 `git-upload-pack unexpected disconnect` → `-c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=25 -c http.schannelCheckRevoke=false`。**判断成功看 `git` 退出码，别 `| tail` 完看 `$?`**（管道永远 0）；失败别判死，6~8 次重试。

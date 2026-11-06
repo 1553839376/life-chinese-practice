@@ -52,7 +52,7 @@ def main():
     print('已取得上传凭证，开始 PUT')
 
     r = subprocess.run(
-        ['curl', '-sS', '-X', 'PUT', '--data-binary', '@' + src,
+        ['curl', '-sS', '--ssl-no-revoke', '-X', 'PUT', '--data-binary', '@' + src,
          '-H', 'Content-Type: text/html; charset=utf-8',
          url, '-o', os.devnull, '-w', 'HTTP %{http_code} 上传 %{size_upload} 字节'],
         capture_output=True, text=True,
