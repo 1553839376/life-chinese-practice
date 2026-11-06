@@ -1776,9 +1776,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   }
 
   console.log('\n【29】老师入口：连点两下才进（v34）');
+  /* v48 起了主事件流按设备挑，这里跟着挑，别再写死 pointerup（希沃上根本没这个事件） */
   const v34_entry = d.getElementById('btnTeacherTop');
+  const v34_main = ('ontouchstart' in w) ? 'touchend' : (w.PointerEvent ? 'pointerup' : 'mouseup');
   const v34_tap = () => v34_entry.dispatchEvent(
-    new w.MouseEvent('pointerup', { bubbles: true, clientX: 900, clientY: 18 }));
+    new w.MouseEvent(v34_main, { bubbles: true, clientX: 900, clientY: 18 }));
   w.showScreen('learn');
   await wait(60);
   v34_tap();
@@ -1788,18 +1790,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   v34_tap();
   await wait(160);
   ok(d.getElementById('scrTeacher').hidden === false,
-    '紧接着再点一下（间隔 < 520ms）就进老师端');
+    '紧接着再点一下（间隔 < 800ms）就进老师端');
   ok((v34_entry.getAttribute('title') || '').indexOf('连点两下') >= 0,
     '按钮提示改成「连点两下」：' + v34_entry.getAttribute('title'));
 
   w.showScreen('learn');
   await wait(40);
   v34_tap();
-  await wait(620);
+  await wait(900);
   v34_tap();
   await wait(140);
   ok(d.getElementById('scrTeacher').hidden === true,
-    '隔了 0.6 秒再点不算连点（手抖、学生发两次呆都不会误入）');
+    '隔了 0.9 秒再点不算连点（手抖、学生发两次呆都不会误入）');
 
   console.log('\n【30】游戏乐园：先选玩法再挑字（v35 / v36）');
   w.learnMode('read');
@@ -2944,6 +2946,83 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('scrRead').hidden, '空字表进不去早读屏（只弹一句提示）');
 
   ok(w.STATE.logs.length === v47_logs, '早读不写学习记录（和听写同一个口径，不污染档案）');
+
+  /* ==================== §41 老师入口（v48） ====================
+     老师原话：「在希沃智慧屏上点两次点不开老师，用鼠标就可以」。
+     根因是旧版只听 pointerup 一种事件，那台机器根本没派发。
+     这一节把每种可能的事件流都真派发一遍：只要有一条路进不去，就是老师当场进不了老师端。 */
+  const v48_btn = d.getElementById('btnTeacherTop');
+  const v48_main = ('ontouchstart' in w) ? 'touchend' : (w.PointerEvent ? 'pointerup' : 'mouseup');
+  const v48_ev = (type, x, y) => new w.MouseEvent(type,
+    { bubbles: true, cancelable: true, clientX: x, clientY: y });
+  const v48_back = () => { w.showScreen('learn'); };
+  ok(v48_main === 'touchend' || v48_main === 'pointerup' || v48_main === 'mouseup',
+    '主事件流按设备挑一种（触摸屏走 touchend，有 Pointer Events 走 pointerup，否则 mouseup）：' + v48_main);
+
+  /* ① 只派发 click 两次 —— 有些一体机只给 click，这条以前完全没有 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('click', 100, 20));
+  await wait(250);
+  v48_btn.dispatchEvent(v48_ev('click', 102, 21));
+  await wait(60);
+  ok(w.STATE.phase === 'teacher', '两次 click（隔 250ms）就进老师端：' + w.STATE.phase);
+
+  /* ② 只派发主事件流两次 —— 真机上的正常路径 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev(v48_main, 200, 20));
+  await wait(300);
+  v48_btn.dispatchEvent(v48_ev(v48_main, 203, 22));
+  await wait(60);
+  ok(w.STATE.phase === 'teacher', '两次 ' + v48_main + '（隔 300ms）就进老师端');
+
+  /* ③ 只点一下 —— 学生一碰就进老师端是事故 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('click', 300, 20));
+  await wait(60);
+  ok(w.STATE.phase === 'learn', '只点一下不进老师端');
+
+  /* ④ 一次物理触摸 = 主事件流 + 浏览器补发的 click（同坐标）：只许算一下 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev(v48_main, 500, 20));
+  await wait(80);
+  v48_btn.dispatchEvent(v48_ev('click', 500, 20));
+  await wait(60);
+  ok(w.STATE.phase === 'learn', '一次触摸（' + v48_main + ' + 补发的 click）只算一下，不进去');
+
+  /* ⑤ 两下隔 900ms（超出 800ms 窗口）—— 不算连点 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('click', 400, 20));
+  await wait(900);
+  v48_btn.dispatchEvent(v48_ev('click', 401, 20));
+  await wait(60);
+  ok(w.STATE.phase === 'learn', '两下隔 900ms 不算连点（800ms 窗口收紧到刚刚好）');
+
+  /* ⑥ dblclick 单独派发（有的 Windows 触摸驱动只给这个） */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('dblclick', 600, 20));
+  await wait(60);
+  ok(w.STATE.phase === 'teacher', 'dblclick 直接进老师端');
+
+  /* ⑦ 按住 900ms 不放 —— 不因手指微动作废 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('mousedown', 700, 20));
+  await wait(400);
+  v48_btn.dispatchEvent(v48_ev('mousemove', 706, 24));
+  await wait(600);
+  ok(w.STATE.phase === 'teacher', '按住 1 秒进老师端（中途手指挪了 6px 也不算废）');
+  /* 松手那一下会落进刚打开的老师端，得吞掉 */
+  const v48_click = v48_ev('click', 700, 20);
+  v48_btn.dispatchEvent(v48_click);
+  ok(v48_click.defaultPrevented === true, '按住进屏后紧跟着的那下 click 被吞掉（不会误触老师端按钮）');
+  await wait(700);
+
+  /* ⑧ 按住 300ms 就松 —— 不算 */
+  v48_back(); await wait(60);
+  v48_btn.dispatchEvent(v48_ev('mousedown', 800, 20));
+  await wait(300);
+  v48_btn.dispatchEvent(v48_ev('mouseup', 800, 20));
+  await wait(700);
+  ok(w.STATE.phase === 'learn', '按住 0.3 秒就松不进老师端（学生手抖按住不算）');
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

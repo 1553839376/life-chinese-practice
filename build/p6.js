@@ -1470,21 +1470,70 @@ function wireEvents(){
   tea.addEventListener('input', scheduleCache);
   tea.addEventListener('change', scheduleCache);
 
-  /* 老师入口：双击进入（v34）。原来是按住不放 1 秒，触屏上手指一滑就作废，
-     老师自己都点不进去。这里自己数两次 pointerup，不靠浏览器自带的双击事件
-     （触屏上派发不一致），鼠标和触屏走同一套判定：
-     两次落点相距 < 40px、间隔 < 520ms 才算双击——学生瞎点一下、乱点两下都不会进去。 */
+  /* 老师入口（v34 双击 → v48 加固）。
+     v48 起因：老师在希沃智慧屏上连点两下进不去，换鼠标就行——说明那台机器上
+     （或它的浏览器）根本没派发 pointerup，而旧版只听 pointerup 一种事件。
+     现在按设备挑事件流 + click 兜底 + dblclick 兜底 + 按住备用，四条路进同一个门。 */
   var entry = $('btnTeacherTop');
-  var tapAt = 0, tapX = 0, tapY = 0;
-  var TAP_GAP = 520, TAP_SLOP = 40;
-  entry.addEventListener('pointerup', function(e){
-    var now = Date.now();
-    var x = e.clientX || 0, y = e.clientY || 0;
-    var twice = (now - tapAt < TAP_GAP) &&
-                Math.abs(x - tapX) < TAP_SLOP && Math.abs(y - tapY) < TAP_SLOP;
-    if (twice){ tapAt = 0; openTeacher(); return; }
-    tapAt = now; tapX = x; tapY = y;
-  });
+  var ENTRY_GAP = 800;    /* 两次点的最大间隔。大屏上老师要挪手指，520ms 太紧 */
+  var ENTRY_SLOP = 80;    /* 两次落点的最大偏移。65~86 寸屏上 40px 就等于没动过 */
+  var ENTRY_HOLD = 900;   /* 按住这么久也算数（v34 那个老办法，但不再因手指微动作废） */
+  var tAt = 0, tX = 0, tY = 0;   /* 上一次「点」的时间与位置 */
+  var used = 0;                  /* 主事件流最近一次用掉的时间，给 click 兜底去重 */
+  var holdT = null;
+
+  function entryXY(e){
+    var t = (e.changedTouches && e.changedTouches[0]) || e || {};
+    return { x: t.clientX || 0, y: t.clientY || 0 };
+  }
+  function entryTap(e, primary){
+    var p = entryXY(e), now = Date.now();
+    if (primary) used = now;
+    if (tAt && now - tAt < ENTRY_GAP &&
+        Math.abs(p.x - tX) < ENTRY_SLOP && Math.abs(p.y - tY) < ENTRY_SLOP){
+      tAt = 0;
+      if (holdT){ clearTimeout(holdT); holdT = null; }
+      openTeacher();
+      return true;
+    }
+    tAt = now; tX = p.x; tY = p.y;
+    return false;
+  }
+  /* 主事件流：有触摸就听 touchend，没有就看有没有 Pointer Events，再退到 mouseup。
+     一次物理触摸会连着派发 touch → mouse → click，所以 click 只在「主事件流没响过」时才算数
+     （700ms 内刚用主事件流处理过就跳过），不然一次点会被数成两下、学生碰一下就进去了。 */
+  var mainEvt = ('ontouchstart' in window) ? 'touchend'
+             : (window.PointerEvent ? 'pointerup' : 'mouseup');
+  entry.addEventListener(mainEvt, function(e){ entryTap(e, true); }, false);
+  entry.addEventListener('click', function(e){
+    if (Date.now() - used < 700) return;
+    entryTap(e, false);        /* 不能在这里刷新 used：否则第二次 click 会被自己的去重挡掉 */
+  }, false);
+  /* 有的 Windows 触摸驱动只给 dblclick，那就直接进 */
+  entry.addEventListener('dblclick', function(e){
+    if (e.preventDefault) e.preventDefault();
+    openTeacher();
+  }, false);
+  /* 备用：按住 900ms。旧版长按一滑就作废，这一版不因手指微动取消（只在松手时收） */
+  function holdStart(){
+    if (holdT) clearTimeout(holdT);
+    holdT = setTimeout(function(){
+      holdT = null;
+      /* 松手那一下会落到刚打开的老师端页面上，先吞掉接下来 600ms 的 click */
+      var swallow = function(ev){
+        if (ev.preventDefault) ev.preventDefault();
+        if (ev.stopPropagation) ev.stopPropagation();
+      };
+      document.addEventListener('click', swallow, true);
+      setTimeout(function(){ document.removeEventListener('click', swallow, true); }, 600);
+      openTeacher();
+    }, ENTRY_HOLD);
+  }
+  function holdEnd(){ if (holdT){ clearTimeout(holdT); holdT = null; } }
+  var downs = ['pointerdown', 'touchstart', 'mousedown'], i;
+  for (i = 0; i < downs.length; i++) entry.addEventListener(downs[i], holdStart, false);
+  var ups = ['pointerup', 'touchend', 'mouseup', 'pointercancel', 'touchcancel'], j;
+  for (j = 0; j < ups.length; j++) entry.addEventListener(ups[j], holdEnd, false);
 }
 
 /* ------------------------- 启动 ------------------------- */

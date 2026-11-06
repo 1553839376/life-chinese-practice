@@ -680,16 +680,20 @@ def gate_static(html):
     # 长按要求手指按住 1 秒不动，触屏上稍微一划就作废；双击才是孩子和老师都熟的手势。
     _ent = html.split("var entry = $('btnTeacherTop')")[1].split('function boot')[0] \
         if "var entry = $('btnTeacherTop')" in html else ''
-    rec('G1', '老师入口靠两次 pointerup 自己判双击（落点 40px 内、间隔 520ms 内）',
-        bool(_ent) and "addEventListener('pointerup'" in _ent
-        and 'TAP_GAP = 520' in _ent and 'TAP_SLOP = 40' in _ent
-        and 'Math.abs(x - tapX)' in _ent and 'openTeacher();' in _ent,
+    # v48（2026-11-06）把这三条从「两次 pointerup + 长按已拆」改成：
+    # 自己数连点（不依赖任何一种具体事件）、按住只在松手时收、文案写明三种进法。
+    # 起因是希沃智慧屏不派发 pointerup，老师点两次进不去（见 T-041）。
+    rec('G1', '老师入口自己数连点（落点 80px 内、间隔 800ms 内），不靠浏览器双击事件',
+        bool(_ent) and 'function entryTap(' in _ent
+        and 'var ENTRY_GAP = 800;' in _ent and 'var ENTRY_SLOP = 80;' in _ent
+        and 'Math.abs(p.x - tX)' in _ent and 'tAt = 0;' in _ent and 'openTeacher();' in _ent,
         _ent.replace('\n', ' ')[:120] if _ent else '找不到入口绑定')
-    rec('G1', '长按那套已拆掉（入口代码里没有 pointerdown / 900ms 定时器 / dblclick）',
-        bool(_ent) and 'pointerdown' not in _ent and '900' not in _ent
-        and 'dblclick' not in _ent)
-    rec('G1', '界面文案统一「连点两下」（不再出现「长按约 1 秒」）',
-        'title="连点两下进入老师端"' in html
+    rec('G1', '按住只在松手/取消时收（不因手指微动作废，也不挂 pointerleave）',
+        bool(_ent) and 'var ENTRY_HOLD = 900;' in _ent and 'function holdStart()' in _ent
+        and "'pointercancel', 'touchcancel'" in _ent
+        and 'pointerleave' not in _ent and 'mouseleave' not in _ent)
+    rec('G1', '界面文案写明进法（连点两下 / 按住不放），不再出现「长按约 1 秒」',
+        'title="连点两下，或按住不放，进入老师端"' in html
         and '（长按约 1 秒）' not in html and '长按右上角' not in html
         and html.count('（连点两下）') >= 5)
     # 双击会被浏览器当成「放大手势」吃掉第二下；按钮上必须关掉缩放与选中
@@ -1076,6 +1080,31 @@ def gate_static(html):
         'if (name !== ' + "'read' && typeof READ !== 'undefined' && READ.on) readStop(false);" in html)
     rec('G1', '早读不写学习记录（和听写同一个口径，乐园里的事不污染档案）',
         'logs' not in _rd and 'logAdd' not in _rd)
+
+    # v48（老师 2026-11-06）：「在希沃智慧屏上点两次点不开老师，在这用鼠标就可以。」
+    # 根因是 v34 只听 pointerup 一种事件，那台机器/浏览器没派发就完全失灵，加上 520ms/40px
+    # 在 65~86 寸屏上本来就太紧。现在四条路进同一个门，这几条盯的是「别把哪条路又删回去」。
+    rec('G1', '老师入口按设备挑主事件流（触摸屏 touchend / 有 Pointer Events 走 pointerup / 退到 mouseup）',
+        "var mainEvt = ('ontouchstart' in window) ? 'touchend'" in html
+        and ": (window.PointerEvent ? 'pointerup' : 'mouseup');" in html
+        and 'entry.addEventListener(mainEvt, function(e){ entryTap(e, true); }, false);' in html)
+    rec('G1', '老师入口有 click 兜底（只发 click 的一体机也得进得去）',
+        "entry.addEventListener('click', function(e){" in html
+        and 'if (Date.now() - used < 700) return;' in html)
+    rec('G1', 'click 兜底不能刷新 used（否则第二次 click 会被自己的去重挡掉，等于没有兜底）',
+        'entryTap(e, false);' in html and html.count('entryTap(e, true)') == 1)
+    rec('G1', '老师入口有 dblclick 直通（有的 Windows 触摸驱动只给 dblclick）',
+        "entry.addEventListener('dblclick'" in html and 'openTeacher();' in html)
+    rec('G1', '老师入口有「按住不放」备用（不因手指微动取消，只在松手时收）',
+        'var ENTRY_HOLD = 900;' in html and 'function holdStart()' in html
+        and "'pointercancel', 'touchcancel'" in html)
+    rec('G1', '按住进屏后吞掉紧跟着的 click（松手那一下会落在刚打开的老师端按钮上）',
+        "document.addEventListener('click', swallow, true);" in html
+        and 'document.removeEventListener' in html)
+    rec('G1', '连点阈值按大屏放大到 800ms / 80px（520ms / 40px 在 65~86 寸屏上等于没动过）',
+        'var ENTRY_GAP = 800;' in html and 'var ENTRY_SLOP = 80;' in html)
+    rec('G1', '入口文案和三种进法一致（按钮 title + 空态提示都别只说「连点两下」）',
+        '连点两下（或按住不放）' in html and 'title="连点两下，或按住不放，进入老师端"' in html)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

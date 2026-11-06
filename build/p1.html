@@ -775,7 +775,9 @@ tr.tr-builtin td{background:#FBFAF3}
 .nav-btn:active{transform:scale(.96)}
 .nav-teach{border:1.5px solid var(--line2);background:var(--card);border-radius:10px;
   padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink3);min-height:38px;margin-left:6px;
-  /* 双击进老师端：禁掉双击缩放与文字选中，否则第二下会被浏览器吃掉（v34） */
+  /* 双击 / 按住进老师端：禁掉双击缩放与文字选中，否则第二下会被浏览器吃掉（v34）；
+     v48 加 touch-action:manipulation 之外还要能按住——希沃智慧屏上点两次进不去 */
+
   touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .nav-teach:active{background:#F0EADC}
 .nav-av{display:flex;align-items:center;justify-content:center;width:42px;height:42px;
