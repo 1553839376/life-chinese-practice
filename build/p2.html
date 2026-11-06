@@ -39,6 +39,11 @@
       <button class="sg-btn ga" data-gp="feed" type="button">
         <span class="sg-ico fed"></span><span class="sg-nm">喂小动物</span><span class="sg-d">把小动物要的字喂给它</span>
       </button>
+      <!-- v47：早读——挑几个字，发四张牌，一张张翻开带读。不是游戏（不计分、不写记录），
+           所以和听写一样独占一行、用实线；它排在游戏后面、听写前面，早读是每天第一件事。 -->
+      <button class="sg-btn gq" data-gp="read" type="button">
+        <span class="sg-ico rd"></span><span class="sg-nm">早读</span><span class="sg-d">挑几个字，一张张翻开跟着读</span>
+      </button>
       <!-- v40：第五张卡是「听写」——不玩场景，直接在田字格里默写。和练习里的
            「汉字听写」同一套手写区，但**不写学习记录**（游戏乐园刻意不污染测评成绩）。 -->
       <button class="sg-btn gd" data-gp="dict" type="button">
@@ -108,6 +113,25 @@
   </div>
 </section>
 
+<!-- 早读（v47）：老师挑几个字 → 一次发四张牌 → 一张张自动翻开、念一个字、留 5 秒跟读。
+     牌面只有大字（老师选的）：早读是听音认形，不塞拼音和组词抢注意力。
+     不判分、不写学习记录——和听写同一个口径，乐园里的事不污染档案。 -->
+<section id="scrRead" class="screen rd-screen" hidden>
+  <div class="rd-top">
+    <button id="readQuit" class="ghost-btn" type="button">退出</button>
+    <div class="rd-name">早读</div>
+    <div class="rd-meta"><b id="readRound">第 1 遍</b> · 第 <span id="readNow">1</span> / <span id="readTotal">8</span> 个字</div>
+    <button id="readPause" class="ghost-btn" type="button">暂停</button>
+  </div>
+  <div id="readStage" class="rd-stage">
+    <div id="readTable" class="rd-table"></div>
+  </div>
+  <div class="rd-foot">
+    <p class="rd-tip" id="readTip">翻开一张，跟着读一遍；读完自动翻下一张</p>
+    <button id="readNext" class="rd-next" type="button">下一个字</button>
+  </div>
+</section>
+
 <section id="scrPick" class="screen">
   <div class="pick-top">
     <h1>班级练习</h1>
@@ -144,7 +168,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v46</span>
+    <span id="appVer" class="app-ver">v47</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">

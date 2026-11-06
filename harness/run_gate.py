@@ -721,8 +721,8 @@ def gate_static(html):
     # 复用就等于「先弹一句『先选一个字』然后什么都不发生」。
     _gpbox = html.split('id="gamePick"')[1].split('id="gameNow"')[0] \
         if 'id="gamePick"' in html else ''
-    rec('G1', '六张玩法卡摆在乐园页里（四款玩法 + 听写 + 随便玩），不再弹遮罩面板',
-        bool(_gpbox) and _gpbox.count('data-gp="') == 6
+    rec('G1', '七张玩法卡摆在乐园页里（四款玩法 + 早读 + 听写 + 随便玩），不再弹遮罩面板',
+        bool(_gpbox) and _gpbox.count('data-gp="') == 7
         and 'data-gp="any"' in _gpbox and 'data-gk' not in _gpbox
         and 'id="gpMask"' not in html,
         '' if _gpbox else '找不到 gamePick')
@@ -1047,6 +1047,35 @@ def gate_static(html):
         and html.find('fruitDropTo(el)') < html.find("classList.add('hit')"))
     rec('G1', '果子掉落的 keyframes 用变量，不再写死 translate(96px,148px)',
         'translate(var(--fd-x,96px),var(--fd-y,148px))' in html)
+
+    # v47（老师 2026-11-06）：「乐园里面增加一个早读模式，老师可以选择几个字，然后轮播读，
+    # 留足时间给学生跟读。最好是有动效的……发牌的一次发四张，一张一张自动翻开读。」
+    # 选了发牌。这几条盯的是「再改别处时别把早读弄坏」：卡片入口、5 秒的单一来源、
+    # 牌面不塞拼音、一批不重复、离开就收摊。
+    _rd = html[html.find('function startRead'):]
+    _rd = _rd[:max(_rd.find('function readStop', 10), 1)]
+    _deal = html[html.find('function readDeal'):]
+    _deal = _deal[:max(_deal.find('function readDealTo', 10), 1)]
+    _keys = html[html.find('var GAME_KEYS'):]
+    _keys = _keys[:max(_keys.find('\n', 10), 1)]
+    rec('G1', '游戏乐园有「早读」卡，且它不在 GAME_KEYS 里（「随便玩」不随机到带读）',
+        'data-gp="read"' in html and "read: '早读'" in html and 'read' not in _keys)
+    rec('G1', '早读走自己的屏：pickStart 里 read 交给 startRead，不进游戏引擎',
+        "if (kind === 'read'){ startRead(chars); return; }" in html
+        and 'name !== ' + "'read' && typeof READ !== 'undefined' && READ.on" in html)
+    rec('G1', '跟读 5 秒只有 READ_HOLD 一个来源（CSS 读 --hold，别在样式里再写死一遍）',
+        'var READ_HOLD = 5000;' in html
+        and 'animation:rdHold var(--hold,5s)' in html
+        and "'--hold'" in html)
+    rec('G1', '一批牌从字表里顺序取、不在批内重复（slice 而不是取余凑满四张）',
+        'list.slice(READ.i, READ.i + READ_TAKE)' in _deal)
+    rec('G1', '牌面只有大字和一条进度条（老师选的「只显示大字」，别把拼音塞回牌上）',
+        "class=\"rd-face rd-front\"><b>" in html and 'rd-wait' in html
+        and '<i class=\"rd-py\"' not in html)
+    rec('G1', '离开早读屏就收摊（换屏不清定时器会继续在后台翻牌、出声）',
+        'if (name !== ' + "'read' && typeof READ !== 'undefined' && READ.on) readStop(false);" in html)
+    rec('G1', '早读不写学习记录（和听写同一个口径，乐园里的事不污染档案）',
+        'logs' not in _rd and 'logAdd' not in _rd)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

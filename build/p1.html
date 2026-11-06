@@ -1000,6 +1000,13 @@ body.picking #scrLearn{padding-bottom:96px}
    虚线在这套界面里是「不算正式玩法」的意思，别混。 */
 .sg-btn.gd{grid-column:1/-1;min-height:92px}
 .sg-btn.gd:hover{border-color:#B79CE0}
+/* v47：早读卡——图标画成一个太阳（早读是每天第一件事），和上面四款场景游戏不是一个路子，
+   所以也是独占一行、实线。它排在第一张听写卡前面。 */
+.sg-btn.gq{grid-column:1/-1;min-height:92px}
+.sg-btn.gq:hover{border-color:#E2C97E}
+.sg-ico.rd{background:radial-gradient(circle at 50% 50%,#FFD764 0 44%,rgba(255,215,100,0) 46%),
+  repeating-conic-gradient(from 0deg,#F0B429 0 7deg,#FFF0C4 7deg 30deg);
+  border:2px solid #E2C97E;border-radius:50%}
 .sg-ico.dic{background:#F3ECFC;border:2px solid #B79CE0;border-radius:9px;
   background-image:linear-gradient(to right,transparent 47%,#D3C2EF 47%,#D3C2EF 53%,transparent 53%),
                    linear-gradient(to bottom,transparent 47%,#D3C2EF 47%,#D3C2EF 53%,transparent 53%)}
@@ -1339,6 +1346,81 @@ body.picking #scrLearn{padding-bottom:96px}
   border:1.5px solid var(--amber-line);line-height:1.15}
 .wrong-ch b{font-size:24px;font-weight:800;color:var(--ink)}
 .wrong-ch i{font-size:11px;font-style:normal;color:var(--ink2)}
+
+/* ---------- 早读（v47）：发四张牌 + 一张张翻开带读 ----------
+   为什么是发牌、不是吹泡泡：① 跟读的那几秒画面必须静止——泡泡一直在飘，孩子正认字时
+   目标还在动；②「翻开」这个动作本身就是「现在读这张」的提示，泡泡冒出来只是装饰；
+   ③ 牌是矩形，字能放到 100px 以上，泡泡是圆的、字一大就撑成一块圆背景；
+   ④ 泡泡有飞行时间，读完还得等它飘走，节奏被动画牵着走；
+   ⑤ 戳泡泡已经是另一款游戏，「飘着但戳不破」的泡泡会让孩子反复去戳。
+   节奏写在牌上：每张牌一条 5 秒进度条，眼睛不用离开字。 */
+/* 标题条留在顶上（和其它屏一致），把牌桌按上下 auto 外边距推到竖向中间——
+   牌桌只有 367px 高，全堆在屏幕上沿会像没做完 */
+.rd-screen{padding-top:12px;display:flex;flex-direction:column;min-height:calc(100vh - 44px)}
+.rd-stage{margin-top:auto}
+.rd-foot{margin-bottom:auto}
+.rd-top{display:flex;align-items:center;gap:12px;padding:0 0 12px;flex-wrap:wrap}
+.rd-name{font-size:20px;font-weight:800;margin-right:auto}
+.rd-meta{font-size:15px;font-weight:700;color:var(--ink2);white-space:nowrap}
+.rd-meta b{color:var(--green);font-weight:800}
+/* 牌桌高度=牌高+内边距，不再写死 vh：四张牌横排时牌高由列宽推出来（aspect-ratio），
+   写死场高会在宽屏上留一大片空桌面（第一版 539px 高、牌只有 317px） */
+.rd-stage{position:relative;border-radius:24px;border:2px solid var(--line);
+  overflow:hidden;padding:clamp(14px,3vw,26px);display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 90% at 50% 12%,#FBFAF2 0%,#F1EAD8 62%,#E4DAC2 100%);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.rd-table{display:grid;grid-template-columns:repeat(var(--rc,4),minmax(0,1fr));
+  gap:clamp(10px,1.5vw,18px);width:100%;justify-items:center}
+.rd-card{position:relative;width:100%;max-width:270px;aspect-ratio:3/4;perspective:900px;
+  transition:transform .52s cubic-bezier(.2,.7,.3,1),opacity .34s ease;
+  transition-delay:calc(var(--i,0) * 90ms)}
+/* 发牌：从牌桌右侧那一点飞过来。--dx/--dy 由 readDealTo() 量真实坐标写进来；
+   量不到布局（jsdom / 还没排版）就什么都不写，兜底值接管，牌不会卡在屏幕外。 */
+.rd-card.dealing{transform:translate(var(--dx,42px),var(--dy,0)) scale(.62) rotate(-7deg);opacity:0}
+.rd-card.in{transform:none;opacity:1}
+.rd-in{position:absolute;inset:0;transform-style:preserve-3d;
+  transition:transform .62s cubic-bezier(.3,.7,.25,1)}
+.rd-card.on .rd-in{transform:rotateY(180deg)}
+.rd-face{position:absolute;inset:0;border-radius:clamp(12px,2vw,20px);
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.rd-back{border:2.5px solid #9CC2E4;
+  background:repeating-linear-gradient(45deg,#E8F1FA 0 9px,#D8E7F6 9px 18px);
+  box-shadow:0 5px 0 #BCD4EC}
+.rd-back::after{content:'';width:44%;aspect-ratio:1;border-radius:50%;border:2px solid #9CC2E4;
+  background:radial-gradient(circle at 36% 30%,#fff 0%,#D3E4F5 58%,#A9C7E6 100%)}
+.rd-front{transform:rotateY(180deg);background:#FFFDF7;border:2.5px solid var(--line2);
+  box-shadow:0 6px 0 #E6DCC6}
+.rd-front b{font-size:clamp(52px,13.5vw,144px);font-weight:700;line-height:1;color:var(--ink);
+  letter-spacing:.02em}
+.rd-card.now .rd-front{border-color:#9CC7AC;
+  box-shadow:0 6px 0 #CBE3D2,0 0 0 4px rgba(47,107,79,.10)}
+/* 5 秒进度条：暂停靠 animation-play-state，和 JS 的剩余时间各管一头 */
+.rd-wait{position:absolute;left:13%;right:13%;bottom:8%;height:10px;border-radius:99px;
+  background:#E2D5B7;overflow:hidden}
+.rd-wait::after{content:'';display:block;height:100%;border-radius:99px;background:var(--green);
+  transform:scaleX(0);transform-origin:left;
+  animation:rdHold var(--hold,5s) linear forwards;animation-play-state:paused}
+.rd-card.run .rd-wait::after{animation-play-state:running}
+.rd-stage.paused .rd-wait::after{animation-play-state:paused}
+@keyframes rdHold{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.rd-foot{display:flex;align-items:center;gap:14px;padding:12px 2px 0;flex-wrap:wrap}
+.rd-tip{flex:1;min-width:0;margin:0;font-size:14px;color:var(--ink3);font-weight:700}
+.rd-next{min-height:52px;padding:0 26px;border-radius:999px;background:var(--green);
+  color:#fff;font-size:18px;font-weight:800;box-shadow:0 3px 0 #1E4B36}
+.rd-next:active{transform:translateY(2px);box-shadow:0 1px 0 #1E4B36}
+/* 手机上四张牌横着排会挤成四根牙签 → 2×2 摊开，牌改成「按行高定尺寸」
+   （宽由 aspect-ratio 反推），场子也要高一点，否则两张牌叠起来顶出画面 */
+@media(max-width:640px){
+  /* 手机上 2×2：牌改成「按行高定尺寸」（宽由 aspect-ratio 反推），场高必须给死，
+     否则 1fr 的两行没有高度可依 */
+  .rd-stage{height:calc(100vh - 210px);min-height:420px;padding:10px}
+  .rd-table{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;height:100%;gap:10px}
+  .rd-card{height:100%;width:auto;max-width:100%;justify-self:center}
+  .rd-front b{font-size:clamp(44px,19vw,96px)}
+  .rd-tip{order:2;flex:1 1 100%;font-size:12.5px}
+  .rd-next{flex:1}
+}
 
 /* ---------- 首屏加载提示 ---------- */
 .boot-mask{position:fixed;inset:0;z-index:99;background:#FBF8EF;

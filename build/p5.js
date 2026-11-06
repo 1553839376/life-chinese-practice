@@ -35,6 +35,8 @@ function showScreen(name){
   /* v35：离开认字乐园就退出「选字」态，否则底部那条操作条会飘到别的屏上
      （进了老师端还压着一条「开始练习」，看着像坏了）。 */
   if (name !== 'learn' && typeof PICK !== 'undefined' && PICK.on) pickEnd();
+  /* v47：离开早读屏就收摊——定时器不清会继续在后台翻牌、出声（人已经回乐园了） */
+  if (name !== 'read' && typeof READ !== 'undefined' && READ.on) readStop(false);
   if (prev && prev !== name){
     SCROLL_MEM[prev] = window.pageYOffset ||
       (document.documentElement && document.documentElement.scrollTop) ||
@@ -46,6 +48,7 @@ function showScreen(name){
   $('scrPlay').hidden = (name !== 'play');
   $('scrTeacher').hidden = (name !== 'teacher');
   $('scrGame').hidden = (name !== 'game');
+  $('scrRead').hidden = (name !== 'read');
   var nav = $('mainNav'), nb, i, to, on;
   if (nav) nav.hidden = !(name === 'learn' || name === 'pick');
   /* v36：认字和游戏乐园是同一屏的两个模式，高亮得看 LEARN.mode 而不是 phase，

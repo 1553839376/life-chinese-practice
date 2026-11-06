@@ -1830,7 +1830,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(d.getElementById('learnBody').hidden === true,
     '还没选玩法时，搜索 / 册次 / 字格先收起来（第一屏只有玩法）');
   const v35_gp = d.querySelectorAll('#gamePick [data-gp]');
-  ok(v35_gp.length === 6, '四款玩法 + 听写 + 一张「随便玩」（v40 加的听写）：' + v35_gp.length);
+  ok(v35_gp.length === 7, '四款玩法 + 早读 + 听写 + 一张「随便玩」（v40 听写、v47 早读）：' + v35_gp.length);
   ok(d.querySelectorAll('#gamePick [data-gk]').length === 0,
     '玩法卡用自己的 data-gp，不复用学字卡的 data-gk（那条路要 CARD_CH，会空着开局）');
   ok(!!d.querySelector('#gamePick [data-gp="any"]'), '最后一张是「随便玩」');
@@ -2833,6 +2833,117 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(v46_fx === '', '量不到布局时什么都不写（退回 keyframes 的默认值，不是写个 0 飞原地）');
   w.quitGame(true);
   await wait(140);
+
+  /* ==================== §40 早读（v47） ====================
+     老师 2026-11-06：「乐园里面增加一个早读模式，老师可以选择几个字，然后轮播读，留足时间
+     给学生跟读。最好是有动效的……一种是发牌的，一次发四张，一张一张自动翻开读。或者是
+     搞一个吹泡泡的机器……」→ 选发牌。这一节盯住四件事：发几张、按什么顺序翻、5 秒是谁定的、
+     离开会不会还在后台翻。 */
+  w.quitGame(true);
+  await wait(120);
+  const v47_card = d.querySelector('[data-gp="read"]');
+  ok(!!v47_card && v47_card.querySelector('.sg-nm').textContent === '早读',
+    '游戏乐园多了一张「早读」玩法卡（data-gp="read"）');
+  ok(w.GAME_NAMES.read === '早读' && w.GAME_KEYS.indexOf('read') < 0,
+    '早读登记成玩法（能走选字流程），但不在 GAME_KEYS 里——「随便玩」不会随机到它');
+  ok(w.pickVerb('read') === '开始早读' && w.pickVerb('fish') === '开始练习',
+    '底部按钮对早读说「开始早读」，不再一律叫「开始练习」');
+  ok(HTML.indexOf('animation:rdHold var(--hold,5s)') > 0,
+    '5 秒只有 READ_HOLD 一个来源（CSS 读 --hold，不写死）');
+
+  const v47_pool = w.STATE.chars.filter(c => c.w).slice(0, 6);
+  const v47_want4 = v47_pool.slice(0, 4).map(c => c.w).join('');
+  const v47_want2 = v47_pool.slice(4, 6).map(c => c.w).join('');
+  const v47_logs = w.STATE.logs.length;
+  w.startRead(v47_pool);
+  const v47_tb = d.getElementById('readTable');
+  const v47_chars = Array.from(v47_tb.querySelectorAll('.rd-front b')).map(b => b.textContent).join('');
+
+  ok(!d.getElementById('scrRead').hidden, '开始早读就切到早读屏（不是进游戏屏）');
+  ok(v47_tb.querySelectorAll('.rd-card').length === 4, '一次发四张：' + v47_tb.querySelectorAll('.rd-card').length);
+  ok(v47_chars === v47_want4, '四张牌就是选的前四个字：' + v47_chars + '（应 ' + v47_want4 + '）');
+  ok(v47_tb.style.getPropertyValue('--hold') === '5s', '进度条时长写的是 5s（READ_HOLD / 1000）');
+  ok(v47_tb.style.getPropertyValue('--rc') === '4', '--rc=4，网格按发牌数排几列');
+  ok(v47_tb.querySelectorAll('.rd-front .rd-wait').length === 4, '每张牌正面都有一条跟读进度条');
+  ok(v47_tb.querySelectorAll('.rd-front i').length === 4,
+    '牌面只有大字 + 一条进度条，没有拼音（老师选的「只显示大字」）');
+  ok(v47_tb.querySelectorAll('.rd-card.on').length === 0, '刚发下来全是背面，还没翻');
+  ok(v47_tb.querySelectorAll('.rd-card.dealing').length === 0 &&
+     v47_tb.querySelectorAll('.rd-card.in').length === 4,
+    '牌已经落到位（dealing 摘掉、in 加上，否则牌会停在牌堆那边）');
+  ok(w.readDealTo.toString().indexOf('getBoundingClientRect') > 0 &&
+     HTML.indexOf('translate(var(--dx,42px),var(--dy,0))') > 0,
+    '发牌起点按真实坐标算，量不到就用兜底值（不会卡在屏幕外）');
+
+  /* 自动翻开第一张：这里真的等一次定时器，证明「不用点也会翻」 */
+  await wait(780);
+  const v47_c0 = v47_tb.querySelectorAll('.rd-card')[0];
+  ok(v47_tb.querySelectorAll('.rd-card.on').length === 1 && v47_c0.classList.contains('on'),
+    '发完 0.64 秒自动翻开第一张');
+  ok(v47_c0.classList.contains('now') && v47_c0.classList.contains('run'),
+    '当前这张挂 now（高亮）和 run（进度条开始走）');
+
+  w.readFlip(1);
+  const v47_nowIdx = Array.from(v47_tb.querySelectorAll('.rd-card')).findIndex(c => c.classList.contains('now'));
+  ok(v47_tb.querySelectorAll('.rd-card.on').length === 2,
+    '翻第二张时第一张保持翻开（一屏四张，看得到读过哪些）');
+  ok(v47_nowIdx === 1, 'now 挪到第二张：' + v47_nowIdx);
+
+  /* 手动催到这一批末尾，再让 «批与批之间» 的定时器跑一次 */
+  w.readNext(); w.readNext(); w.readNext();
+  const v47_kEnd = w.READ.k;
+  ok(v47_kEnd === 3, '连点「下一个字」停在这一批最后一张：k=' + v47_kEnd);
+  ok(!!w.READ.timer && !!w.READ.job, '读完一批不立刻发牌，而是排一次「停一下再发」');
+  w.READ.job();
+  const v47_tb2 = d.getElementById('readTable');
+  const v47_chars2 = Array.from(v47_tb2.querySelectorAll('.rd-front b')).map(b => b.textContent).join('');
+  ok(v47_tb2.querySelectorAll('.rd-card').length === 2,
+    '第二批只发剩下的 2 张（6 个字 = 4 + 2，不回头补两张凑满四张）');
+  ok(v47_chars2 === v47_want2, '第二批是后面两个字：' + v47_chars2 + '（应 ' + v47_want2 + '）');
+  ok(d.getElementById('readNow').textContent === '5' &&
+     d.getElementById('readTotal').textContent === '6',
+    '右上角跟着走：第 5 / 6 个字（不是从 1 重新数）');
+
+  /* 走完这一遍：再翻两张 → 下一批从第 1 个字开始，遍数 +1 */
+  w.readFlip(0); w.readFlip(1); w.readNext();
+  w.READ.job();
+  ok(d.getElementById('readRound').textContent === '第 2 遍',
+    '6 个字读完一遍，下一批标「第 2 遍」：' + d.getElementById('readRound').textContent);
+  ok(d.getElementById('readNow').textContent === '1', '新一遍从第 1 个字开始');
+
+  /* 暂停 / 继续：定时器、进度条、文案三样一起停。先翻一张，让暂停落在「5 秒跟读」里
+     （刚发完牌时挂的是 0.64 秒的发牌间隔，那是另一段计时） */
+  w.readFlip(0);
+  w.READ.at = Date.now() - 1200;
+  w.readPause();
+  ok(w.READ.timer === null && !!w.READ.job,
+    '暂停先撤掉定时器（否则 5 秒一到自己又翻下去了），但留着「等完要做什么」好接着走');
+  const v47_left = w.READ.left;
+  ok(v47_left > 3400 && v47_left < 4000, '剩余时间按已经过掉的部分扣：' + v47_left);
+  ok(d.getElementById('readPause').textContent === '继续' &&
+     d.getElementById('readStage').classList.contains('paused'),
+    '按钮变「继续」、牌桌进 paused（CSS 那边进度条同步停住）');
+  w.readPause();
+  ok(!!w.READ.timer && d.getElementById('readPause').textContent === '暂停',
+    '再点一下就接着走');
+
+  /* 离开早读屏必须自己收摊 */
+  w.showScreen('learn');
+  ok(w.READ.on === false && w.READ.timer === null,
+    '从早读屏离开（不是点退出，是换屏）也会停下来');
+  ok(d.getElementById('readTable').children.length === 0, '牌桌清空，回来不会看到上一批的牌');
+
+  /* 只选 2 个字、空字表 */
+  w.startRead(v47_pool.slice(0, 2));
+  const v47_two = Array.from(d.getElementById('readTable').querySelectorAll('.rd-front b'))
+    .map(b => b.textContent).join('');
+  ok(d.getElementById('readTable').querySelectorAll('.rd-card').length === 2,
+    '只选 2 个字就发 2 张（不拿取余凑成 4 张一模一样的牌）：' + v47_two);
+  w.readStop(true);
+  w.startRead([]);
+  ok(d.getElementById('scrRead').hidden, '空字表进不去早读屏（只弹一句提示）');
+
+  ok(w.STATE.logs.length === v47_logs, '早读不写学习记录（和听写同一个口径，不污染档案）');
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

@@ -288,8 +288,9 @@ var GAME = {
 };
 
 /* ============================ 游戏启动 ============================ */
-var GAME_NAMES = { bubble: '戳泡泡', fish: '钓鱼', fruit: '摘果子', feed: '喂小动物', dict: '听写' };
-/* 「随便玩」「换个玩法」只在四款场景游戏里转：听写不是场景，不参与随机 */
+var GAME_NAMES = { bubble: '戳泡泡', fish: '钓鱼', fruit: '摘果子', feed: '喂小动物',
+  dict: '听写', read: '早读' };
+/* 「随便玩」「换个玩法」只在四款场景游戏里转：听写和早读不是场景，不参与随机 */
 var GAME_KEYS = ['bubble', 'fish', 'fruit', 'feed'];
 /* 听写的临时状态（不进 GAME 是因为它跟「这一题」绑，和计分不是一回事）。
    看一眼限 3 秒、每题一次；checked 表示已经点过「写好了」、正等着人核对。 */
@@ -297,6 +298,9 @@ var GDICT = { peeked: false, checked: false, timer: null };
 
 function startGame(kind, chars){
   if (!chars || !chars.length){ toast('先挑一个字再玩'); return; }
+  /* v47：早读不是游戏（不计分、不出题），但它和游戏共用「先选玩法再挑字」这条路，
+     所以在这里兜一道——万一有别处直接拿 'read' 调 startGame，也会进早读屏而不是炸掉 */
+  if (kind === 'read'){ startRead(chars); return; }
   if (!GAME_NAMES[kind]) kind = GAME_KEYS[Math.floor(Math.random() * GAME_KEYS.length)];
 
   var base = shuffleArr(chars), i, total;
@@ -1335,6 +1339,10 @@ function playAny(){
 function pickLabel(kind){
   return kind === 'any' ? '随便玩' : (GAME_NAMES[kind] || '游戏');
 }
+/* v47：早读不是「练习」，底部那个按钮不能再写「开始练习」——同一件事换个说法就不对了 */
+function pickVerb(kind){
+  return kind === 'read' ? '开始早读' : '开始练习';
+}
 function pickIdx(c){
   var i;
   for (i = 0; i < PICK.list.length; i++) if (PICK.list[i].w === c.w) return i;
@@ -1375,7 +1383,7 @@ function renderPickBar(){
     : '点字卡就能选上，可以选好几个';
   if ($('pickStart')){
     $('pickStart').disabled = !n;
-    $('pickStart').textContent = n ? ('开始练习（' + n + '）') : '开始练习';
+    $('pickStart').textContent = n ? (pickVerb(PICK.kind) + '（' + n + '）') : pickVerb(PICK.kind);
   }
 }
 function pickToggle(c){
@@ -1389,6 +1397,8 @@ function pickStart(){
   var kind = PICK.kind, chars = PICK.list.slice(0);
   pickEnd();
   renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
+  /* v47：早读走自己的屏（发牌带读），不进游戏引擎 */
+  if (kind === 'read'){ startRead(chars); return; }
   startGame(kind, chars);
 }
 
@@ -1429,6 +1439,10 @@ function wireLearn(){
   $('pickCancel').addEventListener('click', pickCancel);
   $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
+  /* v47：早读屏三个按钮。暂停/继续是同一个键（老师上课中途要能停一下讲两句） */
+  $('readQuit').addEventListener('click', function(){ readStop(true); });
+  $('readPause').addEventListener('click', readPause);
+  $('readNext').addEventListener('click', function(){ readNext(); });
   $('gameHint').addEventListener('click', gameHint);
   $('gameSpk').addEventListener('click', readAsk);
   $('gameMute').addEventListener('click', toggleMute);
@@ -1525,4 +1539,204 @@ function wireLearn(){
     el = t.closest('#gameField .g-item');
     if (el){ gamePick(el); return; }
   });
+}
+
+/* ============================ 早读（v47，T-040） ============================
+   老师原话：「乐园里面增加一个早读模式，老师可以选择几个字，然后轮播读，留足时间
+   给学生跟读。最好是有动效的可以吸引学生注意力。我提供几个你看哪个好。一种是发牌的，
+   一次发四张，一张一张自动翻开读。或者是搞一个吹泡泡的机器，自动出泡泡，泡泡里面有字。」
+
+   选发牌，五个理由（讲给老师听的时候也只说这几条）：
+   ① 跟读的那几秒画面必须静止——泡泡一直在飘，孩子正认字时目标还在动；
+   ②「翻开」这个动作本身就是「现在读这张」的提示，泡泡冒出来只是装饰，该读哪个全靠声音提示；
+   ③ 牌是矩形，字能放到 100px 以上；泡泡是圆的，字一大就撑成一块圆背景；
+   ④ 泡泡有飞行时间，读完还得等它飘走，节奏被动画牵着走（老师要的是「留足时间」）；
+   ⑤ 戳泡泡已经是另一款游戏（bubble），再来一屏飘着、戳不破的泡泡，孩子只会反复去戳。
+
+   口径：不判分、不写学习记录——和听写一样，乐园里的事不污染档案。
+   节奏全在下面这四个常量里（老师 2026-11-06 定：每个字留 5 秒）。
+   ========================================================================= */
+var READ_HOLD = 5000;       /* 每个字念完留 5 秒跟读 */
+var READ_GAP = 640;         /* 牌落到桌上到翻开第一张 */
+var READ_ROUND_GAP = 1700;  /* 一批读完，停一下再发下一批 */
+var READ_TAKE = 4;          /* 一次发四张 */
+/* job / wait / left / at 是一组：暂停时把「还要等多久、等完要做什么」存下来，
+   继续时照着恢复。只存毫秒数不够——牌与牌之间的间隔和每个字的 5 秒不是同一个数。 */
+var READ = { on: false, list: [], i: 0, done: 0, round: 1, base: 0, k: 0,
+             paused: false, timer: null, sayT: null, job: null, wait: 0, left: 0, at: 0 };
+
+/* 统一排一个「等一下再做」的队：所有定时都从这里走，暂停/继续才有据可依 */
+function readWait(ms, fn){
+  if (READ.timer){ clearTimeout(READ.timer); READ.timer = null; }
+  READ.wait = ms;
+  READ.left = ms;
+  READ.job = fn;
+  READ.at = Date.now();
+  READ.timer = setTimeout(function(){
+    READ.timer = null;
+    READ.job = null;
+    READ.at = 0;
+    fn();
+  }, ms);
+}
+
+function startRead(chars){
+  var list = [], i;
+  for (i = 0; i < (chars || []).length; i++){
+    if (chars[i] && chars[i].w) list.push(chars[i]);
+  }
+  if (!list.length){ toast('先挑几个字，再开始早读'); return; }
+  readStop(false);
+  READ.on = true;
+  READ.list = list;
+  READ.i = 0; READ.done = 0; READ.round = 1; READ.base = 0; READ.k = 0;
+  READ.paused = false;
+  avUnlock();
+  $('readRound').textContent = '第 1 遍';
+  $('readTotal').textContent = list.length;
+  $('readNow').textContent = '1';
+  $('readPause').textContent = '暂停';
+  $('readStage').classList.remove('paused');
+  showScreen('read');
+  readDeal();
+}
+
+function readStop(back){
+  if (READ.timer){ clearTimeout(READ.timer); READ.timer = null; }
+  if (READ.sayT){ clearTimeout(READ.sayT); READ.sayT = null; }
+  /* 先把 on 关掉再换屏：showScreen 里也有一道「离开早读就收摊」，不先关会绕回来 */
+  READ.on = false;
+  READ.paused = false;
+  READ.job = null;
+  READ.list = [];
+  READ.left = 0; READ.at = 0;
+  var tb = $('readTable');
+  if (tb) tb.innerHTML = '';
+  if ($('readStage')) $('readStage').classList.remove('paused');
+  if ($('readPause')) $('readPause').textContent = '暂停';
+  sayStop();
+  if (back){ renderLearn(); showScreen('learn'); }
+}
+
+/* 一批牌怎么取：从字表里按顺序抓最多四张，**同一批里不重复**；
+   抓到字表尾巴就只发剩下的（选了 6 个字就是 4 + 2，不回头补两张凑满四张，
+   否则「第几遍」会算乱、孩子也会看到刚读过的字又发一次） */
+function readDeal(){
+  var tb = $('readTable'), list = READ.list, take, i, html = '';
+  if (!tb || !list.length) return;
+  take = list.slice(READ.i, READ.i + READ_TAKE);
+  if (!take.length){ READ.i = 0; take = list.slice(0, READ_TAKE); }
+  READ.round = Math.floor(READ.done / list.length) + 1;
+  READ.base = READ.done;
+  READ.done += take.length;
+  READ.i = (READ.i + take.length) % list.length;
+  READ.k = 0;
+  tb.style.setProperty('--rc', take.length);
+  tb.style.setProperty('--hold', (READ_HOLD / 1000) + 's');   /* 进度条时长只有这一个来源 */
+  for (i = 0; i < take.length; i++){
+    html += '<div class="rd-card" data-i="' + i + '" style="--i:' + i + '">' +
+      '<div class="rd-in">' +
+        '<div class="rd-face rd-back"></div>' +
+        '<div class="rd-face rd-front"><b>' + take[i].w + '</b>' +
+          '<i class="rd-wait"></i>' +
+        '</div>' +
+      CLOSE('div') + CLOSE('div');
+  }
+  tb.innerHTML = html;
+  readMeta(0);
+  readDealTo();
+  /* 先量坐标、再上牌：量的时候牌还在原位，写进 --dx/--dy 之后才挪到牌堆那边 */
+  var cards = tb.children;
+  for (i = 0; i < cards.length; i++) cards[i].classList.add('dealing');
+  void tb.offsetWidth;        /* 强制回流：不加这一下，「加 dealing 又立刻加 in」会被合并，动画不播 */
+  for (i = 0; i < cards.length; i++){
+    cards[i].classList.remove('dealing');
+    cards[i].classList.add('in');
+  }
+  readWait(READ_GAP, function(){ if (READ.on && !READ.paused) readFlip(0); });
+}
+
+/* 发牌的起点＝牌桌右侧中部那一小片（视觉上的「牌堆」）。量真实坐标写进 --dx/--dy；
+   量不到布局（jsdom / 还没排版）就什么都不写，CSS 的兜底值接手。 */
+function readDealTo(){
+  var stage = $('readStage'), tb = $('readTable'), i;
+  if (!stage || !tb || !stage.getBoundingClientRect) return;
+  var sr = stage.getBoundingClientRect();
+  if (!sr.width) return;
+  var ox = sr.right - 26, oy = sr.top + sr.height / 2;
+  for (i = 0; i < tb.children.length; i++){
+    var el = tb.children[i];
+    if (!el.getBoundingClientRect) continue;
+    var r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    el.style.setProperty('--dx', Math.round(ox - (r.left + r.width / 2)) + 'px');
+    el.style.setProperty('--dy', Math.round(oy - (r.top + r.height / 2)) + 'px');
+  }
+}
+
+function readMeta(k){
+  var total = READ.list.length;
+  if (!total) return;
+  if ($('readRound')) $('readRound').textContent = '第 ' + READ.round + ' 遍';
+  if ($('readTotal')) $('readTotal').textContent = total;
+  if ($('readNow')) $('readNow').textContent = ((READ.base + k) % total) + 1;
+}
+
+/* 翻一张：已经翻开的牌不翻回去——一屏四张，看得到「读过哪些」 */
+function readFlip(k){
+  var tb = $('readTable');
+  if (!tb) return;
+  var cards = tb.children, i;
+  if (!cards.length) return;
+  if (k >= cards.length){ readNext(); return; }
+  READ.k = k;
+  for (i = 0; i < cards.length; i++) cards[i].classList.remove('now');
+  cards[k].classList.add('on');
+  cards[k].classList.add('now');
+  cards[k].classList.add('run');
+  readMeta(k);
+  /* 牌翻到一半时开口：字和声音同时到，5 秒里大约 3.5 秒是静给孩子跟读的 */
+  READ.sayT = setTimeout(function(){
+    READ.sayT = null;
+    if (!READ.on || READ.paused) return;
+    saySeq([{ t: READ.list[(READ.base + k) % READ.list.length].w }]);
+  }, 300);
+  readWait(READ_HOLD, readNext);
+}
+
+function readNext(){
+  if (!READ.on) return;
+  if (READ.timer){ clearTimeout(READ.timer); READ.timer = null; }
+  READ.at = 0;
+  var tb = $('readTable');
+  var n = tb ? tb.children.length : 0;
+  if (READ.k + 1 < n){ readFlip(READ.k + 1); return; }
+  /* 这一批读完了：收一下（下一批的牌会重新发），停下来再发 */
+  readWait(READ_ROUND_GAP, function(){ if (READ.on && !READ.paused) readDeal(); });
+}
+
+function readPause(){
+  if (!READ.on) return;
+  READ.paused = !READ.paused;
+  var stage = $('readStage'), btn = $('readPause');
+  if (READ.paused){
+    if (READ.timer){ clearTimeout(READ.timer); READ.timer = null; }
+    if (READ.sayT){ clearTimeout(READ.sayT); READ.sayT = null; }
+    if (READ.at){ READ.left = Math.max(800, READ.left - (Date.now() - READ.at)); READ.at = 0; }
+    sayStop();
+    if (stage) stage.classList.add('paused');
+    if (btn) btn.textContent = '继续';
+  } else {
+    if (stage) stage.classList.remove('paused');
+    if (btn) btn.textContent = '暂停';
+    if (!READ.job) return;
+    READ.at = Date.now();
+    var job = READ.job;
+    READ.timer = setTimeout(function(){
+      READ.timer = null;
+      READ.job = null;
+      READ.at = 0;
+      job();
+    }, READ.left || READ_HOLD);
+  }
 }
