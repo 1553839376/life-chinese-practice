@@ -1789,7 +1789,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v48</span>
+    <span id="appVer" class="app-ver">v49</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3670,7 +3670,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v48';
+var APP_VER = 'v49';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -9786,7 +9786,7 @@ var LEARN = {
 };
 var CARD_CH = null;
 /* v35：先选游戏再选字（T-030）。on = 正在挑字；kind = 已选的玩法；list = 挑中的字（按 w 去重） */
-var PICK = { on: false, kind: '', list: [] };
+var PICK = { on: false, kind: '', list: [], restored: false };
 
 /* ============================ 册次 ============================ */
 /* v37：22 个册次原来是横着一长条、要拉三四屏（六年级 230 个字全压在最后），
@@ -11070,6 +11070,32 @@ function playAny(){
    跨册次挑也认）→ 底部条「开始练习」。**选字态复用同一张字格**，不另做一份字表：
    老师已经会用册次和搜索筛，再教一套只会更乱。
    ======================================================================== */
+/* v49 早读选字记忆（老师 2026-11-09：「早读模式我希望保持记忆功能，即记住上一次
+   勾选的汉字，这样很多不需要重复勾选」）。
+   ① 只记早读：别的玩法每次重新挑字是刻意的，别顺手一起记。
+   ② 只存汉字字符串：STATE.chars 里的字对象是引用，落进 localStorage 会连带整张字表，
+      字库更新后还会恢复出旧对象；按 w 回查，查不到的字直接跳过（字表变了也不会出怪字）。
+   ③ 独立 localStorage 键，不进 STATE、不进云端 schema、不进导出导入（和 wb2_sess_v1 同口径）。
+   ④ 只在老师点「开始早读」时写：勾了又取消不算一次选择，程序化调 startRead 也不算。 */
+var LS_READ_PICK = 'wb2_read_pick_v1';
+function readPickLoad(){
+  var raw, out = [], i, j, w;
+  try { raw = JSON.parse(localStorage.getItem(LS_READ_PICK) || 'null'); } catch (e) { return out; }
+  if (!Array.isArray(raw)) return out;
+  for (i = 0; i < raw.length; i++){
+    w = raw[i];
+    if (typeof w !== 'string' || !w) continue;
+    for (j = 0; j < STATE.chars.length; j++){
+      if (STATE.chars[j] && STATE.chars[j].w === w){ out.push(STATE.chars[j]); break; }
+    }
+  }
+  return out;
+}
+function readPickSave(chars){
+  var a = [], i;
+  for (i = 0; i < (chars || []).length; i++) if (chars[i] && chars[i].w) a.push(chars[i].w);
+  try { localStorage.setItem(LS_READ_PICK, JSON.stringify(a)); } catch (e) {}
+}
 function pickLabel(kind){
   return kind === 'any' ? '随便玩' : (GAME_NAMES[kind] || '游戏');
 }
@@ -11087,6 +11113,7 @@ function pickEnd(){
   PICK.on = false;
   PICK.kind = '';
   PICK.list = [];
+  PICK.restored = false;
   document.body.classList.remove('picking');
   if ($('pickBar')) $('pickBar').hidden = true;
   if ($('gameNow')) $('gameNow').hidden = true;
@@ -11097,7 +11124,9 @@ function pickBegin(kind){
   if (!GAME_NAMES[kind]) return;
   PICK.on = true;
   PICK.kind = kind;
-  PICK.list = [];
+  /* 只有早读带回上次的勾选；别的玩法仍然从空开始 */
+  PICK.list = (kind === 'read') ? readPickLoad() : [];
+  PICK.restored = (kind === 'read' && PICK.list.length > 0);
   document.body.classList.add('picking');
   $('pickBar').hidden = false;
   renderLearn();          /* 顺带收起玩法卡、顶部换成「钓鱼 · 换一个玩法」 */
@@ -11112,9 +11141,9 @@ function pickCancel(){
 function renderPickBar(){
   var n = PICK.list.length, nm = pickLabel(PICK.kind);
   if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
-  if ($('pickHint')) $('pickHint').textContent = n
-    ? '再点一下能取消，换册次还能接着挑'
-    : '点字卡就能选上，可以选好几个';
+  if ($('pickHint')) $('pickHint').textContent = PICK.restored
+    ? ('已勾上上次早读的 ' + n + ' 个字，可增减，点右边直接开始')
+    : (n ? '再点一下能取消，换册次还能接着挑' : '点字卡就能选上，可以选好几个');
   if ($('pickStart')){
     $('pickStart').disabled = !n;
     $('pickStart').textContent = n ? (pickVerb(PICK.kind) + '（' + n + '）') : pickVerb(PICK.kind);
@@ -11122,6 +11151,7 @@ function renderPickBar(){
 }
 function pickToggle(c){
   if (!c) return;
+  PICK.restored = false;
   var i = pickIdx(c);
   if (i >= 0) PICK.list.splice(i, 1); else PICK.list.push(c);
   renderPickBar();
@@ -11129,6 +11159,7 @@ function pickToggle(c){
 function pickStart(){
   if (!PICK.list.length){ toast('先点几个字，再开始'); return; }
   var kind = PICK.kind, chars = PICK.list.slice(0);
+  if (kind === 'read') readPickSave(chars);   /* 只写这一种玩法，且只写字符串 */
   pickEnd();
   renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
   /* v47：早读走自己的屏（发牌带读），不进游戏引擎 */

@@ -3024,6 +3024,85 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(700);
   ok(w.STATE.phase === 'learn', '按住 0.3 秒就松不进老师端（学生手抖按住不算）');
 
+  /* ==================== §42 早读选字记忆（v49） ====================
+     老师 2026-11-09：「早读模式我希望保持记忆功能，即记住上一次勾选的汉字，
+     这样很多不需要重复勾选」。盯住四件事：只记早读、只存汉字字符串、字表变了能跳过、
+     别的玩法不受影响。整份记忆是独立 localStorage，不进 STATE / 云端 / 学习记录。 */
+  const v49_KEY = 'wb2_read_pick_v1';
+  const v49_pool = w.STATE.chars.filter(c => c.w).slice(0, 6);
+  const v49_chars = v49_pool.slice(0, 3);
+  const v49_want = v49_chars.map(c => c.w);
+  const v49_logs = w.STATE.logs.length;
+  try { w.localStorage.removeItem(v49_KEY); } catch (e) {}
+  w.showScreen('learn');
+  if (w.PICK.on) w.pickCancel();
+
+  ok(w.readPickLoad().length === 0, '第一次用（没存过）就是空勾选，不凭空冒出字');
+  w.pickBegin('read');
+  ok(w.PICK.list.length === 0 && w.PICK.restored === false, '没有记忆时，早读选字照旧从空开始');
+  ok(d.getElementById('pickStart').disabled === true, '没勾字时「开始早读」仍是不可点的');
+
+  v49_chars.forEach(c => w.pickToggle(c));
+  ok(w.PICK.list.length === 3, '勾了 3 个字');
+  w.pickStart();
+  w.readStop(false);
+  w.showScreen('learn');
+  const v49_raw = w.localStorage.getItem(v49_KEY);
+  let v49_saved = null;
+  try { v49_saved = JSON.parse(v49_raw || 'null'); } catch (e) {}
+  ok(Array.isArray(v49_saved) && v49_saved.length === 3, '点「开始早读」才把这次的勾选落进本机');
+  ok(v49_saved && v49_saved.join('') === v49_want.join(''),
+     '存的就是这批字：' + (v49_saved || []).join(''));
+  ok(v49_saved && v49_saved.every(x => typeof x === 'string'),
+     '只存汉字字符串，不存字对象（不连带整张字表、不落云端）');
+  ok(!('readPick' in w.STATE) && w.STATE.logs.length === v49_logs,
+     '记忆不进 STATE、不写学习记录（和 wb2_sess_v1 一个口径）');
+
+  w.pickBegin('read');
+  ok(w.PICK.list.length === 3 && w.PICK.list.map(c => c.w).join('') === v49_want.join(''),
+     '再进早读，上次那 3 个字自动勾上了');
+  ok(w.PICK.restored === true, '标了「这是恢复来的」，底部提示才说人话');
+  ok(d.getElementById('pickHint').textContent.indexOf('已勾上上次早读') >= 0,
+     '底部提示写明是上次记住的字：' + d.getElementById('pickHint').textContent);
+  ok(d.getElementById('pickStart').disabled === false &&
+     d.getElementById('pickStart').textContent.indexOf('开始早读（3）') >= 0,
+     '不用重新勾，直接就能点「开始早读（3）」');
+  ok(w.PICK.list[0] === v49_chars[0],
+     '恢复出来的是 STATE.chars 里的同一个对象，不是拷了一份旧数据');
+
+  w.pickToggle(v49_chars[0]);
+  ok(w.PICK.restored === false && w.PICK.list.length === 2,
+     '老师一动手改，就不再自称「上次那批」');
+  w.pickCancel();
+
+  /* 记忆里有已经不在字库的字：跳过，别发一张查不到的牌 */
+  try { w.localStorage.setItem(v49_KEY, JSON.stringify([v49_want[0], v49_want[1], '㐀'])); } catch (e) {}
+  const v49_stale = w.readPickLoad();
+  ok(v49_stale.length === 2 && v49_stale.map(c => c.w).join('') === v49_want.slice(0, 2).join(''),
+     '字表变了以后，记住的字里查不到的会被跳过：' + v49_stale.map(c => c.w).join(''));
+
+  /* 只记早读：别的玩法仍然从空开始，也不改这份记忆 */
+  w.pickBegin('fish');
+  ok(w.PICK.list.length === 0 && w.PICK.restored === false,
+     '钓鱼不预选——别的玩法每次重新挑字是刻意的');
+  w.pickCancel();
+  ok((w.localStorage.getItem(v49_KEY) || '').indexOf('㐀') >= 0,
+     '进别的玩法没有顺手覆盖掉早读的记忆');
+
+  /* 换一批会覆盖：勾另外 2 个字再开始 */
+  try { w.localStorage.removeItem(v49_KEY); } catch (e) {}
+  w.pickBegin('read');
+  w.pickToggle(v49_pool[3]);
+  w.pickToggle(v49_pool[4]);
+  w.pickStart();
+  w.readStop(false);
+  w.showScreen('learn');
+  let v49_new = [];
+  try { v49_new = JSON.parse(w.localStorage.getItem(v49_KEY) || '[]'); } catch (e) {}
+  ok(v49_new.length === 2 && v49_new.join('') === v49_pool.slice(3, 5).map(c => c.w).join(''),
+     '换一批字再点开始，记忆跟着换成新的一批：' + v49_new.join(''));
+  try { w.localStorage.removeItem(v49_KEY); } catch (e) {}
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

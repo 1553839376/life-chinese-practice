@@ -137,7 +137,10 @@
    "readDeal",
    "readFlip",
    "readWait",
-   "readStop"
+   "readStop",
+   "LS_READ_PICK",
+   "readPickLoad",
+   "readPickSave"
   ],
   "班级练习": [
    "buildQuestions",
@@ -375,7 +378,7 @@
    "args": [
     "生活语文练习台.html"
    ],
-   "min_cases": 831
+   "min_cases": 849
   },
   {
    "name": "check_pair",

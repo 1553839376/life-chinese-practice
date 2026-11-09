@@ -742,7 +742,7 @@ def gate_static(html):
         "if (gp === 'any') playAny(); else pickBegin(gp);" in html
         and 'function playAny(' in html and 'function stagePool(' in html)
     rec('G1', '选字是一份独立状态 PICK + 四个动作函数（开始 / 勾选 / 完成 / 取消）',
-        "var PICK = { on: false, kind: '', list: [] };" in html
+        "var PICK = { on: false, kind: '', list: [], restored: false };" in html
         and all(('function ' + f) in html for f in
                 ['pickBegin', 'pickToggle', 'pickStart', 'pickCancel']))
     # 选字态里点字卡只勾选、不弹学字卡；分支顺序写反了就会「边选边弹窗」
@@ -1105,6 +1105,30 @@ def gate_static(html):
         'var ENTRY_GAP = 800;' in html and 'var ENTRY_SLOP = 80;' in html)
     rec('G1', '入口文案和三种进法一致（按钮 title + 空态提示都别只说「连点两下」）',
         '连点两下（或按住不放）' in html and 'title="连点两下，或按住不放，进入老师端"' in html)
+
+    # v49（老师 2026-11-09）：「早读模式我希望保持记忆功能，即记住上一次勾选的汉字，
+    # 这样很多不需要重复勾选」。盯的是「别把这份记忆扩大成全局、别存对象引用、别顺手给别的玩法也记上」。
+    _rp = html[html.find("var LS_READ_PICK"):]
+    _rp = _rp[:max(_rp.find('function pickLabel'), 1)]
+    rec('G1', '早读选字记忆用独立 localStorage 键（不进 STATE / 云端 / 导出导入）',
+        "var LS_READ_PICK = 'wb2_read_pick_v1';" in html
+        and 'function readPickLoad()' in html and 'function readPickSave(chars)' in html)
+    rec('G1', '记忆只存汉字字符串，恢复时按 w 回 STATE.chars 查（不存对象引用）',
+        'a.push(chars[i].w)' in _rp and 'STATE.chars[j].w === w' in _rp
+        and 'out.push(STATE.chars[j])' in _rp)
+    rec('G1', '只在老师点「开始早读」时写，且只写 read 这一种玩法',
+        "if (kind === 'read') readPickSave(chars);" in html
+        and html.count('readPickSave(') == 2)
+    rec('G1', '只有早读带回上次的勾选，别的玩法仍然从空开始',
+        "PICK.list = (kind === 'read') ? readPickLoad() : [];" in html
+        and 'PICK.restored = (kind === ' + "'read' && PICK.list.length > 0);" in html)
+    rec('G1', '底部提示写明这批勾是「上次记住的」，别让老师以为字自己勾上了',
+        "已勾上上次早读的 ' + n + ' 个字" in html and 'PICK.restored' in html)
+    rec('G1', '老师一改勾选就不再自称「上次那批」，退出选字态也要复位',
+        'PICK.restored = false;' in html and html.count('PICK.restored = false;') == 2)
+    rec('G1', '记忆里查不到的字会被跳过（字表变了不会发出一张空牌）',
+        "if (typeof w !== 'string' || !w) continue;" in _rp
+        and 'continue' in _rp and 'break;' in _rp)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

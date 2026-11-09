@@ -48,6 +48,8 @@
 
 **早读模式（v47）**：乐园第七张卡 `data-gp="read"`，**不进 `GAME_KEYS`**（随便玩不随机到带读）；`pickStart()` 里 `kind==='read'` 交给 `startRead()`，不进游戏引擎；按钮文案走 `pickVerb()`。**5 秒只有一个来源**：`READ_HOLD=5000` → 写 `--hold` → CSS `animation:rdHold var(--hold,5s)`。**暂停必须存两样**：`readWait(ms,fn)` 同时存 `left`+`job`，否则「5 秒跟读」和「1.7 秒换批」接不上；进度条用 `animation-play-state:paused` 同步停。**一批用 `list.slice(READ.i, READ.i + READ_TAKE)`**，不许取余凑满四张。**新屏起类名先 grep**：`.read-next`/`.read-tip` 撞了 v18 今日字卡 → 整套改 `rd-` 前缀。牌桌高度别写死 vh（宽屏空桌面）用 `height:auto`；窄屏 2×2 反过来必须给死高度。`showScreen` 里兜「离开 read 就 `readStop(false)`」。早读不判分、不写 logs。
 
+**早读选字记忆（v49）**：本机独立键 `wb2_read_pick_v1`，**只存汉字字符串**、按 `w` 回 `STATE.chars` 查（查不到跳过）；`pickBegin('read')` 预勾、`pickStart()` 只在 `kind==='read'` 落盘，别的玩法仍从空开始；不进 STATE / 云端 / logs / 导出导入。`PICK.restored` 管「已勾上上次早读的 N 个字」提示，一改勾选就复位。
+
 **游戏美术（v9/v10）**：鱼头右尾左，`fishSVG` viewBox `200×116`；`.game-field` `max-height:min(620px,80vw)`；动效要看得见幅度（±20px/3.4s、摆尾 ±13°），`transform-box:fill-box`。**先分「没播」和「幅度太小」**；报「画得不对」先核 SVG 坐标。**结算框窄屏**：390 场高 312px → `@media(max-width:480px)` 收一档（title 24 / stars 38 / 按钮 46）。
 
 **游戏乐园（v35→v36）**：顶部三个入口「认字 / 游戏乐园 / 学生练习」是**同一屏的两个模式**（`LEARN.mode`），**导航高亮看 mode 不看 phase**；字格/搜索/册次/勾选全部复用。玩法卡走 `data-gp`，**不许复用 `data-gk`**（那条委托读 `CARD_CH`，乐园里是 null）。选字态 `PICK.on` + 底部 `#pickBar`（`position:fixed`）→ **`showScreen` 里必须兜 `pickEnd()`**。`startGame(kind, chars)` 收数组，**别改引擎签名**。
