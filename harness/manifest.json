@@ -25,6 +25,10 @@
    "BUILTIN_WORDS",
    "repairCharWords",
    "APP_VER",
+   "LS_SOLO",
+   "soloLoad",
+   "soloDays",
+   "soloMark",
    "stuCap",
    "STU_CAP_MIN",
    "STU_CAP_MAX",
@@ -378,7 +382,7 @@
    "args": [
     "生活语文练习台.html"
    ],
-   "min_cases": 849
+   "min_cases": 877
   },
   {
    "name": "check_pair",

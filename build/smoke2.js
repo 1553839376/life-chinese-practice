@@ -3103,6 +3103,130 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      '换一批字再点开始，记忆跟着换成新的一批：' + v49_new.join(''));
   try { w.localStorage.removeItem(v49_KEY); } catch (e) {}
 
+  /* ==================== §43 练习汉字跨天才算掌握（v50） ====================
+     老师 2026-11-09：「现在练习汉字的退出机制是什么？我感觉才练过一次下次打开
+     就没有这个字了学生还是不熟悉的」→ 选「改成跨天才算」。
+     盯住四件事：同一天认三遍不算毕业；隔一天再独立认出来才算；老数据不追溯；
+     只有独立答对才记日期（提示后答对、描红都不算）。 */
+  const v50_KEY = 'wb2_solo_days_v1';
+  /* soloLoad() 会把整张表缓存在闭包里，光删 localStorage 不够：
+     直接清空缓存对象，才能恢复成「这台机器从来没记过」。 */
+  const v50_reset = () => {
+    const o = w.soloLoad();
+    Object.keys(o).forEach(k => { delete o[k]; });
+    try { w.localStorage.removeItem(v50_KEY); } catch (e) {}
+  };
+  const v50_d1 = w.todayKey();
+  const v50_d2 = (() => {
+    const t = new Date(); t.setDate(t.getDate() + 1);
+    return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) +
+           '-' + ('0' + t.getDate()).slice(-2);
+  })();
+  const v50_pool = w.STATE.chars.filter(c => c.w).slice(0, 6).map(c => c.w);
+  const v50_name = '跨天生';
+  const v50_ch = v50_pool[0];
+  const v50_k = v50_name + '|' + v50_ch;
+  const v50_k2 = '别个生|' + v50_ch;
+  const v50_rec = o => Object.assign({ id: '', key: v50_k, stu: v50_name, ch: v50_ch,
+    last: new Date().toISOString(), n: 3, alone: 3, hinted: 0, wrong: 0,
+    prompts: 0, level: '', dirty: false }, o || {});
+
+  v50_reset();
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(v50_d1) && v50_d1 !== v50_d2,
+     '日期按本地日 YYYY-MM-DD 算，隔天一定能区分开');
+  ok(w.soloDays(v50_k) === 0, '新字没有任何独立答对的日期：0 天');
+  w.soloMark(v50_k, v50_d1);
+  ok(w.soloDays(v50_k) === 1, '第一次独立答对记下这一天：1 天');
+  w.soloMark(v50_k, v50_d1);
+  ok(w.soloDays(v50_k) === 1, '同一天独立答对三遍也只算一天（按本地日去重）');
+  w.soloMark(v50_k2, v50_d1);
+  ok(w.soloDays(v50_k) === 1 && w.soloDays(v50_k2) === 1,
+     '别的学生、别的字各记各的，不串台');
+  w.soloMark(v50_k, v50_d2);
+  ok(w.soloDays(v50_k) === 2, '隔一天再独立答对，记成第 2 天');
+  let v50_raw = null;
+  try { v50_raw = JSON.parse(w.localStorage.getItem(v50_KEY) || 'null'); } catch (e) {}
+  ok(v50_raw && Array.isArray(v50_raw[v50_k]) && v50_raw[v50_k].length === 2 &&
+     v50_raw[v50_k].every(x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)),
+     '本机只存「哪几天」的日期字符串，不存字对象、不落云端');
+
+  ok(w.levelOf(v50_rec()) === '已掌握',
+     '两个不同本地日 + 独立答对 3 次 → 已掌握');
+  v50_reset(); w.soloMark(v50_k, v50_d1);
+  ok(w.levelOf(v50_rec()) === '练习中',
+     '同一天独立答对 3 次 → 仍是练习中（老师说「才练过一次就没了」就是这里）');
+  v50_reset();
+  ok(w.levelOf(v50_rec()) === '已掌握',
+     '老本机数据没有日期记录 → 沿用旧口径，不把老师现有字表整批打乱');
+  w.soloMark(v50_k, v50_d1);
+  ok(w.levelOf(v50_rec({ level: '已掌握' })) === '已掌握',
+     '云端已经标过「已掌握」的老数据不追溯降级');
+  ok(w.levelOf(v50_rec({ n: 0, alone: 0 })) === '待学', '没练过仍是待学');
+  ok(w.levelOf(v50_rec({ n: 3, alone: 0, wrong: 3 })) === '需巩固',
+     '错 3 次且没独立答对仍是需巩固，跨天要求不动这条');
+  ok(w.levelOf(v50_rec({ wrong: 2 })) === '练习中',
+     '独立答对 3 次但错过 2 次，本来就不毕业');
+
+  /* 真实判分路径：只有「独立答对」写日期；提示后答对（含描红）不写 */
+  v50_reset();
+  delete w.STATE.logs[v50_k];
+  const v50_stu = { id: 'local_v50', name: v50_name, types: ['听音找字'],
+    chars: v50_pool.slice(), groups: [], count: 4, status: '在读', photo: '',
+    active: [], lock: [], off: [] };
+  w.STATE.cur = v50_stu;
+  const v50_quiz = () => {
+    w.STATE.quiz = { qs: [{ target: { w: v50_ch } }], i: 0, type: '听音找字',
+      answered: false, promptUsed: 0, missed: 0, wrongLogged: false, picked: '',
+      checked: false, peeked: false, wrongChars: [], right: 0, retried: 0 };
+  };
+  v50_quiz();
+  w.gradeAnswer(true);
+  const v50_r1 = w.getLog(v50_name, v50_ch);
+  ok(v50_r1.alone === 1 && w.soloDays(v50_k) === 1,
+     '走真实判分：没用提示答对 → alone+1 并记下今天');
+  ok(v50_r1.level === '练习中', '第一次答对当然不毕业');
+  ok(!('days' in v50_r1) && !('soloDays' in w.STATE),
+     '日期不写进学习记录，也不进 STATE（仍是本机独立键）');
+  v50_quiz();
+  w.STATE.quiz.promptUsed = 1;
+  w.gradeAnswer(true);
+  const v50_r2 = w.getLog(v50_name, v50_ch);
+  ok(v50_r2.hinted === 1 && v50_r2.alone === 1 && w.soloDays(v50_k) === 1,
+     '提示后答对 / 描红只记 hinted，不记独立答对的日期');
+
+  /* 老师真正看到的现象：在学名单会不会把这个字换掉 */
+  v50_reset();
+  w.STATE.logs[v50_k] = v50_rec();
+  v50_stu.active = [v50_ch].concat(v50_pool.slice(1, 4));
+  v50_stu.lock = []; v50_stu.off = [];
+  w.soloMark(v50_k, v50_d1);
+  const v50_before = w.stuActive(v50_stu);
+  ok(v50_before.indexOf(v50_ch) >= 0, '先在学名单里盯住这个字：' + v50_ch);
+  ok(v50_before.length === 4, '在学名单补满到上限 4');
+  const v50_same = w.stuActive(v50_stu);
+  ok(w.levelOf(w.STATE.logs[v50_k]) === '练习中',
+     '一天里三个题型各答对一次，判定仍是练习中');
+  ok(v50_same.indexOf(v50_ch) >= 0,
+     '同一天练三次，下次打开这个字还在在学名单里');
+  ok(v50_same.length === 4, '名单仍是满的，没有提前腾位子');
+  w.soloMark(v50_k, v50_d2);
+  const v50_next = w.stuActive(v50_stu);
+  ok(w.levelOf(w.STATE.logs[v50_k]) === '已掌握', '隔一天再独立认出来 → 已掌握');
+  ok(v50_next.indexOf(v50_ch) < 0, '这时才退出在学名单');
+  ok(v50_next.length === 4, '空出的名额照旧补满到 4（补位逻辑一行没改）');
+  ok(v50_next.some(x => v50_same.indexOf(x) < 0), '补进来的是一个新字');
+
+  /* 老数据不被追溯：同一份成绩，只是这台机器没有任何日期记录 */
+  v50_reset();
+  const v50_k3 = '老生字|' + v50_ch;
+  w.STATE.logs[v50_k3] = v50_rec({ key: v50_k3, stu: '老生字' });
+  const v50_stu2 = { id: 'local_v50b', name: '老生字', types: ['听音找字'],
+    chars: v50_pool.slice(), groups: [], count: 4, status: '在读', photo: '',
+    active: v50_pool.slice(0, 4), lock: [], off: [] };
+  ok(w.stuActive(v50_stu2).indexOf(v50_ch) < 0,
+     '完全没记过日期的老数据按旧口径毕业，避免一次升级把全班进度推翻');
+  v50_reset();
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

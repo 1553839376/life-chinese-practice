@@ -1130,6 +1130,44 @@ def gate_static(html):
         "if (typeof w !== 'string' || !w) continue;" in _rp
         and 'continue' in _rp and 'break;' in _rp)
 
+    # v50（老师 2026-11-09）：「现在练习汉字的退出机制是什么？我感觉才练过一次下次打开
+    # 就没有这个字了学生还是不熟悉的」→ 选「改成跨天才算」。一轮有 9 个题型、
+    # 都从同一批在学字出题，一天里很容易把同一个字独立答对 3 次。
+    # 盯的是「别把日期写进学习记录 / 别把提示后答对也算独立 / 别把老师现有字表整批打乱」。
+    _lv = html[html.find('function levelOf'):]
+    _lv = _lv[:max(_lv.find('function levelCls'), 1)]
+    _so = html[html.find('var LS_SOLO'):]
+    _so = _so[:max(_so.find('function levelOf'), 1)]
+    _tk = html[html.find('function todayKey'):]
+    _tk = _tk[:max(_tk.find('function toast'), 1)]
+    rec('G1', '掌握判定要跨天：至少两个不同本地日独立答对过才算已掌握',
+        'function soloLoad()' in html and 'function soloDays(key)' in html
+        and 'function soloMark(key, day)' in html
+        and 'var d = soloDays(r.key);' in _lv and 'if (d >= 2) return' in _lv)
+    rec('G1', '日期表是本机独立键，不进 STATE / 云端 / 导出导入',
+        "var LS_SOLO = 'wb2_solo_days_v1';" in html
+        and 'localStorage.getItem(LS_SOLO)' in html
+        and 'localStorage.setItem(LS_SOLO' in html
+        and html.count('LS_SOLO') == 3)
+    rec('G1', '只记「独立答对」，提示后答对与描红都不记日期',
+        html.count('soloMark(r.key, todayKey())') == 2
+        and 'if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; }' in html
+        and 'if (STATE.quiz.promptUsed) r.hinted++;' in html
+        and 'else { r.alone++; soloMark(r.key, todayKey()); }' in html)
+    rec('G1', '日期表只存「哪几天」的日期字符串，不存字对象或成绩',
+        'a.push(day);' in _so and 'JSON.stringify(o)' in _so
+        and 'STATE.chars' not in _so and 'alone' not in _so)
+    rec('G1', '同一天重复答对只记一天，日期按本地日而不是 UTC',
+        "if (a.indexOf(day) >= 0) return;" in _so
+        and 'd.getFullYear()' in _tk and 'toISOString' not in _tk)
+    rec('G1', '老数据不追溯：云端已标已掌握与没有日期记录的本机数据都沿用旧口径',
+        "if (r.level === '已掌握') return '已掌握';" in _lv
+        and 'if (d === 0) return' in _lv
+        and _lv.count("return '已掌握';") == 3)
+    rec('G1', '只改掌握判定，在学名单的补位逻辑一行没动',
+        'function syncActive(stu)' in html and 'var order = stuProfile(stu).focus;' in html
+        and 'if (out.length < cap)' in html and 'syncActive' not in _lv)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。

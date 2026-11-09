@@ -1789,7 +1789,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v49</span>
+    <span id="appVer" class="app-ver">v50</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -3670,7 +3670,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v49';
+var APP_VER = 'v50';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -4349,10 +4349,46 @@ function getLog(stu, ch){
   }
   return STATE.logs[k];
 }
+/* v50：「已掌握」要跨天才算。老师 2026-11-09「才练过一次下次打开就没有这个字了，
+   学生还是不熟悉的」——一轮有 9 个题型，每个题型都从同一批在学字出题，一天里很容易
+   把同一个字独立答对 3 次；那只是当天认了三遍，不是隔天还记得。
+
+   这里只记「独立答对发生在哪几个本地日」，按 学生|字 去重。本机独立键，
+   不进 STATE / 云端 schema / 导出导入（和 wb2_sess_v1、wb2_read_pick_v1 同口径）。
+   只有独立答对才记，提示后答对与描红都不算「自己认出来」。 */
+var LS_SOLO = 'wb2_solo_days_v1';
+var SOLO = null;
+function soloLoad(){
+  if (SOLO) return SOLO;
+  try { SOLO = JSON.parse(localStorage.getItem(LS_SOLO) || 'null') || {}; }
+  catch (e) { SOLO = {}; }
+  return SOLO;
+}
+function soloDays(key){
+  if (!key) return 0;
+  var a = soloLoad()[key];
+  return (a && a.length) ? a.length : 0;
+}
+function soloMark(key, day){
+  if (!key || !day) return;
+  var o = soloLoad(), a = o[key] || (o[key] = []);
+  if (a.indexOf(day) >= 0) return;
+  a.push(day);
+  try { localStorage.setItem(LS_SOLO, JSON.stringify(o)); } catch (e) {}
+}
 function levelOf(r){
   if (!r || !r.n) return '待学';
   if (r.wrong >= 3 && r.alone === 0) return '需巩固';
-  if (r.alone >= 3 && r.wrong <= 1) return '已掌握';
+  if (r.alone >= 3 && r.wrong <= 1){
+    /* ① 云端已经标过「已掌握」的老数据：不追溯，否则老师现有字表会被整批打乱 */
+    if (r.level === '已掌握') return '已掌握';
+    var d = soloDays(r.key);
+    /* ② 本机还没有这个字的日期记录（老数据、或换设备/清过缓存）：沿用旧口径，
+       宁可维持现状，也不要因为一次改动把学生的进度全推翻 */
+    if (d === 0) return '已掌握';
+    /* ③ v50 之后练过的字：至少两个不同的本地日独立答对过才算掌握 */
+    if (d >= 2) return '已掌握';
+  }
   return '练习中';
 }
 function levelCls(lv){
@@ -6906,7 +6942,8 @@ function wbLogWord(wd){
     if (!map[ch]) continue;
     r = getLog(stu.name, ch);
     r.n++;
-    if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; } else { r.alone++; }
+    if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; }
+    else { r.alone++; soloMark(r.key, todayKey()); }
     r.last = nowISO();
     r.level = levelOf(r);
     r.dirty = true;
@@ -7544,7 +7581,8 @@ function gradeAnswer(right){
   STATE.quiz.answered = true;
   var stu = STATE.cur, r = getLog(stu.name, q.target.w);
   r.n++;
-  if (STATE.quiz.promptUsed) r.hinted++; else r.alone++;
+  if (STATE.quiz.promptUsed) r.hinted++;
+  else { r.alone++; soloMark(r.key, todayKey()); }   /* v50：只有独立答对才记日期 */
   /* 试过才答对：本次练习记一笔，结算页报「其中 N 题是试了再答对的」。
      不落库 —— 云端日志 schema 没有这一列，写进去也会被同步覆盖成 0（比不写更糟）。 */
   if (STATE.quiz.wrongLogged) STATE.quiz.retried = (STATE.quiz.retried || 0) + 1;

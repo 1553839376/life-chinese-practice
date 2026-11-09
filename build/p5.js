@@ -1049,7 +1049,8 @@ function wbLogWord(wd){
     if (!map[ch]) continue;
     r = getLog(stu.name, ch);
     r.n++;
-    if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; } else { r.alone++; }
+    if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; }
+    else { r.alone++; soloMark(r.key, todayKey()); }
     r.last = nowISO();
     r.level = levelOf(r);
     r.dirty = true;
@@ -1687,7 +1688,8 @@ function gradeAnswer(right){
   STATE.quiz.answered = true;
   var stu = STATE.cur, r = getLog(stu.name, q.target.w);
   r.n++;
-  if (STATE.quiz.promptUsed) r.hinted++; else r.alone++;
+  if (STATE.quiz.promptUsed) r.hinted++;
+  else { r.alone++; soloMark(r.key, todayKey()); }   /* v50：只有独立答对才记日期 */
   /* 试过才答对：本次练习记一笔，结算页报「其中 N 题是试了再答对的」。
      不落库 —— 云端日志 schema 没有这一列，写进去也会被同步覆盖成 0（比不写更糟）。 */
   if (STATE.quiz.wrongLogged) STATE.quiz.retried = (STATE.quiz.retried || 0) + 1;
