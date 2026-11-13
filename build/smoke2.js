@@ -3227,6 +3227,94 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      '完全没记过日期的老数据按旧口径毕业，避免一次升级把全班进度推翻');
   v50_reset();
 
+  /* ==================== §44 练习结算页跟游戏同口径（v51） ====================
+     老师 2026-11-13：「还有个问题，我发现练习部分也是，学生都做错了好几个，
+     最后结果依然是 100%」。v22 起点错不判死，最后每题都会点对，
+     旧算法 right / 总题数 必然 100% + 三星。现在减掉 retried，和 v39 游戏乐园一致。 */
+  const v51_stu = { id: 'local_v51', name: '结算生',
+    types: ['听音找字', '找一样的字', '认读跟读'],
+    chars: v50_pool.slice(), groups: [], count: 4, status: '在读', photo: '',
+    active: [], lock: [], off: [] };
+  w.STATE.cur = v51_stu;
+  const v51_mk = o => Object.assign({
+    type: '听音找字', qs: [{ target: { w: v50_ch } }], i: 1,
+    right: 0, retried: 0, wrongChars: [],
+    answered: false, promptUsed: 0, missed: 0, wrongLogged: false, picked: '',
+    checked: false, peeked: false
+  }, o || {});
+  const v51_sum = o => {
+    w.STATE.quiz = v51_mk(o);
+    w.renderSummary();
+    const stage = d.getElementById('stage');
+    const big = stage.querySelector('.big-char');
+    return {
+      rate: big ? parseFloat(big.textContent) : -1,
+      stars: stage.querySelectorAll('.star-row .pill').length,
+      say: (stage.querySelector('.fb-say') || {}).textContent || '',
+      text: stage.textContent
+    };
+  };
+  /* 星尺和游戏乐园同一把：>=90 三星 / >=70 两星 / >=40 一星 */
+  const v51_eight = o => v51_sum(Object.assign({ qs: new Array(8), i: 8, right: 8 }, o || {}));
+
+  const v51_all = v51_eight({ retried: 0 });
+  ok(v51_all.rate === 100 && v51_all.stars === 3,
+     '一次就点对 8 题：仍是 100% + 三星（满分没被改坏）');
+  ok(v51_all.say.indexOf('太棒了') >= 0, '全一次点对，鼓励语仍是「太棒了！」');
+
+  const v51_three = v51_eight({ retried: 3 });
+  ok(v51_three.rate === 63,
+     '老师说的那种情况：8 题里错 3 题再点对 → 63%（不是 100%）：' + v51_three.rate + '%');
+  ok(v51_three.stars === 1, '63% 只给 1 颗星，星数跟着降：' + v51_three.stars);
+  ok(v51_three.say.indexOf('太棒了') < 0,
+     '错了 3 题不再夸「太棒了！」：' + v51_three.say);
+  ok(v51_three.text.indexOf('其中 3 题是试了再答对的，不计入正确率') >= 0,
+     '结算页写明这 3 题试过、也说明为什么不算进正确率');
+
+  const v51_zero = v51_eight({ retried: 8 });
+  ok(v51_zero.rate === 0 && v51_zero.stars === 0,
+     '每题都是试出来的 → 0% / 0 星，不再给满分');
+  const v51_skip = v51_sum({ qs: new Array(8), i: 8, right: 5, retried: 0 });
+  ok(v51_skip.rate === 63, '跳过 / 没答完的题照旧算没对：5/8 = 63%');
+  const v51_few = v51_eight({ retried: 1 });
+  ok(v51_few.rate === 88, '只错 1 题 → 88%，不会因为一次失误掉一大截');
+  ok(v51_few.stars === 2, '88% 给 2 颗星（>=90 才三星，和游戏同尺）');
+
+  /* 只排一个题型的学生：做完这一轮就是「今天全部完成」，也不能把低分夸成满分 */
+  const v51_oneStu = { id: 'local_v51b', name: '单题型生', types: ['听音找字'],
+    chars: v50_pool.slice(), groups: [], count: 4, status: '在读', photo: '' };
+  w.STATE.cur = v51_oneStu;
+  const v51_done = v51_eight({ retried: 5 });
+  ok(v51_done.text.indexOf('今天的练习全部完成') >= 0,
+     '只排一个题型时仍会写「今天的练习全部完成」');
+  ok(v51_done.say.indexOf('太棒了') < 0,
+     '但这一轮错了 5 题，鼓励语不再被 allDone 覆盖成「太棒了！」');
+  ok(v51_done.rate === 38, '完成提示照旧，正确率还是如实 38%');
+  w.STATE.cur = v51_stu;
+
+  /* 拼词语按「词」算：拼错只退回重试、不置 wrongLogged，不受本次改动影响 */
+  const v51_words = v51_sum({ type: '拼词语',
+    qs: [{ words: [{ w: '一人' }, { w: '人口' }, { w: '大小' }] },
+         { words: [{ w: '上山' }, { w: '下山' }, { w: '火车' }] },
+         { words: [{ w: '日月' }, { w: '水火' }, { w: '人手' }] }],
+    i: 3, right: 6, retried: 0 });
+  ok(v51_words.rate === 67, '拼词语仍按词算：9 个词拼对 6 个 = 67%：' + v51_words.rate + '%');
+
+  /* 真实路径：点错一次再点对 → retried 记 1，走到结算率跟着降 */
+  const v51_real = v51_mk({ qs: [{ target: { w: v50_ch } }], i: 0, right: 0, retried: 0 });
+  w.STATE.quiz = v51_real;
+  w.missOption('别的字');
+  w.gradeAnswer(true);
+  ok(v51_real.retried === 1 && v51_real.right === 1,
+     '真实作答：点错一次再点对 → right=1、retried=1');
+  ok(v51_real.wrongLogged === true, 'wrongLogged 一题最多记一次，重试不双重惩罚');
+  v51_real.i = 1;
+  w.renderSummary();
+  ok(parseFloat(d.querySelector('#stage .big-char').textContent) === 0,
+     '这一题走真实路径到结算：0%（不是 100%）');
+  ok(!('retried' in (w.STATE.logs['结算生|' + v50_ch] || {})) && !('retried' in w.STATE),
+     'retried 只是本轮运行时计数，不写学习记录、不落云端');
+
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();
   process.exit(fail ? 1 : 0);

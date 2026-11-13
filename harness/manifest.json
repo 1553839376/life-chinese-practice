@@ -152,6 +152,8 @@
    "readQuestion",
    "gradeAnswer",
    "renderSummary",
+   "oneTry",
+   "pickOption",
    "TYPE_ORDER",
    "enterStudent",
    "useHint",
@@ -382,7 +384,7 @@
    "args": [
     "生活语文练习台.html"
    ],
-   "min_cases": 877
+   "min_cases": 895
   },
   {
    "name": "check_pair",

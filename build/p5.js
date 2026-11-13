@@ -1769,7 +1769,15 @@ function renderSummary(){
     denom = 0;
     for (i = 0; i < z.qs.length; i++) denom += z.qs[i].words.length;
   }
-  var rate = denom ? Math.round(right * 100 / denom) : 0;
+  /* v51：跟游戏乐园同口径 —— 只有「一次就点对」才算对。
+     老师 2026-11-13：「学生都做错了好几个，最后结果依然是 100%」。
+     v22 起点错不判死，孩子最后每题都会点对，right 恒等于总题数，
+     旧算法必然显示 100% + 三星。retried 在 gradeAnswer() 里按 wrongLogged
+     累加（一题最多一次），减掉它就是一次就点对的题数。
+     跳过的题本来就不进 right，已经算「没答对」；拼词语拼错只是退回重试、
+     不置 wrongLogged，所以仍按拼对的词数算，不受这次改动影响。 */
+  var oneTry = Math.max(0, right - (z.retried || 0));
+  var rate = denom ? Math.round(oneTry * 100 / denom) : 0;
   var stars = rate >= 90 ? 3 : (rate >= 70 ? 2 : (rate >= 40 ? 1 : 0));
   var starHTML = '';
   for (i = 0; i < stars; i++){ starHTML += '<span class="pill g" style="font-size:15px">★</span>'; }
@@ -1779,7 +1787,9 @@ function renderSummary(){
   var stu = STATE.cur;
   sessMark(z.type);
   var nextT = sessNext(stu), allDone = !nextT, typeN = sessTypes(stu).length;
-  if (allDone) msg = '太棒了！';
+  /* v51：全部题型练完仍值得夸，但不能把「错了好几个」也夸成太棒了 ——
+     大字完成提示（.done-hero）和庆祝音是给「今天练完了」，这一轮的鼓励语只看正确率。 */
+  if (allDone && rate >= 90) msg = '太棒了！';
   /* 全部练完时念一句自己的话（录过整句），不然「今天练完了」这件事全靠屏幕字 */
   var sayWhat = allDone ? '今天的练习全部完成。' : msg;
   if (rate >= 70 || allDone) sfxWin(); else sfxNo();
@@ -1824,7 +1834,7 @@ function renderSummary(){
     '<div class="fb-say">' + esc(msg) + CLOSE('div') +
     /* 重试不扣分（结算页是给孩子的激励），但要让老师一眼看出这轮是靠试出来的 */
     (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
-      z.retried + ' 题是试了再答对的</div>' : '') +
+      z.retried + ' 题是试了再答对的，不计入正确率</div>' : '') +
     (wrongBody ? '<div class="wrong-box">' + wrongBody + CLOSE('div') : '') +
     '<div class="sum-actions">' + btns + CLOSE('div');
   $('qNow').textContent = String(done);

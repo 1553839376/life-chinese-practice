@@ -21,7 +21,7 @@
 - **同音干扰项（v38）**：听音找字/看拼音写字**不许同音**，判据 `pyKey=noTone(p)`（**声调去掉**）；`pickDistract` 三层「字表不同音 → 全库不同音 → 字表兜底」，保 4 选项，**目标字不许回退全库**。`SAME_SOUND_TYPES` 只这两个题型。
 - **手写三题型（v25/v27）**：`汉字听写`/`词语听写`/`描红汉字`。**没有手写识别就不假装判分**：亮答案 + 人核对。描红记 `hinted`/`prompts`、**不记 `alone`**。手写不要求 4 个字、一次最多 6 个、读题**念词不念单字**。画布按 DPR 放大再 `setTransform` 缩回；尺寸 `wgLayout()` 算 px（**不用 `aspect-ratio`**），字号＝0.76 格宽；量宽两次（80ms 后）、**不挂 rAF**；**jsdom 没有 canvas** → 绘制先判空。**「看一眼」**亮 3 秒自动合上、每题一次、记 `promptUsed`；老师辅助栏「提示一下」**反过来永久亮**——区别是**谁按的**，别串成一条（v38 被打回）。窄屏四按钮 **2×2 等宽网格**（`flex-wrap` 会折成 3+1）。
 - **听写与默写（v40 / T-035）**：乐园第六卡 `data-gp="dict"` 整行实线（虚线是「随便玩」专用）、**不进 `GAME_KEYS`**；`#scrGame.is-dict` 下 `.ga-word`/`#gameHint` 必须 `display:none`。**计分只有 `gameAward()` 一处**。听写**不写学习记录**。默写 `.blind` 要藏两层灰字（`#soBase`+`.so-ghost`）**和顶上「木 mù」**（后者 `visibility:hidden`，`display:none` 会塌行）；「再看一遍」＝放弃默写。
-- **游戏正确率（v39）**：`gameRight()` 按**这题错过没有**（`GAME.miss>0`）分 `oneTry`/`retried`；正确率 = `oneTry/总题数`，星数 `>=90/>=70/>=40`。点错过的就不算对。**练习结算页刻意不跟**（那边「重试不扣分」），别顺手统一。
+- **正确率两处同尺（v39 游戏 / v51 练习）**：`gameRight()` 按**这题错过没有**（`GAME.miss>0`）分 `oneTry`/`retried`；正确率 = `oneTry/总题数`，星数 `>=90/>=70/>=40`，点错过的就不算对。**v51 起练习结算页跟游戏一致**：`renderSummary()` 用 `oneTry = right - z.retried`、`rate = oneTry/denom`，`retried` 由 `gradeAnswer()` 按 `wrongLogged` 累加（一题一次，不落库）；`allDone && rate>=90` 才夸「太棒了」。原因：v22 答错可重试使 `right` 恒等于题数 → 旧口径必然 100%。**旧约定「练习结算页刻意不跟、重试不扣分」已作废**，别再按它改回去；G1 有防回潮护栏（不许 `right*100/denom`、游戏侧不许动）。
 - **结算列错字（v45）**：一处组件 `wrongBodyHTML(list,label)`（按 `c.w` 去重、n<12、空表 `''`）+ 一处开关 `WRONG_LIST_TYPES`（只开听音找字）。游戏侧 `GAME.wrongs` 记 **`GAME.queue[GAME.i]`（目标字）**，不是点错的干扰项；练习侧 `STATE.quiz.wrongChars` 记 `q.target`，跟 `wrongLogged` 一题一次。全对整块不出现。`.game-over` 必须 `justify-content:safe center` + `overflow-y:auto`（390 场高 312px）。
 
 ## 三、语音 / 笔顺 / 词库
@@ -43,7 +43,7 @@
 
 ## 五、工程纪律
 - **文档**：`docs/` 的 `STATE.md`（先读）`00-功能清单` `01-HARNESS` `02-验收清单` `03-变更日志` `tasks/` `logs/`；每个任务一卡 + 一日志 + 变更一条，**不改文档等于没做完**。**发版铁律：先改 5 处 → 构建 → 门禁 → 发布**（`APP_VER`、`p2.html` 角标、`STATE.md`、功能清单、`README.md`）。`check_docs.py` 在 G1 里，改完文档要复跑。
-- **门禁**：`python harness/run_gate.py`（G0 构建/体积/分片、G1 静态护栏、G2 五套测试、G3 报告）全绿才算做完；新增功能必须登记 `harness/manifest.json`、抬 `min_cases`。**红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**。核线上下载回来直接 `node smoke2.js <文件>`；**无头 Chrome 在 15 MB 页面上被 SIGKILL（exit 137）**。「0 失败但项数少几条」＝有断言没跑到：`for` 里 `ok()` 是炸弹，写成「循环只动手、末尾一次性核对」。取函数体 `split('function X')[1].split('function Y')[0]`——**Y 必须在 X 之后**。**判「旧类名已清掉」别判裸词**（注释会假红）；判样式先看是否被 `@media` / `max-width:100%` 干扰。`smoke2.js`/`check_lib.js` 要传 HTML 文件名，需 `NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules`。
+- **门禁**：`python harness/run_gate.py`（G0 构建/体积/分片、G1 静态护栏、G2 五套测试、G3 报告）全绿才算做完；新增功能必须登记 `harness/manifest.json`、抬 `min_cases`。**红了先看是不是自己改了设计**：改断言测新行为、项数净增，**不能删断言过关**。核线上下载回来直接 `node smoke2.js <文件>`；**无头 Chrome 在 15 MB 页面上被 SIGKILL（exit 137）**。「0 失败但项数少几条」＝有断言没跑到：`for` 里 `ok()` 是炸弹，写成「循环只动手、末尾一次性核对」。取函数体 `split('function X')[1].split('function Y')[0]`——**Y 必须在 X 之后**。**判「旧类名已清掉」别判裸词**（注释会假红）；判样式先看是否被 `@media` / `max-width:100%` 干扰。`smoke2.js`/`check_lib.js` 要传 HTML 文件名，需 `NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules`。**`manifest.json` 关键符号表只认 `function/var/const/let` 声明或 `id="X"`**：`STATE.quiz.wrongLogged` 这类**属性**登记进去永远判红（v51 踩过）；改成同一条链上真有声明的函数（如 `pickOption`），属性另用 G1 行为护栏 + 测试覆盖，别删断言。
 - **数字与副作用**：数字必须脚本现算，别抄上一版。必须发生的副作用别挂 `requestAnimationFrame`，用 `setTimeout`。新增 STATE 字段要同时改 `saveSnap`/`loadSnap`/导出/导入；**云端 schema 没列的字段一律不落库**（`GAME.queue` 装的是 `STATE.chars` 的**引用**）。
 
 ## 六、用户偏好与不做清单

@@ -1168,6 +1168,36 @@ def gate_static(html):
         'function syncActive(stu)' in html and 'var order = stuProfile(stu).focus;' in html
         and 'if (out.length < cap)' in html and 'syncActive' not in _lv)
 
+    # v51（老师 2026-11-13）：「还有个问题，我发现练习部分也是，学生都做错了好几个，
+    # 最后结果依然是 100%」。v22 起点错不判死，孩子最后每题都会点对，
+    # 旧 renderSummary 拿 right / 总题数 算必然 100% + 三星。
+    # 现在减掉 retried（只有一次就点对才计入），和 v39 游戏乐园同口径。
+    _rs = html.split('function renderSummary')[1].split('function renderProgress')[0] \
+        if 'function renderSummary' in html else ''
+    rec('G1', '练习结算页按「一次就点对」算正确率（减掉试过才对的题）',
+        'var oneTry = Math.max(0, right - (z.retried || 0));' in _rs
+        and 'Math.round(oneTry * 100 / denom)' in _rs,
+        '' if _rs else '找不到 renderSummary')
+    rec('G1', '不许回潮成「答对数 / 总题数」（那样必然又是 100%）',
+        'Math.round(right * 100 / denom)' not in _rs and bool(_rs))
+    rec('G1', '星数仍跟正确率走，没有写死三颗星（>=90/>=70/>=40）',
+        'var stars = rate >= 90 ? 3 : (rate >= 70 ? 2 : (rate >= 40 ? 1 : 0));' in _rs)
+    rec('G1', '结算页写明「其中 N 题是试了再答对的，不计入正确率」',
+        '题是试了再答对的，不计入正确率' in _rs and 'z.retried' in _rs)
+    rec('G1', '全部题型练完也不能把低分夸成「太棒了」',
+        'if (allDone && rate >= 90) msg =' in _rs
+        and 'if (allDone) msg =' not in _rs)
+    rec('G1', 'retried 只在 gradeAnswer 里按 wrongLogged 累加（一题最多一次、不落库）',
+        'if (STATE.quiz.wrongLogged) STATE.quiz.retried = (STATE.quiz.retried || 0) + 1;' in html
+        and html.count('STATE.quiz.retried = (STATE.quiz.retried || 0) + 1') == 1)
+    rec('G1', 'wrongLogged 是 STATE.quiz 的属性：两处置位、每题复位、missOption 靠它挡重复记账',
+        'STATE.quiz.wrongLogged = true;' in html
+        and html.count('STATE.quiz.wrongLogged = true;') >= 2
+        and 'STATE.quiz.wrongLogged = false;' in html
+        and 'STATE.quiz.wrongLogged) return false;' in html)
+    rec('G1', '游戏乐园的正确率口径保持不动（两边现在一致，别顺手改坏一处）',
+        'var one = GAME.oneTry;' in html and 'Math.round(one * 100 / total)' in html)
+
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。
     # 这类问题不影响功能，但会让下一次开工读到错前提，所以让它进门禁。
