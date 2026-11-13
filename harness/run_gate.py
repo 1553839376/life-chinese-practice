@@ -454,8 +454,14 @@ def gate_static(html):
         "var SAME_SOUND_TYPES = { '听音找字': 1, '看拼音写字': 1 };" in html,
         'SAME_SOUND_TYPES 不见了或被扩到别的题型')
     rec('G1', 'v38 buildQuestions 按题型决定要不要避开同音（漏传 type 就等于没修）',
-        'SAME_SOUND_TYPES[t0]' in _bq and 'pickDistract(pool, 3, t, wide, true)' in _bq,
+        'SAME_SOUND_TYPES[t0]' in _bq and 'pickDistract(pool, want, t, wide, true)' in _bq,
         ('buildQuestions 里没走 pickDistract') if _bq else '找不到 buildQuestions')
+    # v52（老师 2026-11-13）：「目前学生选项只有四个，希望支持可调控的 4/6/8 三档」。
+    # 干扰项个数必须从档位算出来，写死 3 就等于档位白调。
+    rec('G1', 'v52 干扰项个数跟选项档位走（4/6/8 → 3/5/7 个），不再写死 3',
+        'var want = Math.max(1, optnLoad() - 1);' in _bq
+        and 'pickN(pool, want, [t])' in _bq,
+        ('干扰项个数没跟 optnLoad 走') if _bq else '找不到 buildQuestions')
     rec('G1', 'v38 抽干扰项三层兜底（字表不同音 → 全库不同音 → 字表兜底），选项不会少',
         "take(pool, true)" in _pd and "take(wide, true)" in _pd and "take(pool, false)" in _pd,
         ('pickDistract 少了某一层') if _pd else '找不到 pickDistract')
@@ -1107,25 +1113,44 @@ def gate_static(html):
         '连点两下（或按住不放）' in html and 'title="连点两下，或按住不放，进入老师端"' in html)
 
     # v49（老师 2026-11-09）：「早读模式我希望保持记忆功能，即记住上一次勾选的汉字，
-    # 这样很多不需要重复勾选」。盯的是「别把这份记忆扩大成全局、别存对象引用、别顺手给别的玩法也记上」。
+    # 这样很多不需要重复勾选」。v52（2026-11-13）老师又说「全部玩法接选字记忆」，
+    # 于是从「只记早读」扩成「六种玩法都记、早读单独一套键」。这里盯的还是那几件事：
+    # 别存对象引用、别在非「开始」时写、别把两套键混成一套。
     _rp = html[html.find("var LS_READ_PICK"):]
     _rp = _rp[:max(_rp.find('function pickLabel'), 1)]
-    rec('G1', '早读选字记忆用独立 localStorage 键（不进 STATE / 云端 / 导出导入）',
+    _pb = html[html.find('function pickBegin'):]
+    _pb = _pb[:max(_pb.find('function pickCancel'), 1)]
+    _ps = html[html.find('function pickStart'):]
+    _ps = _ps[:max(_ps.find('function toggleMute'), 1)]
+    _pc = html[html.find('function pickClear'):]
+    _pc = _pc[:max(_pc.find('function pickLabel'), 1)]
+    rec('G1', '选字记忆用独立 localStorage 键（不进 STATE、不进云端 schema）',
         "var LS_READ_PICK = 'wb2_read_pick_v1';" in html
+        and "var LS_PICK = 'wb2_pick_v1';" in html
         and 'function readPickLoad()' in html and 'function readPickSave(chars)' in html)
     rec('G1', '记忆只存汉字字符串，恢复时按 w 回 STATE.chars 查（不存对象引用）',
         'a.push(chars[i].w)' in _rp and 'STATE.chars[j].w === w' in _rp
         and 'out.push(STATE.chars[j])' in _rp)
-    rec('G1', '只在老师点「开始早读」时写，且只写 read 这一种玩法',
-        "if (kind === 'read') readPickSave(chars);" in html
-        and html.count('readPickSave(') == 2)
-    rec('G1', '只有早读带回上次的勾选，别的玩法仍然从空开始',
-        "PICK.list = (kind === 'read') ? readPickLoad() : [];" in html
-        and 'PICK.restored = (kind === ' + "'read' && PICK.list.length > 0);" in html)
+    rec('G1', '早读和其它玩法各用一套键（换玩法不该把老师的早读勾选冲掉）',
+        "function pickMemKey(kind){ return kind === 'read' ? LS_READ_PICK : LS_PICK; }" in html)
+    rec('G1', 'v52 六种玩法都带回上次勾的字（原来只有早读一家）',
+        'PICK.list = pickMemLoad(pickMemKey(kind));' in _pb
+        and 'PICK.restored = PICK.list.length > 0;' in _pb,
+        ('pickBegin 还在按玩法分支') if _pb else '找不到 pickBegin')
+    rec('G1', '只在老师点「开始」时写一次，写的地方只有一处',
+        'pickMemSave(pickMemKey(kind), chars);' in _ps
+        and html.count("localStorage.setItem(key, JSON.stringify(a))") == 1,
+        ('pickStart 没写 / 写的地方不止一处') if _ps else '找不到 pickStart')
     rec('G1', '底部提示写明这批勾是「上次记住的」，别让老师以为字自己勾上了',
-        "已勾上上次早读的 ' + n + ' 个字" in html and 'PICK.restored' in html)
-    rec('G1', '老师一改勾选就不再自称「上次那批」，退出选字态也要复位',
-        'PICK.restored = false;' in html and html.count('PICK.restored = false;') == 2)
+        "已勾上上次玩的 ' + n + ' 个字" in html and 'PICK.restored' in html)
+    rec('G1', '老师一改勾选 / 退出选字态 / 一键取消，都不再自称「上次那批」',
+        html.count('PICK.restored = false;') >= 3 and 'PICK.restored = false;' in html[
+            html.find('function pickToggle'):html.find('function pickStart')])
+    rec('G1', 'v52 一键取消勾选只清当前勾选，不动本机记的那份',
+        'function pickClear()' in html and 'PICK.list = [];' in _pc
+        and 'localStorage.removeItem' not in _pc
+        and "grid.querySelectorAll('.ch-card.sel')" in _pc,
+        ('pickClear 把本机记忆一起清了 / 没清字卡上的绿框') if _pc else '找不到 pickClear')
     rec('G1', '记忆里查不到的字会被跳过（字表变了不会发出一张空牌）',
         "if (typeof w !== 'string' || !w) continue;" in _rp
         and 'continue' in _rp and 'break;' in _rp)
@@ -1144,11 +1169,24 @@ def gate_static(html):
         'function soloLoad()' in html and 'function soloDays(key)' in html
         and 'function soloMark(key, day)' in html
         and 'var d = soloDays(r.key);' in _lv and 'if (d >= 2) return' in _lv)
-    rec('G1', '日期表是本机独立键，不进 STATE / 云端 / 导出导入',
+    # v52：这张日期表以前不在备份里，换台电脑导进来 soloDays 全是 0，
+    # levelOf 走「本机一个日期都没有」那一支 → 所有 alone>=3 的字当场变「已掌握」。
+    # 所以它仍然是本机独立键（不进 STATE / 云端 schema），但**必须被备份带走**。
+    rec('G1', '跨天日期表仍是本机独立键（不进 STATE / 云端 schema），但会被备份带走',
         "var LS_SOLO = 'wb2_solo_days_v1';" in html
         and 'localStorage.getItem(LS_SOLO)' in html
         and 'localStorage.setItem(LS_SOLO' in html
-        and html.count('LS_SOLO') == 3)
+        and html.count('LS_SOLO') == 4
+        and 'o.solo' in html)
+    # v52（老师 2026-11-13）：「第一、二项都实现」—— 第一项就是备份漏了本机那几张表。
+    rec('G1', '备份带齐本机四张独立表（跨天日期 / 复习计划 / 错字本 / 早读选字）',
+        'solo: soloLoad()' in html and 'review: reviewLoad()' in html
+        and 'wrong: wrongLoad()' in html and 'readPick:' in html
+        and 'o.review' in html and 'o.wrong' in html and 'isArr(o.readPick)' in html)
+    rec('G1', '老备份没有这几个字段时保持本机原样（不能因为「文件里没有」就清空）',
+        'if (o.solo && typeof o.solo ===' in html
+        and 'if (o.review && typeof o.review ===' in html
+        and 'if (o.wrong && typeof o.wrong ===' in html)
     rec('G1', '只记「独立答对」，提示后答对与描红都不记日期',
         html.count('soloMark(r.key, todayKey())') == 2
         and 'if (STATE.quiz.promptUsed){ r.hinted++; r.prompts++; }' in html
@@ -1197,6 +1235,99 @@ def gate_static(html):
         and 'STATE.quiz.wrongLogged) return false;' in html)
     rec('G1', '游戏乐园的正确率口径保持不动（两边现在一致，别顺手改坏一处）',
         'var one = GAME.oneTry;' in html and 'Math.round(one * 100 / total)' in html)
+
+    # v52（老师 2026-11-13）六项需求。老师的原话：
+    # ①「第一、二项都实现」（备份漏了跨天日期表 + 错字本要闭环）
+    # ②「为汉字练习增加类似遗忘曲线的出题逻辑，学生学会后间隔若干天仍会重新进入该字的练习」
+    # ③「第三项增加提示询问功能」（中途离开 / 续练时先问）
+    # ④「把练习乐园的全部内容都实现，并在选字界面增加一键取消勾选的按钮」
+    # ⑤「保留现有动效和语音，不做削减或变更」
+    # ⑥「支持可调控的 4/6/8 三档难度……并增加相应的难度切换按钮」
+    _tc = html[html.find('function todayChars'):]
+    _tc = _tc[:max(_tc.find('function preReadN'), 1)]
+    _ga = html[html.find('function gradeAnswer'):]
+    _ga = _ga[:max(_ga.find('function insertAfter'), 1)]
+    _mo = html[html.find('function missOption'):]
+    _mo = _mo[:max(_mo.find('function gradeAnswer'), 1)]
+    _go = html[html.find('function gameOpts'):]
+    _go = _go[:max(_go.find('function gameQuestion'), 1)]
+
+    # ② 复习计划（间隔重复）
+    rec('G1', 'v52 复习间隔就是老师选的那一档：1 / 3 / 7 / 15 天，一轮最多插 2 个',
+        'var REVIEW_GAPS = [1, 3, 7, 15];' in html
+        and 'var REVIEW_PER_DAY = 2;' in html)
+    rec('G1', 'v52 答对推进一档、答错（或靠提示）退回一档，两头都写',
+        'function reviewMark(key, right)' in html
+        and 'r.due = dayAdd(REVIEW_GAPS[b]);' in html
+        and 'b = Math.max(0, b - 1);' in html)
+    rec('G1', 'v52 学会的字不「毕业」：box 到顶仍每 15 天回来一次',
+        'Math.min(REVIEW_GAPS.length - 1, b + 1)' in html)
+    rec('G1', 'v52 到期复习字接在在学字后面（先过新字、再回顾），且不重复排今天练过的',
+        'due = reviewDueChars(stu);' in _tc and 'i < REVIEW_PER_DAY' in _tc)
+    rec('G1', 'v52 复习计划不参与掌握判定（levelOf / syncActive 一行没动）',
+        'reviewMark' not in _lv and 'reviewDue' not in _lv
+        and 'syncActive' not in _lv and 'function reviewMark' in html)
+    rec('G1', 'v52 复习计划是本机独立键，不进 STATE / 云端 schema',
+        "var LS_REVIEW = 'wb2_review_v1';" in html and 'REVIEW' not in html[
+            html.find('var STATE = {'):html.find('var LS_DATA')])
+
+    # ① 错字本闭环
+    rec('G1', 'v52 错字本：答错就进（点选与手写两条路都要进）',
+        html.count('wrongBookMark(r.key);') == 2 and 'function wrongBookMark(key)' in html)
+    rec('G1', 'v52 错字本：独立答对才移出（试了再答对的不算，还留在本子里）',
+        'if (!STATE.quiz.wrongLogged) wrongBookClear(r.key);' in _ga)
+    rec('G1', 'v52 结算页把错字本剩下的也列出来，并给「只练这几个字」',
+        'wrongBookList(stu)' in html and 'btnBookDrill' in html
+        and '练对了会自动移出' in html)
+
+    # ③ 续练（不静默续上、也不静默丢掉）
+    rec('G1', 'v52 每翻一题存一次进度，只存汉字字符串',
+        'function resumeSave()' in html and 'o.push(q.opts[j].w);' in html
+        and 'out.push({ t: q.target.w, o: o });' in html)
+    rec('G1', 'v52 存档在「开新一轮」「走到结算页」时都作废（不留半截存档）',
+        html.count('resumeClear();') >= 3 and 'function resumeClear()' in html)
+    rec('G1', 'v52 回来时先问一句，两个按钮，不静默续上也不静默丢掉',
+        'function resumeBarHTML()' in html and 'id="btnResumeGo"' in html
+        and 'id="btnResumeNo"' in html and '题没练完，接着练吗？' in html)
+    rec('G1', 'v52 续练进度不进 STATE / 云端（和 wb2_sess_v1 同口径）',
+        "var LS_RESUME = 'wb2_resume_v1';" in html
+        and 'resume' not in html[html.find('var STATE = {'):html.find('var LS_DATA')])
+
+    # ⑥ 4 / 6 / 8 三档
+    rec('G1', 'v52 选项档位只有 4 / 6 / 8 三档，本机独立键',
+        "var LS_OPTN = 'wb2_optn_v1';" in html and 'var OPTN_SET = [4, 6, 8];' in html
+        and "if (OPTN_SET.indexOf(n) < 0) n = 4;" in html)
+    rec('G1', 'v52 练习页按「实际给了几个」挑网格类，不留空格子',
+        "'<div class=\"opts ' + optnCls(q.opts.length) + '\">'" in html
+        and 'function optnCls(n)' in html)
+    rec('G1', 'v52 乐园四款场景也都带 n6 / n8 类（调难度不能只有练习页生效）',
+        "bub-wrap ' + optnCls(opts.length)" in html
+        and "fish-wrap ' + optnCls(opts.length)" in html
+        and "fruit-wrap ' + optnCls(opts.length)" in html
+        and "feed-plates ' + optnCls(opts.length)" in html)
+    rec('G1', 'v52 游戏侧干扰项也跟档位走，且不再拿重复字撑满四个位置',
+        'var want = Math.max(1, optnLoad() - 1);' in _go
+        and 'while (out.length < 4' not in _go)
+    rec('G1', 'v52 钓鱼不再写死 4 条鱼（6 / 8 档要摆得下）',
+        'function fishSlots(n)' in html and 'i < slots.length && i < opts.length' in html
+        and 'i < 4 && i < opts.length' not in html)
+    rec('G1', 'v52 「提示一下」按选项数删到只剩目标 + 一个干扰（4 档仍是删两个）',
+        'var kill = Math.max(2, all.length - 2);' in html)
+    rec('G1', 'v52 难度切换按钮在练习页和乐园各一份，一个值管两处',
+        'id="optnBar"' in html and 'id="optnBarLearn"' in html
+        and 'function paintOptnBars()' in html and 'data-optn="' in html)
+
+    # ⑤ 动效与语音一律不削减
+    rec('G1', 'v52 六段核心动效的关键帧都还在（泡泡漂 / 鱼游 / 摆尾 / 划鳍 / 果子摇 / 海草摆）',
+        all(k in html for k in ('@keyframes floatY', '@keyframes swim', '@keyframes tailWag',
+                                '@keyframes finFlap', '@keyframes swing', '@keyframes wave')))
+    rec('G1', 'v52 没有偷偷加「减少动效」的开关把动画关掉',
+        'prefers-reduced-motion' not in html)
+    rec('G1', 'v52 语音包与播放链路原样保留（第 5 条：语音不做变更）',
+        'id="voicePack"' in html and 'function vaPlay' in html and 'function saySeq' in html)
+    rec('G1', 'v52 一键取消勾选的按钮和样式都在（选字条上第三个键）',
+        'id="pickClear"' in html and '.pb-clear{' in html
+        and "$('pickClear').addEventListener('click', pickClear)" in html)
 
     # 文档纪律（2026-10-23 加）：用户问「每次对话要做好 md 记录是不是忘了」，
     # 盘出来的是文档数字漂移——角标停在 v17、语音停在 1690/17 句、backlog 引用不存在的 T-009。

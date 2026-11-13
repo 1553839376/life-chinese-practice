@@ -3062,7 +3062,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(w.PICK.list.length === 3 && w.PICK.list.map(c => c.w).join('') === v49_want.join(''),
      '再进早读，上次那 3 个字自动勾上了');
   ok(w.PICK.restored === true, '标了「这是恢复来的」，底部提示才说人话');
-  ok(d.getElementById('pickHint').textContent.indexOf('已勾上上次早读') >= 0,
+  ok(d.getElementById('pickHint').textContent.indexOf('已勾上上次') >= 0,
      '底部提示写明是上次记住的字：' + d.getElementById('pickHint').textContent);
   ok(d.getElementById('pickStart').disabled === false &&
      d.getElementById('pickStart').textContent.indexOf('开始早读（3）') >= 0,
@@ -3081,13 +3081,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(v49_stale.length === 2 && v49_stale.map(c => c.w).join('') === v49_want.slice(0, 2).join(''),
      '字表变了以后，记住的字里查不到的会被跳过：' + v49_stale.map(c => c.w).join(''));
 
-  /* 只记早读：别的玩法仍然从空开始，也不改这份记忆 */
+  /* v52：全部玩法接选字记忆（老师 2026-11-13「全部玩法接选字记忆」）。
+     早读仍用自己那份键 wb2_read_pick_v1，其余五种玩法共用 wb2_pick_v1，
+     两套互不覆盖 —— 换玩法不该把老师的早读勾选冲掉。 */
+  try { w.localStorage.setItem('wb2_pick_v1', JSON.stringify([v49_want[0], v49_want[1]])); } catch (e) {}
   w.pickBegin('fish');
-  ok(w.PICK.list.length === 0 && w.PICK.restored === false,
-     '钓鱼不预选——别的玩法每次重新挑字是刻意的');
+  ok(w.PICK.list.length === 2 && w.PICK.restored === true,
+     'v52 起钓鱼也预选上次玩的那批字：' + w.PICK.list.map(c => c.w).join(''));
   w.pickCancel();
   ok((w.localStorage.getItem(v49_KEY) || '').indexOf('㐀') >= 0,
-     '进别的玩法没有顺手覆盖掉早读的记忆');
+     '进别的玩法没有顺手覆盖掉早读的记忆（两套键各存各的）');
 
   /* 换一批会覆盖：勾另外 2 个字再开始 */
   try { w.localStorage.removeItem(v49_KEY); } catch (e) {}
@@ -3314,6 +3317,407 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      '这一题走真实路径到结算：0%（不是 100%）');
   ok(!('retried' in (w.STATE.logs['结算生|' + v50_ch] || {})) && !('retried' in w.STATE),
      'retried 只是本轮运行时计数，不写学习记录、不落云端');
+
+  /* ==================== §45 v52 六项需求 ====================
+     老师 2026-11-13 一次提了六条：
+       1) 备份漏了「跨天掌握」的日期表 + 错字本要闭环；
+       2) 复习要像遗忘曲线，学会后隔几天还回来练（间隔选了 1/3/7/15 天）；
+       3) 中途走了要问一句「要不要接着练」，不静默续上也不静默丢掉；
+       4) 乐园全部玩法都接选字记忆 + 选字界面给一个「一键取消勾选」；
+       5) 现有动效和语音一律不删不改；
+       6) 选项支持 4 / 6 / 8 三档，带切换按钮。
+     每一条都要能独立回溯到一句断言上。 */
+  console.log('\n【45】v52：复习计划 / 错字本 / 续练 / 选字记忆 / 4-6-8 档');
+
+  const v52_name = '复习生';
+  const v52_pool = w.STATE.chars.filter(c => c.w).slice(0, 8).map(c => c.w);
+  const v52_stu = { id: 'local_v52', name: v52_name, types: ['听音找字', '找一样的字'],
+    chars: v52_pool.slice(), groups: [], count: 4, status: '在读', photo: '',
+    active: v52_pool.slice(0, 4), lock: [], off: [] };
+
+  /* ---------- 45.1 复习计划：间隔 1 / 3 / 7 / 15 天，答错退回一档 ---------- */
+  const v52_RV = 'wb2_review_v1';
+  const v52_rvReset = () => {
+    const o = w.reviewLoad();
+    Object.keys(o).forEach(k => { delete o[k]; });
+    try { w.localStorage.removeItem(v52_RV); } catch (e) {}
+  };
+  const v52_rk = v52_name + '|' + v52_pool[0];
+  v52_rvReset();
+  ok(w.reviewGet(v52_rk) === null, '新字没有复习计划');
+  ok(w.reviewDue(v52_rk) === false, '没排过复习的字不算到期');
+
+  w.reviewMark(v52_rk, true);
+  const v52_g1 = w.reviewGet(v52_rk);
+  ok(v52_g1 && v52_g1.due === w.dayAdd(1),
+     '第一次独立答对 → 明天回来（第 1 档 1 天）：' + (v52_g1 && v52_g1.due));
+  w.reviewMark(v52_rk, true);
+  const v52_g2 = w.reviewGet(v52_rk);
+  ok(v52_g2.due === w.dayAdd(3), '第二次 → 隔 3 天：' + v52_g2.due);
+  w.reviewMark(v52_rk, true);
+  ok(w.reviewGet(v52_rk).due === w.dayAdd(7), '第三次 → 隔 7 天');
+  w.reviewMark(v52_rk, true);
+  ok(w.reviewGet(v52_rk).due === w.dayAdd(15), '第四次 → 隔 15 天');
+  w.reviewMark(v52_rk, true);
+  ok(w.reviewGet(v52_rk).due === w.dayAdd(15),
+     'box 到顶后仍每 15 天回来一次 —— 不设「毕业」，特需孩子忘得快');
+  const v52_boxTop = w.reviewGet(v52_rk).box;
+  w.reviewMark(v52_rk, false);
+  ok(w.reviewGet(v52_rk).box === v52_boxTop - 1 && w.reviewGet(v52_rk).due === w.dayAdd(1),
+     '答错退回一档、明天再来（不是清零，也不是原地不动）');
+  let v52_rvRaw = null;
+  try { v52_rvRaw = JSON.parse(w.localStorage.getItem(v52_RV) || 'null'); } catch (e) {}
+  ok(v52_rvRaw && v52_rvRaw[v52_rk] && typeof v52_rvRaw[v52_rk].due === 'string' &&
+     /^\d{4}-\d{2}-\d{2}$/.test(v52_rvRaw[v52_rk].due) &&
+     !v52_rvRaw[v52_rk].w,
+     '只存「box + 到期日 + 次数」这几个数，不存字对象、不落云端');
+  ok(!('review' in w.STATE), '复习计划不进 STATE（本机独立键，和 wb2_solo_days_v1 同口径）');
+
+  /* 到期判断与「今天练过就不再排」 */
+  v52_rvReset();
+  const v52_yday = w.dayAdd(-1);
+  w.reviewLoad()[v52_rk] = { box: 1, due: v52_yday, n: 2, last: v52_yday };
+  ok(w.reviewDue(v52_rk) === true, '到期日已过 → 到期');
+  w.reviewLoad()[v52_rk].due = w.dayAdd(2);
+  ok(w.reviewDue(v52_rk) === false, '到期日在后天 → 还没到');
+  w.reviewLoad()[v52_rk].due = v52_yday;
+  w.reviewLoad()[v52_rk].last = w.todayKey();
+  ok(w.reviewDueChars(v52_stu).length === 0,
+     '今天已经排过一次的字不再重复排（一天里反复出同一个字最招人烦）');
+  w.reviewLoad()[v52_rk].last = v52_yday;
+  const v52_due = w.reviewDueChars(v52_stu);
+  ok(v52_due.length === 1 && v52_due[0] === v52_pool[0], '到期的字回到今日字单里：' + v52_due.join(''));
+
+  /* todayChars：到期复习字接在在学字后面，最多 2 个。
+     用「不在在学名单里」的几个字（pool[4..]）—— 已掌握的字会被 syncActive 移出在学，
+     复习计划就是把它们接回来，这才是要验的那条路。 */
+  const v52_rk5 = v52_name + '|' + v52_pool[4];
+  const v52_rk6 = v52_name + '|' + v52_pool[5];
+  const v52_rk7 = v52_name + '|' + v52_pool[6];
+  v52_rvReset();
+  w.reviewLoad()[v52_rk5] = { box: 1, due: v52_yday, n: 1, last: v52_yday };
+  w.STATE.cur = v52_stu;
+  v52_stu.active = v52_pool.slice(0, 4);
+  const v52_today = w.todayChars(v52_stu);
+  ok(v52_today.length === 5 && v52_today[4].w === v52_pool[4],
+     '今天练这 ' + v52_today.length + ' 个：4 个在学 + 1 个到期复习，复习字排在后面');
+  w.reviewLoad()[v52_rk6] = { box: 1, due: v52_yday, n: 1, last: v52_yday };
+  w.reviewLoad()[v52_rk7] = { box: 1, due: v52_yday, n: 1, last: v52_yday };
+  ok(w.todayChars(v52_stu).length === 6,
+     '同时到期 3 个也只多练 2 个（上限 REVIEW_PER_DAY，一轮变长孩子坐不住）');
+  ok(w.REVIEW_PER_DAY === 2 && w.REVIEW_GAPS.join('/') === '1/3/7/15',
+     '间隔档位就是老师选的那一档：1/3/7/15 天，一轮最多 2 个');
+
+  /* ---------- 45.2 错字本：答错进本子，独立答对出本子 ---------- */
+  const v52_WB = 'wb2_wrong_v1';
+  const v52_wbReset = () => {
+    const o = w.wrongLoad();
+    Object.keys(o).forEach(k => { delete o[k]; });
+    try { w.localStorage.removeItem(v52_WB); } catch (e) {}
+  };
+  const v52_wk = v52_name + '|' + v52_pool[3];
+  v52_wbReset();
+  w.wrongBookMark(v52_wk);
+  w.wrongBookMark(v52_wk);
+  ok(w.wrongLoad()[v52_wk].n === 2, '同一个字错两次 → 本子里记 2 次');
+  w.wrongBookMark('别人|' + v52_pool[3]);
+  ok(w.wrongBookList(v52_stu).length === 1,
+     '别人的错字不会混进来：' + w.wrongBookList(v52_stu).map(c => c.w).join(''));
+  w.wrongBookClear(v52_wk);
+  ok(!(v52_wk in w.wrongLoad()) && w.wrongBookList(v52_stu).length === 0,
+     '练对了就移出本子（否则本子只会越来越长）');
+  ok(!('wrong' in w.STATE), '错字本同样不进 STATE');
+
+  /* 真实判分路径：点错 → 进本子 + 复习退回一档；独立答对 → 出本子 + 推进一档 */
+  v52_wbReset(); v52_rvReset();
+  const v52_mkQuiz = () => {
+    w.STATE.cur = v52_stu;
+    w.STATE.quiz = { qs: [{ target: { w: v52_pool[4], p: '' } }], i: 0, type: '听音找字',
+      answered: false, promptUsed: 0, missed: 0, wrongLogged: false, picked: '',
+      checked: false, peeked: false, wrongChars: [], right: 0, retried: 0 };
+    return w.STATE.quiz;
+  };
+  const v52_k4 = v52_name + '|' + v52_pool[4];
+  v52_mkQuiz();
+  w.missOption(v52_pool[5]);
+  ok(!!w.wrongLoad()[v52_k4], '点错一次就把这个字记进错字本');
+  ok(w.reviewGet(v52_k4) && w.reviewGet(v52_k4).due === w.dayAdd(1),
+     '答错 → 复习计划明天再来');
+  v52_mkQuiz();
+  w.gradeAnswer(true);
+  ok(!(v52_k4 in w.wrongLoad()), '独立答对 → 这个字移出错字本');
+  ok(w.reviewGet(v52_k4).box === 1 && w.reviewGet(v52_k4).due === w.dayAdd(1),
+     '独立答对 → 复习计划推进一档');
+  v52_mkQuiz();
+  w.STATE.quiz.promptUsed = 1;
+  w.gradeAnswer(true);
+  ok(w.reviewGet(v52_k4).box === 0,
+     '靠提示答对不算自己认出来 → 复习退回一档');
+
+  /* 结算页：本轮错字之外，把错字本里剩下的也列出来，并给「只练这几个字」 */
+  v52_wbReset();
+  w.wrongBookMark(v52_name + '|' + v52_pool[5]);
+  w.wrongBookMark(v52_name + '|' + v52_pool[6]);
+  w.STATE.cur = v52_stu;
+  w.STATE.quiz = { type: '听音找字', qs: new Array(4), i: 4, right: 4, retried: 0,
+    prompts: 0, wrongChars: [], answered: true };
+  w.renderSummary();
+  const v52_book = d.querySelector('#stage .wrong-box.book');
+  ok(!!v52_book, '结算页出现错字本区');
+  ok(v52_book && v52_book.textContent.indexOf('练对了会自动移出') >= 0,
+     '错字本写明「练对了会自动移出」——不然老师不知道这本子会不会一直堆着');
+  ok(!!d.getElementById('btnBookDrill'), '错字本给一个「只练这几个字」的入口');
+  click(d.getElementById('btnBookDrill'));
+  await wait(150);
+  ok(w.QUIZ_FOCUS === null && d.getElementById('drillBar').hidden === false,
+     '点下去就走抽练那条路（QUIZ_FOCUS 被 startQuiz 一次性消费掉、抽练条亮起）');
+  ok(d.getElementById('drillBar').textContent.indexOf(v52_pool[5]) >= 0,
+     '抽练条上就是错字本里那几个字');
+
+  /* ---------- 45.3 续练：中途离开回来先问一句 ---------- */
+  const v52_RS = 'wb2_resume_v1';
+  try { w.localStorage.removeItem(v52_RS); } catch (e) {}
+  w.STATE.cur = v52_stu;
+  w.PRE.list = [];
+  w.QUIZ_FOCUS = null;
+  w.optnSet(4);
+  w.startQuiz('听音找字');
+  const v52_qn = w.STATE.quiz.qs.length;
+  w.nextQuestion();
+  let v52_rs = null;
+  try { v52_rs = JSON.parse(w.localStorage.getItem(v52_RS) || 'null'); } catch (e) {}
+  ok(v52_rs && v52_rs.i === 1 && v52_rs.stu === v52_name && v52_rs.qs.length === v52_qn,
+     '翻一题就存一次进度（中途被叫走也不丢）');
+  ok(v52_rs && v52_rs.qs.every(q => typeof q.t === 'string' &&
+     Array.isArray(q.o) && q.o.every(x => typeof x === 'string')),
+     '存的是汉字字符串，不是字对象（不连带整张字表、不落云端）');
+  ok(w.resumeLeft(v52_stu) === v52_qn - 1, '还剩 ' + (v52_qn - 1) + ' 题没练完');
+
+  w.STATE.quiz = null;
+  w.renderPreStudy();
+  ok(!!d.querySelector('#stage .resume-bar'), '回到今日字卡先看到「上一轮没做完」那一块');
+  ok(d.querySelector('#stage .resume-bar').textContent.indexOf('还有 ' + (v52_qn - 1) + ' 题') >= 0,
+     '写明还剩几题：' + d.querySelector('#stage .resume-bar').textContent);
+  ok(!!d.getElementById('btnResumeGo') && !!d.getElementById('btnResumeNo'),
+     '两个按钮：接着练 / 重新开始（不静默续上，也不静默丢掉）');
+  click(d.getElementById('btnResumeGo'));
+  await wait(120);
+  ok(w.STATE.quiz && w.STATE.quiz.i === 1 && w.STATE.quiz.qs.length === v52_qn,
+     '点「接着练」直接回到第 2 题，不重新出题');
+  ok(d.getElementById('qTotal').textContent === String(v52_qn), '题数还是原来那一轮的总数');
+  ok(d.querySelectorAll('#stage .opt').length >= 4, '选项也一起还原了');
+
+  /* 重新开始：存档清掉，字卡页不再问 */
+  w.STATE.quiz = null;
+  w.renderPreStudy();
+  click(d.getElementById('btnResumeNo'));
+  await wait(120);
+  ok(w.localStorage.getItem(v52_RS) === null && !d.querySelector('#stage .resume-bar'),
+     '点「重新开始」就丢掉这一轮，字卡页不再问');
+  ok(w.resumeLeft(v52_stu) === 0, 'resumeLeft 归零');
+
+  /* 走到结算页，存档自动作废（不然下次还会问） */
+  w.startQuiz('听音找字');
+  w.nextQuestion();
+  ok(w.localStorage.getItem(v52_RS) !== null, '新一轮照样先存一份');
+  w.STATE.quiz.i = w.STATE.quiz.qs.length;
+  w.renderSummary();
+  ok(w.localStorage.getItem(v52_RS) === null, '练完走到结算页，存档作废');
+  ok(!('resume' in w.STATE) && !('quiz' in w.localStorage), '续练进度不进 STATE');
+
+  /* ---------- 45.4 选字记忆扩到全部玩法 + 一键取消勾选 ---------- */
+  const v52_PK = 'wb2_pick_v1';
+  try { w.localStorage.removeItem(v52_PK); } catch (e) {}
+  w.learnMode('play');
+  w.pickBegin('bubble');
+  ok(w.PICK.list.length === 0 && w.PICK.restored === false, '第一次进戳泡泡没什么可恢复的');
+  const v52_c0 = w.STATE.chars[0], v52_c1 = w.STATE.chars[1];
+  w.pickToggle(v52_c0); w.pickToggle(v52_c1);
+  ok(w.PICK.list.length === 2 && d.getElementById('pickClear').disabled === false,
+     '勾了 2 个字，「全部取消」可以点了');
+  w.pickClear();
+  ok(w.PICK.list.length === 0 && w.PICK.restored === false, '一键取消把所有勾选清掉');
+  ok(d.querySelectorAll('#charGrid .ch-card.sel').length === 0, '字卡上的绿框一起消失');
+  ok(d.getElementById('pickStart').disabled === true &&
+     d.getElementById('pickClear').disabled === true,
+     '没选字时「开始」和「全部取消」都禁掉（点了没反应比没有更糟）');
+  ok(w.localStorage.getItem(v52_PK) === null,
+     '取消勾选不动本机记的那份 —— 那是「上次真正开始用的字」，不是编辑中的状态');
+
+  w.pickToggle(v52_c0); w.pickToggle(v52_c1);
+  w.pickStart();
+  ok((JSON.parse(w.localStorage.getItem(v52_PK) || '[]') || []).length === 2,
+     '开始之后才把这一批落进本机（勾了又取消不算一次选择）');
+  w.quitGame(true);
+  w.pickBegin('fruit');
+  ok(w.PICK.list.length === 2 && w.PICK.restored === true,
+     '换一个玩法（摘果子）也带回上次那 2 个字：' + w.PICK.list.map(c => c.w).join(''));
+  w.pickBegin('dict');
+  ok(w.PICK.list.length === 2, '听写同样带回上次那批字');
+  w.pickBegin('read');
+  ok(w.PICK.list.length === 0,
+     '早读仍用自己的那份键（wb2_read_pick_v1），不会被别的玩法的记忆串掉');
+  w.pickCancel();
+
+  /* ---------- 45.5 4 / 6 / 8 三档 ---------- */
+  ok(w.optnLoad() === 4, '默认还是 4 个选项（老课堂什么都不用改）');
+  ok(w.optnSet(6) === 6 && w.localStorage.getItem('wb2_optn_v1') === '6',
+     '切到 6 档并落进本机');
+  ok(w.optnSet(5) === 6, '只认 4/6/8，传别的值不生效（不会出现「5 个选项」这种半档）');
+  ok(w.optnCls(4) === 'four' && w.optnCls(6) === 'n6' && w.optnCls(8) === 'n8' &&
+     w.optnCls(5) === 'n6',
+     '网格类名跟「实际给了几个」走，不跟档位走');
+
+  w.STATE.cur = v52_stu;
+  w.PRE.list = []; w.QUIZ_FOCUS = null;
+  w.startQuiz('听音找字');
+  ok(w.STATE.quiz.qs.every(q => q.opts.length === 6),
+     '6 档：每道题 6 个选项（实际 ' + w.STATE.quiz.qs[0].opts.length + '）');
+  ok(!!d.querySelector('#stage .opts.n6') && !d.querySelector('#stage .opts.four'),
+     '渲染成 3 列网格（.opts.n6）');
+  ok(w.STATE.quiz.qs.every(q => new Set(q.opts.map(o => o.w)).size === q.opts.length),
+     '6 个选项互不重复，也不和目标字重复');
+
+  w.optnSet(8);
+  w.startQuiz('听音找字');
+  ok(w.STATE.quiz.qs.every(q => q.opts.length === 8),
+     '8 档：每道题 8 个选项（实际 ' + w.STATE.quiz.qs[0].opts.length + '）');
+  ok(!!d.querySelector('#stage .opts.n8'), '渲染成 4 列网格（.opts.n8）');
+  ok(w.STATE.quiz.qs.every(q => new Set(q.opts.map(o => o.w)).size === 8),
+     '8 个选项也不重复 —— 不拿重复字充数');
+
+  /* 字表太小：按实际能给的数量出，不留空格子、也不重复。
+     这里用「找一样的字」—— 它的干扰项只从学生字表里取；
+     听音找字允许从全库补（v38 的三层兜底，那条不能动）。 */
+  const v52_small = { id: 'local_v52s', name: '小字表生', types: ['找一样的字'],
+    chars: v52_pool.slice(0, 5), groups: [], count: 4, status: '在读', photo: '',
+    active: v52_pool.slice(0, 5), lock: [], off: [] };
+  w.STATE.cur = v52_small;
+  w.startQuiz('找一样的字');
+  const v52_smallOpt = w.STATE.quiz.qs[0].opts.length;
+  ok(v52_smallOpt === 5,
+     '字表只有 5 个字时 8 档退到 5 个选项（有几个给几个）：' + v52_smallOpt);
+  ok(!!d.querySelector('#stage .opts.n6'),
+     '5 个选项按 3 列摆，不留三个空格子');
+
+  /* 听音找字的硬要求还在：同音字不能同时出现 */
+  const v52_tone = c => String(c.p || '').replace(/[\u0100-\u01ff]/g, ch => {
+    const i = 'āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ'.indexOf(ch);
+    return i < 0 ? ch : 'aaaaeeeeiiiioooouuuuüüüü'.charAt(i);
+  });
+  let v52_pyBad = 0;
+  w.optnSet(8);
+  w.STATE.cur = v52_stu;
+  w.startQuiz('听音找字');
+  w.STATE.quiz.qs.forEach(q => {
+    const tk = v52_tone(q.target);
+    q.opts.forEach(o => { if (o.w !== q.target.w && v52_tone(o) === tk) v52_pyBad++; });
+  });
+  ok(v52_pyBad === 0, '8 档下同音字仍然不会同时出现（v38 的硬要求没被档位冲掉）');
+
+  /* 难度切换按钮：点了就生效，.on 跟着走 */
+  w.optnSet(4);
+  w.paintOptnBars();
+  ok(d.querySelectorAll('#optnBar [data-optn]').length === 3,
+     '练习页有 4 / 6 / 8 三个按钮');
+  ok(d.querySelectorAll('#optnBarLearn [data-optn]').length === 3,
+     '乐园（玩法选择页）也有同样一组');
+  ok(d.querySelector('#optnBar [data-optn="4"]').className.indexOf('on') >= 0,
+     '当前档位实心显示');
+  click(d.querySelector('#optnBar [data-optn="8"]'));
+  await wait(60);
+  ok(w.optnLoad() === 8 && d.querySelector('#optnBar [data-optn="8"]').className.indexOf('on') >= 0,
+     '点 8 个立刻生效（两处一起变）');
+  ok(d.querySelector('#optnBarLearn [data-optn="8"]').className.indexOf('on') >= 0,
+     '乐园那一组同步亮到 8 —— 一个值管两处');
+  /* 主页 / 字卡那两屏不摆这个控件：那里只该有「今天练什么」和一个大按钮 */
+  w.renderStuHome();
+  ok(d.getElementById('optnBar').hidden === true, '主页上不显示选项档位');
+  w.renderPreStudy();
+  ok(d.getElementById('optnBar').hidden === true, '今日字卡上也不显示');
+  w.preMode(false);
+  ok(d.getElementById('optnBar').hidden === false, '开题之后才出现');
+  w.optnSet(4);
+  w.paintOptnBars();
+
+  /* 提示一下：4 档删 2 个、6 / 8 档删到只剩「目标 + 1 个干扰」，强度一致 */
+  w.STATE.cur = v52_stu;
+  w.PRE.list = []; w.QUIZ_FOCUS = null;
+  w.optnSet(8);
+  w.startQuiz('听音找字');
+  w.useHint();
+  ok(d.querySelectorAll('#stage .opt.dim').length === 6 &&
+     d.querySelectorAll('#stage .opt:not(.dim)').length === 2,
+     '8 档按「提示一下」删到只剩 2 个可选（不是只删 2 个）');
+  w.optnSet(4);
+  w.startQuiz('听音找字');
+  w.useHint();
+  ok(d.querySelectorAll('#stage .opt.dim').length === 2,
+     '4 档仍是原来的「去掉两个错的」，老课堂的手感没变');
+
+  /* 乐园四款场景也跟着档位走，而且动效元素一个没少 */
+  const v52_o4 = w.STATE.chars.slice(0, 4), v52_o6 = w.STATE.chars.slice(0, 6),
+        v52_o8 = w.STATE.chars.slice(0, 8);
+  ok(w.bubbleScene(v52_o6).indexOf('bub-wrap n6') >= 0 &&
+     w.bubbleScene(v52_o8).indexOf('bub-wrap n8') >= 0,
+     '泡泡：6 / 8 个用不同的网格类');
+  ok(w.fishScene(v52_o6).indexOf('fish-wrap n6') >= 0 &&
+     w.fishScene(v52_o8).indexOf('fish-wrap n8') >= 0,
+     '钓鱼：6 / 8 条鱼各自的排法');
+  ok(w.fishScene(v52_o8).split('class="g-item fish"').length - 1 === 8,
+     '钓鱼：8 档真的摆出 8 条鱼（原来写死 4 条）');
+  ok(w.fruitScene(v52_o8).indexOf('fruit-wrap n8') >= 0, '摘果子：8 颗果子 4 列 2 行');
+  ok(w.feedScene({ w: v52_pool[0] }, v52_o8).indexOf('feed-plates n8') >= 0,
+     '喂小动物：8 个食盆 4 列');
+
+  const v52_fish8 = w.fishScene(v52_o8);
+  ok(v52_fish8.indexOf('sea-light') >= 0 && v52_fish8.indexOf('sea-bub') >= 0 &&
+     v52_fish8.indexOf('seaweed') >= 0 && v52_fish8.indexOf('class="rod"') >= 0,
+     '8 档下钓鱼的水下光柱 / 上浮气泡 / 海草 / 鱼竿都还在（第 5 条：动效不削减）');
+  const v52_oneFish = w.fishSVG(0);
+  ok(v52_oneFish.indexOf('fish-tail') >= 0 && v52_oneFish.indexOf('fish-fin') >= 0,
+     '摆尾和划鳍两段动画都还在');
+  ok(w.fruitScene(v52_o8).indexOf('tree-art') >= 0 &&
+     w.fruitScene(v52_o8).indexOf('class="basket"') >= 0,
+     '8 档下果树和果篮都还在');
+  ok(HTML.indexOf('@keyframes tailWag') >= 0 && HTML.indexOf('@keyframes swim') >= 0 &&
+     HTML.indexOf('@keyframes floatY') >= 0 && HTML.indexOf('@keyframes swing') >= 0 &&
+     HTML.indexOf('@keyframes wave') >= 0 && HTML.indexOf('@keyframes finFlap') >= 0,
+     '六段核心动效的关键帧都还在样式里');
+  ok(HTML.indexOf('prefers-reduced-motion') < 0,
+     '没有偷偷加「减少动效」的媒体查询把动画关掉');
+  ok(HTML.indexOf('id="voicePack"') >= 0 && HTML.indexOf('function vaPlay') >= 0,
+     '语音包与播放链路原样保留');
+
+  /* ---------- 45.6 备份要带上本机那几张独立表（第一项的真 bug） ---------- */
+  let v52_bkText = '';
+  const v52_oldBlob = w.Blob;
+  w.Blob = function(parts){ v52_bkText = String((parts && parts[0]) || ''); return { size: 1 }; };
+  try { w.URL.createObjectURL = function(){ return 'blob:v52'; }; } catch (e) {}
+  try { w.URL.revokeObjectURL = function(){}; } catch (e) {}
+  v50_reset();
+  w.soloMark(v50_k, v50_d1);
+  v52_rvReset(); w.reviewMark(v52_rk, true);
+  v52_wbReset(); w.wrongBookMark(v52_wk);
+  w.exportBackup();
+  w.Blob = v52_oldBlob;
+  let v52_bk = null;
+  try { v52_bk = JSON.parse(v52_bkText); } catch (e) {}
+  ok(v52_bk && v52_bk.v === 2, '备份文件版本抬到 2（多了本机表）');
+  ok(v52_bk && v52_bk.solo && v52_bk.solo[v50_k] && v52_bk.solo[v50_k].length === 1,
+     '备份带上「跨天掌握」的日期表 —— 漏了它，换台电脑导进来全班进度会被凭空拔高');
+  ok(v52_bk && v52_bk.review && v52_bk.review[v52_rk] && !!v52_bk.review[v52_rk].due,
+     '备份带上复习计划');
+  ok(v52_bk && v52_bk.wrong && !!v52_bk.wrong[v52_wk], '备份带上错字本');
+  ok(v52_bk && Array.isArray(v52_bk.readPick), '备份带上早读选字的记忆');
+  ok(v52_bk && v52_bk.students && v52_bk.logs !== undefined,
+     '原来的四样（学生 / 字库 / 词库 / 记录）一样没少');
+
+  /* 收尾：把全局状态还原成默认，别把后面的用例带歪 */
+  w.optnSet(4);
+  w.paintOptnBars();
+  try { w.localStorage.removeItem(v52_RS); } catch (e) {}
+  v52_rvReset(); v52_wbReset();
 
   console.log('\n========== 结果：' + pass + ' 通过 / ' + fail + ' 失败 ==========');
   dom.window.close();

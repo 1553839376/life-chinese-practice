@@ -26,6 +26,9 @@
   <!-- v36：游戏乐园。四张玩法卡＋一张「随便玩」直接摆在这一页，不再弹面板；
        没选玩法的时候把下面整块（搜索 / 册次 / 字格）收起来，第一屏只有玩法。 -->
   <div id="gamePick" class="game-pick" hidden>
+    <!-- v52：选项个数。摆在玩法卡**上面**：它是「开始玩之前」的设定，
+         放到七张卡下面等于要滚到底才找得到（原来是那么放的，截图一看就像页脚）。 -->
+    <div id="optnBarLearn" class="optn-bar learn" hidden></div>
     <div class="sg-grid game-grid">
       <button class="sg-btn gb" data-gp="bubble" type="button">
         <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
@@ -153,6 +156,9 @@
   </div>
   <nav id="typeTabs" class="type-tabs"></nav>
   <div id="typeProg" class="type-prog" hidden></div>
+  <!-- v52：4 / 6 / 8 三档选项个数。放在题型条下面、抽练条上面：
+       是「开这道题之前」的设定，不是题目的一部分。 -->
+  <div id="optnBar" class="optn-bar" hidden></div>
   <div id="drillBar" class="drill-bar" hidden></div>
   <div id="stage" class="stage"></div>
   <div class="help-bar">
@@ -168,7 +174,7 @@
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v51</span>
+    <span id="appVer" class="app-ver">v52</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -457,6 +463,8 @@
     <span id="pickHint" class="pb-hint">点字卡就能选上，可以选好几个</span>
   </div>
   <div class="pb-acts">
+    <button id="pickClear" class="pb-clear" type="button"
+            title="全部取消勾选" aria-label="全部取消勾选">清空</button>
     <button id="pickCancel" class="pb-cancel" type="button">取消</button>
     <button id="pickStart" class="pb-start" type="button" disabled>开始练习</button>
   </div>

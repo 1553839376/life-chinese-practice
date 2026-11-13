@@ -231,6 +231,8 @@ function renderLearn(){
      其余时候不占位置。 */
   $('learnCount').hidden = !LEARN.q;
   $('learnCount').textContent = LEARN.q ? ('搜到 ' + list.length + ' 个字') : '';
+  /* v52：选项个数控件长在玩法卡下面，换模式 / 换年级都要跟着重画一次 */
+  if (typeof paintOptnBars === 'function') paintOptnBars();
 }
 
 /* ============================ 学字卡 ============================ */
@@ -363,22 +365,30 @@ function quitGame(back){
 /* ============================ 出题 ============================ */
 function distractorPool(target){
   var same = [], other = [], i, c;
+  /* v52：「同组优先」这条要按档位算 —— 以前写死 3，是因为只能给 4 个选项。
+     档位 8 时如果一组只有 4 个字就只用同组，等于档位白调了。 */
+  var need = Math.max(1, optnLoad() - 1);
   for (i = 0; i < STATE.chars.length; i++){
     c = STATE.chars[i];
     if (!c.on || !c.w || c.w === target.w) continue;
     if (c.g === target.g) same.push(c); else other.push(c);
   }
-  if (same.length >= 3) return same;
+  if (same.length >= need) return same;
   return same.concat(other);
 }
 function gameOpts(t){
-  var pool = distractorPool(t), picks = shuffleArr(pool).slice(0, 3), out = [], i;
-  out.push(t);
-  for (i = 0; i < picks.length; i++) out.push(picks[i]);
-  /* 字库里字太少时，用重复的兜底项撑满四个位置 */
-  while (out.length < 4 && pool.length){
-    out.push(pool[Math.floor(Math.random() * pool.length)]);
+  /* v52：干扰项个数跟选项档位走（4/6/8 → 3/5/7 个干扰项）。
+     先去重再去抽：以前字库小的时候会用重复字把 4 个位置撑满，
+     两个一模一样的字并排摆，孩子一眼就看出题坏了 —— 现在宁可少给几个。 */
+  var pool = distractorPool(t), picks, out = [t], i, seen = {}, uniq = [];
+  var want = Math.max(1, optnLoad() - 1);
+  for (i = 0; i < pool.length; i++){
+    if (!pool[i] || !pool[i].w || pool[i].w === t.w || seen[pool[i].w]) continue;
+    seen[pool[i].w] = 1;
+    uniq.push(pool[i]);
   }
+  picks = shuffleArr(uniq).slice(0, want);
+  for (i = 0; i < picks.length; i++) out.push(picks[i]);
   return shuffleArr(out);
 }
 function gameQuestion(){
@@ -520,7 +530,8 @@ function heartSVG(){
 
 /* ============================ 四款场景 ============================ */
 function bubbleScene(opts){
-  var html = '<div class="bub-wrap">', i;
+  /* v52：网格类跟实际给了几个选项走（four / n6 / n8），样式在 p1.html */
+  var html = '<div class="bub-wrap ' + optnCls(opts.length) + '">', i;
   for (i = 0; i < opts.length; i++){
     html += '<div class="g-cell"><button type="button" class="g-item bubble" data-w="' +
       esc(opts[i].w) + '" style="animation-delay:' + (i * 0.42).toFixed(2) + 's">' +
@@ -579,8 +590,21 @@ function fishSVG(i){
     CLOSE('g') +
     CLOSE('svg');
 }
+/* 鱼摆在哪：4 条沿用 v8 定的老位置（老师已经看惯了，一个像素都不挪）；
+   6 / 8 档是 v52 加的，仍走「2 列」（鱼是横的，三列会挤成一条缝），
+   5 / 7 条是「档位调大但字库不够」时的中间态，也得摆得下。
+   每项 = [左边距 %, 上边距 %, 横向抖动幅度 %]，抖动保留原来的手感，
+   否则鱼会像排队站好的贴纸。 */
+function fishSlots(n){
+  if (n <= 4) return [[3, 4, 6], [47, 27.5, 8], [3, 51, 6], [47, 74.5, 8]];
+  if (n === 5) return [[3, 4, 6], [47, 24, 8], [3, 44, 6], [47, 64, 8], [3, 80, 6]];
+  if (n === 6) return [[3, 2, 5], [47, 2, 6], [3, 35, 5], [47, 35, 6], [3, 68, 5], [47, 68, 6]];
+  if (n === 7) return [[3, 1, 5], [47, 1, 6], [3, 26, 5], [47, 26, 6], [3, 51, 5], [47, 51, 6], [3, 76, 5]];
+  return [[3, 1, 5], [47, 1, 6], [3, 26, 5], [47, 26, 6],
+          [3, 51, 5], [47, 51, 6], [3, 76, 5], [47, 76, 6]];
+}
 function fishScene(opts){
-  var html = '<div class="fish-wrap">';
+  var html = '<div class="fish-wrap ' + optnCls(opts.length) + '">';
   var i, top, left;
   /* 水下光柱 + 上浮气泡，让背景不是一块死板的蓝 */
   html += '<span class="sea-light"></span><span class="sea-light b"></span>';
@@ -596,9 +620,10 @@ function fishScene(opts){
     '<path class="rod-string" d="M112 29 Q122 58 116 86" stroke="#F4F0E4" stroke-width="2" fill="none" opacity=".92"/>' +
     '<circle class="rod-bob" cx="116" cy="88" r="4.2" fill="#E8A317"/>' +
     CLOSE('svg');
-  for (i = 0; i < 4 && i < opts.length; i++){
-    top = 4 + i * 23.5;
-    left = (i % 2 === 0) ? 3 + Math.random() * 6 : 47 + Math.random() * 8;
+  var slots = fishSlots(opts.length);
+  for (i = 0; i < slots.length && i < opts.length; i++){
+    top = slots[i][1];
+    left = slots[i][0] + Math.random() * slots[i][2];
     html += '<button type="button" class="g-item fish" data-w="' + esc(opts[i].w) +
       '" style="top:' + top.toFixed(1) + '%;left:' + left.toFixed(1) + '%;animation-delay:' +
       (i * 0.45).toFixed(2) + 's">' + fishSVG(i) +
@@ -841,7 +866,8 @@ function treeSVG(){
    草地留在场这一层（宽屏时草地要铺满整条地平线），篮子跟着舞台走（"放在树旁边"）。 */
 function fruitScene(opts){
   var html = '<div class="grass"></div>' +
-    '<div class="tree-stage" id="treeStage">' + treeSVG() + '<div class="fruit-wrap">';
+    '<div class="tree-stage" id="treeStage">' + treeSVG() +
+    '<div class="fruit-wrap ' + optnCls(opts.length) + '">';
   var i;
   for (i = 0; i < opts.length; i++){
     html += '<div class="g-cell"><button type="button" class="g-item fruit" data-w="' +
@@ -878,7 +904,7 @@ function feedScene(q, opts){
   var html = '<div class="feed-row">' +
     '<div class="feed-animal" id="feedAnimal">' + animalSVG() +
     '<div class="feed-say">喂我「' + esc(q.w) + '」</div>' + CLOSE('div') +
-    '<div class="feed-plates">';
+    '<div class="feed-plates ' + optnCls(opts.length) + '">';
   var i;
   for (i = 0; i < opts.length; i++){
     html += '<button type="button" class="g-item plate" data-w="' + esc(opts[i].w) + '">' +
@@ -1338,15 +1364,20 @@ function playAny(){
    ======================================================================== */
 /* v49 早读选字记忆（老师 2026-11-09：「早读模式我希望保持记忆功能，即记住上一次
    勾选的汉字，这样很多不需要重复勾选」）。
-   ① 只记早读：别的玩法每次重新挑字是刻意的，别顺手一起记。
-   ② 只存汉字字符串：STATE.chars 里的字对象是引用，落进 localStorage 会连带整张字表，
-      字库更新后还会恢复出旧对象；按 w 回查，查不到的字直接跳过（字表变了也不会出怪字）。
-   ③ 独立 localStorage 键，不进 STATE、不进云端 schema、不进导出导入（和 wb2_sess_v1 同口径）。
-   ④ 只在老师点「开始早读」时写：勾了又取消不算一次选择，程序化调 startRead 也不算。 */
-var LS_READ_PICK = 'wb2_read_pick_v1';
-function readPickLoad(){
+   v52 扩到全部玩法（老师 2026-11-13：「全部玩法接选字记忆」）：泡泡 / 钓鱼 / 摘果子 /
+   喂小动物 / 听写也记住上一次开始用的那批字。早读继续用自己的键 —— v49 已经发到
+   线上，换键等于让老师辛苦勾的那批字清零，没有任何好处。
+   三条老口径一个字没改：
+   ① 只存汉字字符串：STATE.chars 里的字对象是引用，落进 localStorage 会连带整张字表，
+      字库更新后还会恢复出旧对象；按 w 回查，查不到的字直接跳过。
+   ② 独立 localStorage 键，不进 STATE、不进云端 schema。
+   ③ 只在点「开始」时写：勾了又取消不算一次选择，程序化调 startRead / startGame 也不算。 */
+var LS_READ_PICK = 'wb2_read_pick_v1';   /* 早读专用 */
+var LS_PICK = 'wb2_pick_v1';             /* v52：其余五种玩法共用一份 */
+function pickMemKey(kind){ return kind === 'read' ? LS_READ_PICK : LS_PICK; }
+function pickMemLoad(key){
   var raw, out = [], i, j, w;
-  try { raw = JSON.parse(localStorage.getItem(LS_READ_PICK) || 'null'); } catch (e) { return out; }
+  try { raw = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return out; }
   if (!Array.isArray(raw)) return out;
   for (i = 0; i < raw.length; i++){
     w = raw[i];
@@ -1357,10 +1388,31 @@ function readPickLoad(){
   }
   return out;
 }
-function readPickSave(chars){
+function pickMemSave(key, chars){
   var a = [], i;
   for (i = 0; i < (chars || []).length; i++) if (chars[i] && chars[i].w) a.push(chars[i].w);
-  try { localStorage.setItem(LS_READ_PICK, JSON.stringify(a)); } catch (e) {}
+  try { localStorage.setItem(key, JSON.stringify(a)); } catch (e) {}
+}
+function readPickLoad(){ return pickMemLoad(LS_READ_PICK); }
+function readPickSave(chars){ pickMemSave(LS_READ_PICK, chars); }
+/* v52：一键取消勾选（老师 2026-11-13：「在选字界面增加一键取消勾选的按钮，方便重新选字」）。
+   只清当前这一轮的勾选，**不动本机记的那份**：
+   勾选是「正在编辑」的状态，记忆是「上一次真正开始用的那批字」，不是一回事 ——
+   取消完点「取消」退出，下次进来还该是上次开始的那一批，否则这个记忆就是假的。 */
+function pickClear(){
+  if (!PICK.on || !PICK.list.length) return;
+  PICK.list = [];
+  PICK.restored = false;
+  var grid = $('charGrid');
+  var all = grid ? grid.querySelectorAll('.ch-card.sel') : [];
+  var i;
+  for (i = 0; i < all.length; i++){
+    all[i].classList.remove('sel');
+    all[i].setAttribute('aria-pressed', 'false');
+  }
+  renderPickBar();
+  sfxTap();
+  toast('都取消了，重新点几个字吧');
 }
 function pickLabel(kind){
   return kind === 'any' ? '随便玩' : (GAME_NAMES[kind] || '游戏');
@@ -1390,9 +1442,9 @@ function pickBegin(kind){
   if (!GAME_NAMES[kind]) return;
   PICK.on = true;
   PICK.kind = kind;
-  /* 只有早读带回上次的勾选；别的玩法仍然从空开始 */
-  PICK.list = (kind === 'read') ? readPickLoad() : [];
-  PICK.restored = (kind === 'read' && PICK.list.length > 0);
+  /* v52：六种玩法都带回上次勾的字（原来只有早读）。字表变小、字库里没有的字自动跳过 */
+  PICK.list = pickMemLoad(pickMemKey(kind));
+  PICK.restored = PICK.list.length > 0;
   document.body.classList.add('picking');
   $('pickBar').hidden = false;
   renderLearn();          /* 顺带收起玩法卡、顶部换成「钓鱼 · 换一个玩法」 */
@@ -1408,8 +1460,10 @@ function renderPickBar(){
   var n = PICK.list.length, nm = pickLabel(PICK.kind);
   if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
   if ($('pickHint')) $('pickHint').textContent = PICK.restored
-    ? ('已勾上上次早读的 ' + n + ' 个字，可增减，点右边直接开始')
+    ? ('已勾上上次玩的 ' + n + ' 个字，可增减，点右边直接开始')
     : (n ? '再点一下能取消，换册次还能接着挑' : '点字卡就能选上，可以选好几个');
+  /* v52：一个都没选时「全部取消」没有意义，禁掉比点一下弹提示干净 */
+  if ($('pickClear')) $('pickClear').disabled = !n;
   if ($('pickStart')){
     $('pickStart').disabled = !n;
     $('pickStart').textContent = n ? (pickVerb(PICK.kind) + '（' + n + '）') : pickVerb(PICK.kind);
@@ -1425,7 +1479,8 @@ function pickToggle(c){
 function pickStart(){
   if (!PICK.list.length){ toast('先点几个字，再开始'); return; }
   var kind = PICK.kind, chars = PICK.list.slice(0);
-  if (kind === 'read') readPickSave(chars);   /* 只写这一种玩法，且只写字符串 */
+  /* v52：六种玩法都记住这一批（只写字符串，且只在真正开始时写）。 */
+  pickMemSave(pickMemKey(kind), chars);
   pickEnd();
   renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
   /* v47：早读走自己的屏（发牌带读），不进游戏引擎 */
@@ -1468,6 +1523,8 @@ function wireLearn(){
      这里只绑「换一个玩法」和底部条两个按钮。 */
   $('gnChange').addEventListener('click', pickCancel);
   $('pickCancel').addEventListener('click', pickCancel);
+  /* v52：一键取消勾选。放在「取消」左边，但它是「清一下重来」，不是退出。 */
+  if ($('pickClear')) $('pickClear').addEventListener('click', pickClear);
   $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
   /* v47：早读屏三个按钮。暂停/继续是同一个键（老师上课中途要能停一下讲两句） */

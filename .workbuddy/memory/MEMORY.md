@@ -14,7 +14,7 @@
 ## 二、教学口径与数据结构
 - **字表**：出题只认 `stu.chars`，`groups` 只是来源标签；**空字表不回退全库**（G1 禁回潮）。700 条字库仅 561 不重复字 → 按字去重走 `expandGroups`。云端 schema 无字表列 → `mergeCloudStudents` 必须继承本机 `chars`（`off` 同理）；`migrateStuChars` 是一次性快照。测试字表必须在内置字库查得到，否则不足 4 个时 `startQuiz` 静默 return。
 - **进度**：分母永远是 `stu.chars`。四态「已掌握/练习中/需巩固/待学」；`stuProfile()` 一次算计数、掌握率、逐字明细、建议顺序（需巩固 → 练习中 prompts≥2 → 练习中 → 待学）。抽练 `QUIZ_FOCUS` 只缩目标字，**干扰项仍取整张字表**。百分比落代码前先手算期望值；进度条容器别嵌套（`#profBar` 自带 `.prog-bar`）。
-- **掌握判定（v50 / T-043）**：`levelOf(r)` 在 `r.alone>=3 && r.wrong<=1` 时还要**至少两个不同本地日**独立答对过。日期存本机独立键 `wb2_solo_days_v1`（`soloLoad/soloDays/soloMark`，按 `学生|字` 去重，只记**独立答对**，`todayKey()` 本地日）。老云端 `r.level==='已掌握'`、无日期记录的老本机数据**不追溯**、沿用旧口径，别把老师现有字表整批打乱。只改判定，**不动 `syncActive` 补位**；不进 STATE / 云端 / 导出导入。
+- **掌握判定（v50 / T-043）**：`levelOf(r)` 在 `r.alone>=3 && r.wrong<=1` 时还要**至少两个不同本地日**独立答对过。日期存本机独立键 `wb2_solo_days_v1`（`soloLoad/soloDays/soloMark`，按 `学生|字` 去重，只记**独立答对**，`todayKey()` 本地日）。老云端 `r.level==='已掌握'`、无日期记录的老本机数据**不追溯**、沿用旧口径，别把老师现有字表整批打乱。只改判定，**不动 `syncActive` 补位**；不进 STATE / 云端。（**v52 更正**：日期体现在**会随备份走**——`exportBackup()` 打包 `solo`，`importBackup()` 写回；当初写「不进导出导入」是漏了。）
 - **在学上限（v19）**：不新增 `cap`——`stu.count` 就是在学字数（3–10，默认 6），另有 `stu.active`/`stu.lock`/`stu.off`。**名单永远补满**（学会让位/字表变大/上限调大）；手动加入 unshift 最前，移出记 `off` 且补位跳过；`openStuProfile` 先 `syncActive` 再画。
 - **今日字卡 / 主页（v18/v24）**：流程「点照片 → 主页 → 今日字卡 → 练习」，`enterStudent`/`homeGo` **不许直接 `startQuiz`**。预习**不写 logs**；字单按 `stuProfile().focus`，绝不用 `weightOf`（那里「待学」=0 排最前）。**出题必须收敛到 `PRE.list`**；`.is-pre` 藏「提示/读对了/跳过」。星星按掌握率每 20% 一颗；连续天数按**本地日**（`logs.last` 是 UTC）。点击委托里 `[data-pre]`/`#preGo`/`[data-wg-act]` 排在 `.opt` 之前（那几屏 `STATE.quiz` 是 null）。
 - **答错可重试（v22）**：点错不判死，只 `.opt.miss`（灰+虚线+shake+`pointer-events:none`）；**第一次错绝不念答案，连错 2 次**才 `.glow` 正确项并念读音。一题最多记 1 次错；重试答对算 `alone++` 但 `wrong` 也 +1 → 停在「练习中」（刻意）。不加 `retry` 落库；每道新题 `resetQState()`。
@@ -23,6 +23,12 @@
 - **听写与默写（v40 / T-035）**：乐园第六卡 `data-gp="dict"` 整行实线（虚线是「随便玩」专用）、**不进 `GAME_KEYS`**；`#scrGame.is-dict` 下 `.ga-word`/`#gameHint` 必须 `display:none`。**计分只有 `gameAward()` 一处**。听写**不写学习记录**。默写 `.blind` 要藏两层灰字（`#soBase`+`.so-ghost`）**和顶上「木 mù」**（后者 `visibility:hidden`，`display:none` 会塌行）；「再看一遍」＝放弃默写。
 - **正确率两处同尺（v39 游戏 / v51 练习）**：`gameRight()` 按**这题错过没有**（`GAME.miss>0`）分 `oneTry`/`retried`；正确率 = `oneTry/总题数`，星数 `>=90/>=70/>=40`，点错过的就不算对。**v51 起练习结算页跟游戏一致**：`renderSummary()` 用 `oneTry = right - z.retried`、`rate = oneTry/denom`，`retried` 由 `gradeAnswer()` 按 `wrongLogged` 累加（一题一次，不落库）；`allDone && rate>=90` 才夸「太棒了」。原因：v22 答错可重试使 `right` 恒等于题数 → 旧口径必然 100%。**旧约定「练习结算页刻意不跟、重试不扣分」已作废**，别再按它改回去；G1 有防回潮护栏（不许 `right*100/denom`、游戏侧不许动）。
 - **结算列错字（v45）**：一处组件 `wrongBodyHTML(list,label)`（按 `c.w` 去重、n<12、空表 `''`）+ 一处开关 `WRONG_LIST_TYPES`（只开听音找字）。游戏侧 `GAME.wrongs` 记 **`GAME.queue[GAME.i]`（目标字）**，不是点错的干扰项；练习侧 `STATE.quiz.wrongChars` 记 `q.target`，跟 `wrongLogged` 一题一次。全对整块不出现。`.game-over` 必须 `justify-content:safe center` + `overflow-y:auto`（390 场高 312px）。
+- **v52 五张本机键**（全不进 STATE / 云端 schema，只进备份）：`wb2_review_v1`（复习计划）、`wb2_wrong_v1`（错字本）、`wb2_optn_v1`（选项档位）、`wb2_resume_v1`（续练）、`wb2_pick_v1`（玩法选字，早读仍用 v49 的 `wb2_read_pick_v1`）。`exportBackup()` 打包 8 项，改了 `wb2_*` 键就要同步这里，否则老师换电脑白攒。
+- **遗忘曲线（v52 / T-046）**：`REVIEW_GAPS=[1,3,7,15]`、`REVIEW_PER_DAY=2`。**先取当前 `box` 定到期日、再 `box+1`**（反过来第 1 天那档永远用不上）。答错 / 靠提示 / 描红退一格排 1 天；box 到顶仍 15 天，**不设毕业**。`reviewDueChars()` 跳过 `last===today`（一轮 9 题型同批字，不去重一天排四次）。复习字接在在学字后面、**不占在学名额、不写 logs**，`levelOf`/`syncActive` 一行没动。
+- **错字本（v52 / T-045）**：`wrongBookMark()` 在 `missOption()` 与 `logWriteMiss()` **各一处**（G1 判 `== 2`），`gradeAnswer()` 里 `if (!wrongLogged) wrongBookClear()`——**独立答对才出本子**。结算页只列「本子里剩下的」，`#btnBookDrill` 填 `QUIZ_FOCUS` 抽练。
+- **续练（v52 / T-047）**：`resumeSave()` 在 `nextQuestion()` 里 `i++` 之后；`startQuiz()` 先清后存、结算清。`resumeGo()` **原样塞回 `qs` 不重出**。只存汉字串；**拼词语与三个手写题型不存**（刻意的）。
+- **选项 4/6/8（v52 / T-049）**：默认 4；`optnCls(n)` **跟实际给了几个走、不跟档位走**。`gameOpts()` 已删「用重复字撑满 4 个」，别加回来。**同音禁令不许为凑数放宽**。4 档老坐标（`fishSlots(4)`）一像素不挪。
+- **选字记忆（v52 / T-048）**：早读不与其他五种合并（节奏不同）。`pickClear()` **只清屏上的勾、不写 localStorage**。
 
 ## 三、语音 / 笔顺 / 词库
 - **细则见 `docs/DETAIL-语音笔顺词库.md`**（豆包音色与链路、1695 条、「加语音改三处」；错误音方波；`soFit` 基线 900 与三层画法；`builtinWords()`、硬软冲突、按册次相对难度、`repairCharWords()` 三处必调）。**改这三块之前先读它。**

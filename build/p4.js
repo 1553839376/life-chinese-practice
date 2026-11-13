@@ -10,7 +10,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v51';
+var APP_VER = 'v52';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -170,8 +170,10 @@ function esc(s){
 /* 结算页「把这几个字再看看」（v45）：把这一局 / 这一轮错过的字单独列出来。
    只列字 + 拼音，不报「错了几个」——老师要的是「下次练哪几个」，孩子看到的是
    一排可以再念一遍的字。list 里放字对象（带 .w / .p），重复的自动去重。
-   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。 */
-function wrongBodyHTML(list, label){
+   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。
+   v52：多一个 extra 参数，把「只练这几个字」这类按钮挂在同一块里 ——
+   错字本和本轮错字用的是同一个组件，不另做一套长得像的。 */
+function wrongBodyHTML(list, label, extra){
   if (!list || !list.length) return '';
   var seen = {}, i, c, chips = '', n = 0;
   for (i = 0; i < list.length && n < 12; i++){
@@ -184,7 +186,7 @@ function wrongBodyHTML(list, label){
   }
   if (!n) return '';
   return '<div class="wrong-t">' + esc(label) + CLOSE('div') +
-    '<div class="wrong-chs">' + chips + CLOSE('div');
+    '<div class="wrong-chs">' + chips + CLOSE('div') + (extra || '');
 }
 function arr(v){ return Object.prototype.toString.call(v) === '[object Array]' ? v : (v ? [v] : []); }
 function firstImage(v){
@@ -716,6 +718,181 @@ function soloMark(key, day){
   a.push(day);
   try { localStorage.setItem(LS_SOLO, JSON.stringify(o)); } catch (e) {}
 }
+/* --------------------- 复习计划（间隔重复，v52 / T-045） ---------------------
+   老师 2026-11-13：「为汉字练习增加类似遗忘曲线的出题逻辑，学生学会后间隔若干天
+   仍会重新进入该字的练习」，间隔在 1 / 3 / 7 / 15 天里选（老师选了这一档）。
+
+   做法只取 Leitner 最轻的一层：每个 学生|字 记一个 box（0~3）和下次到期日。
+     · 独立答对 → box +1，到期日 = 今天 + GAPS[box]，即 3 / 7 / 15 天（box 到顶仍是 15 天）；
+     · 答错或靠提示 → box 退一档（不低于 0），到期日 = 明天；
+     · 第一次独立答对 → 3 天后回来（box 从 0 走到 1），这就是「刚学会的字隔三天再看一眼」。
+   box 到顶之后仍然每 15 天回来一次，不设「毕业」：特需孩子忘得快，
+   「练完就永远不出现」正是老师这次要修的那件事。
+
+   和 wb2_solo_days_v1 / wb2_sess_v1 同口径：本机独立键，不进 STATE、不进云端
+   schema、不改 levelOf / syncActive —— 复习只决定「今天多排哪两个字」，
+   「掌没掌握」还是原来那一套判据。
+   ---------------------------------------------------------------------- */
+var LS_REVIEW = 'wb2_review_v1';
+var REVIEW_GAPS = [1, 3, 7, 15];
+var REVIEW_PER_DAY = 2;      /* 一轮最多插两个字复习：再多特需孩子坐不住 */
+var REVIEW = null;
+function reviewLoad(){
+  if (REVIEW) return REVIEW;
+  try { REVIEW = JSON.parse(localStorage.getItem(LS_REVIEW) || 'null') || {}; }
+  catch (e) { REVIEW = {}; }
+  return REVIEW;
+}
+function reviewSave(){
+  try { localStorage.setItem(LS_REVIEW, JSON.stringify(reviewLoad())); } catch (e) {}
+}
+/* 「今天 + n 天」，按本地日算。不调 p5.js 的 dayKey：那个函数在另一个分片里，
+   这里自带一份格式化，跨分片调用少一层依赖。 */
+function dayAdd(n){
+  var d = new Date();
+  d.setDate(d.getDate() + (n || 0));
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function reviewGet(key){
+  return key ? (reviewLoad()[key] || null) : null;
+}
+function reviewMark(key, right){
+  if (!key) return;
+  var o = reviewLoad(), r = o[key] || (o[key] = { box: 0, due: '', n: 0, last: '' });
+  var b = (typeof r.box === 'number') ? r.box : 0;
+  if (right){
+    /* 第 1 次独立答对 → 1 天后；第 2 次 → 3 天；第 3 次 → 7 天；之后每次都 15 天。
+       box 记的是「下一个间隔用第几档」，所以先取现在的 box 定到期日，再 +1。 */
+    b = Math.max(0, Math.min(REVIEW_GAPS.length - 1, b));
+    r.due = dayAdd(REVIEW_GAPS[b]);
+    r.box = Math.min(REVIEW_GAPS.length - 1, b + 1);
+  } else {
+    b = Math.max(0, b - 1);
+    r.box = b;
+    r.due = dayAdd(1);
+  }
+  r.n = (r.n || 0) + 1;
+  r.last = todayKey();
+  reviewSave();
+}
+/* 到期了没有：YYYY-MM-DD 定长，字符串比大小就是日期比大小 */
+function reviewDue(key, day){
+  var r = reviewGet(key);
+  if (!r || !r.due) return false;
+  return r.due <= (day || todayKey());
+}
+/* 这个学生字表里今天到期该复习的字（汉字数组）。今天刚排过的不再排，
+   否则一天里反复出同一个字，孩子会觉得「怎么老是这个」。 */
+function reviewDueChars(stu){
+  var out = [], list = charsOf(stu), day = todayKey(), i, r;
+  if (!stu) return out;
+  for (i = 0; i < list.length; i++){
+    r = reviewGet(logKey(stu.name, list[i].w));
+    if (!r || !r.due || r.due > day) continue;
+    if (r.last === day) continue;
+    out.push(list[i].w);
+  }
+  return out;
+}
+
+/* --------------------- 错字本（v52 / T-045） ---------------------
+   老师要的「第二项」，也是以前最明显的断点：结算页把这一轮错过的字列一遍就完了，
+   下一轮重新随机，孩子上次没认出来的字可能一个月都不再出现。
+
+   现在答错就进本子（记错几次、最近一次），**独立答对就出本子** —— 这才是闭环。
+   存 学生|字 → { n, first, last }，只记汉字字符串，字数小、字库更新也不会恢复出旧对象。
+   本机键，不进 STATE / 云端 schema；但会进导出备份（见 p6.js 的 exportBackup），
+   换电脑时不能把「孩子还在哪些字上卡着」丢掉。
+   ------------------------------------------------------------------ */
+var LS_WRONG = 'wb2_wrong_v1';
+var WRONG = null;
+function wrongLoad(){
+  if (WRONG) return WRONG;
+  try { WRONG = JSON.parse(localStorage.getItem(LS_WRONG) || 'null') || {}; }
+  catch (e) { WRONG = {}; }
+  return WRONG;
+}
+function wrongSave(){
+  try { localStorage.setItem(LS_WRONG, JSON.stringify(wrongLoad())); } catch (e) {}
+}
+function wrongBookMark(key){
+  if (!key) return;
+  var o = wrongLoad(), r = o[key] || (o[key] = { n: 0, first: '', last: '' });
+  var day = todayKey();
+  r.n = (r.n || 0) + 1;
+  if (!r.first) r.first = day;
+  r.last = day;
+  wrongSave();
+}
+function wrongBookClear(key){
+  if (!key) return;
+  var o = wrongLoad();
+  if (!o[key]) return;
+  delete o[key];
+  wrongSave();
+}
+/* 这个学生错字本里的条目，错得多的、最近错的排前面 —— 老师下次想练的就是这几个 */
+function wrongBookEntries(stu){
+  var o = wrongLoad(), pre = String((stu && stu.name) || '') + '|', out = [], k;
+  if (!stu || !stu.name) return out;
+  for (k in o){
+    if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+    if (k.indexOf(pre) !== 0) continue;
+    out.push({ key: k, w: k.slice(pre.length),
+               n: (o[k] && o[k].n) || 1, last: (o[k] && o[k].last) || '' });
+  }
+  out.sort(function(a, b){
+    if (b.n !== a.n) return b.n - a.n;
+    return a.last < b.last ? 1 : (a.last > b.last ? -1 : 0);
+  });
+  return out;
+}
+/* 给结算页用：字对象数组（带拼音），最多 12 个 —— 和「本轮错字」同一个上限 */
+function wrongBookList(stu){
+  var ents = wrongBookEntries(stu), m = charMap(), out = [], i, c;
+  for (i = 0; i < ents.length && out.length < 12; i++){
+    c = m[ents[i].w];
+    /* 字库里已经没有这个字了也照样列出来：孩子错过的字不该因为字库换代就消失 */
+    out.push(c || { w: ents[i].w, p: '' });
+  }
+  return out;
+}
+
+/* --------------------- 选项档位 4 / 6 / 8（v52 / T-046） ---------------------
+   老师 2026-11-13：「目前学生选项只有四个，希望支持可调控的 4/6/8 三档难度，
+   主要应用于练习乐园和『听音找字』这类找相同题目」。
+
+   只影响「给几个选项」的题型：听音找字 / 找一样的字 / 图字配对 / 看拼音写字，
+   以及乐园里的四款找字游戏。拼词语与三个手写题型完全不碰。
+   ⚠ 字表太小凑不出那么多不同的字时，按实际能给的数量出，**不拿重复字充数**：
+     两个一样的字并排出现在选项里，孩子一眼就看出是题坏了。
+   -------------------------------------------------------------------- */
+var LS_OPTN = 'wb2_optn_v1';
+var OPTN_SET = [4, 6, 8];
+var OPTN = 0;
+function optnLoad(){
+  if (OPTN) return OPTN;
+  var n = 0;
+  try { n = parseInt(localStorage.getItem(LS_OPTN) || '', 10); } catch (e) { n = 0; }
+  if (OPTN_SET.indexOf(n) < 0) n = 4;
+  OPTN = n;
+  return OPTN;
+}
+function optnSet(n){
+  n = parseInt(n, 10);
+  if (OPTN_SET.indexOf(n) < 0) return optnLoad();
+  OPTN = n;
+  try { localStorage.setItem(LS_OPTN, String(n)); } catch (e) {}
+  return OPTN;
+}
+/* 网格类名跟「实际给了几个」走，不跟档位走：档位 8 但字表只凑出 5 个，
+   就该按 6 列的样式摆，而不是留三个空位。 */
+function optnCls(n){
+  if (n <= 4) return 'four';
+  if (n <= 6) return 'n6';
+  return 'n8';
+}
+
 function levelOf(r){
   if (!r || !r.n) return '待学';
   if (r.wrong >= 3 && r.alone === 0) return '需巩固';

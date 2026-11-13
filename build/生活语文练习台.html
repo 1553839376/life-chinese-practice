@@ -229,6 +229,13 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   border-radius:10px;padding:8px 12px;display:inline-block}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .opts.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* v52：选项 4 / 6 / 8 三档。6 个排 3 列（2 行）、8 个排 4 列（2 行）——
+   行数不变，所以场高不会因为调难度变一倍，孩子不用滚动就能看全。
+   字随格子变小：8 格外加最窄的教室平板也不会挤成两行。 */
+.opts.n6{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.opts.n8{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.opts.n6 .opt{font-size:48px;min-height:108px;border-radius:18px}
+.opts.n8 .opt{font-size:40px;min-height:96px;border-radius:16px}
 .opt{background:#fff;border:3px solid var(--line2);border-radius:20px;
   min-height:132px;display:flex;align-items:center;justify-content:center;
   font-size:62px;font-weight:700;letter-spacing:.04em;color:var(--ink);
@@ -743,6 +750,43 @@ tr.tr-builtin td{background:#FBFAF3}
   padding:1px 9px;font-size:20px;color:var(--ink)}
 .drill-bar button{margin-left:auto;border:1.5px solid var(--amber-line);background:#fff;
   border-radius:9px;padding:6px 12px;font-size:13px;font-weight:800;color:var(--amber);min-height:36px}
+
+/* v52：选项个数 4 / 6 / 8。三段并排的小胶囊，当前档实心 —— 不是开关（开关只有两态），
+   所以不许用 toggle 样式，也不要带滑块，孩子会以为可以拖。 */
+.optn-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 12px;padding:2px 0;font-size:13px;font-weight:800;color:var(--ink3)}
+.optn-bar .ob-lb{letter-spacing:.04em}
+.optn-bar .ob-segs{display:inline-flex;gap:6px}
+.optn-bar .ob-btn{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);
+  border-radius:11px;padding:6px 14px;font-size:14px;font-weight:800;min-height:38px}
+.optn-bar .ob-btn.on{border-color:#2C9F58;background:var(--green-bg);color:var(--green);
+  box-shadow:inset 0 0 0 1px rgba(44,159,88,.25)}
+.optn-bar.learn{margin:0 0 16px;padding:9px 14px;background:#F6F1E3;
+  border:1.5px solid #E6DEC9;border-radius:13px}
+
+/* v52：上一轮没做完。问一句、给两个按钮，不静默续上也不静默丢掉。 */
+.resume-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--blue-bg);border:1.5px solid var(--blue-line);border-radius:14px;
+  padding:11px 15px;margin:0 0 14px;font-size:15px;font-weight:700;color:var(--ink2)}
+.resume-bar .rb-t b{font-size:19px;color:var(--blue);margin:0 2px}
+.resume-bar .rb-acts{display:flex;gap:8px;margin-left:auto}
+.resume-bar .rb-go{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
+  border-radius:11px;padding:8px 18px;font-size:15px;font-weight:800;min-height:42px;
+  box-shadow:0 3px 0 #25824A}
+.resume-bar .rb-no{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);
+  border-radius:11px;padding:8px 15px;font-size:15px;font-weight:800;min-height:42px}
+.resume-bar .rb-go:active,.resume-bar .rb-no:active{transform:translateY(2px);
+  box-shadow:none}
+
+/* v52：错字本里「只练这几个字」——跟抽练条同一个动作，样式也贴近它 */
+.wb-again{margin-top:8px;border:1.5px solid var(--amber-line);background:#fff;
+  border-radius:10px;padding:8px 16px;font-size:14px;font-weight:800;
+  color:var(--amber);min-height:40px}
+.wrong-box.book .wrong-ch{opacity:.92}
+
+/* v52：今日字卡上「这个字是要复习的」——边框换暖色，标题栏另有一句总述 */
+.home-note.due{color:#8A6A1E;font-weight:800}
+.pre-card.due{border-color:#E2CE9A;background:linear-gradient(180deg,#FFFDF5,#FFF7E6)}
 .tips{font-size:14px;color:var(--ink3);margin:10px 2px 0;line-height:1.7}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;z-index:99;
   background:#20303C;color:#fff;border-radius:14px;padding:13px 22px;font-size:16px;font-weight:700;
@@ -883,6 +927,11 @@ tr.tr-builtin td{background:#FBFAF3}
 .pb-hint{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
 .pb-acts{display:flex;gap:9px;flex:none}
+/* v52：一键取消勾选。三个按钮并排时它最轻——它只是「清一下重来」，
+   不能和绿色的「开始练习」抢眼，也不能比「取消」更像退出去。 */
+.pb-clear{border:1.5px solid var(--line2);background:#fff;color:var(--ink3);border-radius:13px;
+  padding:0 13px;height:48px;font-size:14px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
+.pb-clear[disabled]{opacity:.45;box-shadow:none}
 .pb-cancel{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);border-radius:13px;
   padding:0 16px;height:48px;font-size:15px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
 .pb-start{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
@@ -894,6 +943,12 @@ body.picking #scrLearn{padding-bottom:96px}
   .pb-hint{display:none}
   .pb-start{padding:0 16px}
   .learn-bar{gap:9px}
+  /* v52：三个按钮并排（全部取消 / 取消 / 开始），360 宽的屏上必须一起收一档，
+     否则「开始练习（5）」会被挤成两行 */
+  .pb-acts{gap:7px}
+  .pb-clear{padding:0 10px;font-size:13px}
+  .pb-cancel{padding:0 12px;font-size:14px}
+  .pb-start{padding:0 13px;font-size:15px}
 }
 
 /* ---------- 字卡网格 ---------- */
@@ -1296,9 +1351,13 @@ body.picking #scrLearn{padding-bottom:96px}
   border-bottom:10px solid #fff}
 .feed-plates{flex:0 1 430px;display:grid;grid-template-columns:1fr 1fr;
   grid-template-rows:1fr 1fr;gap:12px;place-items:center;min-width:0}
-/* 食盆：上宽下收的碗，碗沿有厚度。字必须压得住伪元素，否则会被碗盖住看不见 */
+/* 食盆：上宽下收的碗，碗沿有厚度。字必须压得住伪元素，否则会被碗盖住看不见。
+   v52 修：原来 padding-top 写死 16px，而碗只占下方 52% —— 宽屏上碗高 116px，
+   字就浮在碗沿上方、碗里空着（v52 的 8 个食盆截图里最明显）。
+   改成按百分比（相对碗宽）下推 38%，字就落进碗口里；窄屏 72px 的碗同样对得上，
+   因为字号和碗宽本来就是同一条曲线。 */
 .plate{position:relative;width:clamp(96px,11.8vw,130px);height:clamp(88px,10.6vw,116px);
-  display:flex;align-items:flex-start;justify-content:center;padding-top:16px;
+  display:flex;align-items:flex-start;justify-content:center;padding:38% 0 0;
   font-size:clamp(32px,4.1vw,44px);font-weight:700;color:#57360F}
 .plate-ch{position:relative;z-index:3;line-height:1;
   text-shadow:0 2px 0 rgba(255,255,255,.9)}
@@ -1320,6 +1379,28 @@ body.picking #scrLearn{padding-bottom:96px}
 @keyframes heartUp{0%{opacity:0;transform:translate(-50%,0) scale(.55)}
   24%{opacity:1;transform:translate(-50%,-18px) scale(1.12)}
   100%{opacity:0;transform:translate(-50%,-66px) scale(.9)}}
+
+/* ---------- v52：选项 6 / 8 个时，四个场景分别怎么摆 ----------
+   场高是固定的（height:clamp(320px,…,620px)、窄屏 80vw），所以调难度**不能加行**：
+   4 行泡泡、3 行食盆在 390 的屏上都会溢出。统一「列变多、行不变」——
+   泡泡 / 果子 / 食盆 6 个排 3 列、8 个排 4 列，都还是 2 行；
+   鱼是横的、一个 200×116，只能保持 2 列，6 条 3 行、8 条 4 行，
+   靠压高度（不是加宽场子）腾地方。原有的动效一个都没动：
+   泡泡照样漂、鱼照样摆尾划鳍、果子照样摇、食盆照样有碗沿。 */
+.bub-wrap.n6{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.bub-wrap.n8{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.bub-wrap.n6 .bubble,.bub-wrap.n8 .bubble{width:min(100%,120px);height:auto;aspect-ratio:1;
+  font-size:clamp(28px,3.6vw,42px)}
+.fish-wrap.n6 .fish{height:calc(33.33% - 10px);width:auto;aspect-ratio:200/116}
+.fish-wrap.n8 .fish{height:calc(25% - 8px);width:auto;aspect-ratio:200/116}
+.fish-wrap.n6 .fish-ch,.fish-wrap.n8 .fish-ch{font-size:clamp(24px,3vw,36px)}
+.fruit-wrap.n6{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.fruit-wrap.n8{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.fruit-wrap.n6 .fruit,.fruit-wrap.n8 .fruit{width:100%;max-width:118px;height:auto;aspect-ratio:1}
+.fruit-wrap.n6 .fruit-ch,.fruit-wrap.n8 .fruit-ch{font-size:clamp(22px,2.8vw,38px)}
+.feed-plates.n6{grid-template-columns:repeat(3,minmax(0,1fr))}
+.feed-plates.n8{grid-template-columns:repeat(4,minmax(0,1fr))}
+.feed-plates.n6 .plate,.feed-plates.n8 .plate{width:min(100%,116px)}
 
 /* 提示光圈 */
 .glow{animation:glowPulse 1s ease-in-out 2;position:relative;z-index:2}
@@ -1647,6 +1728,9 @@ body.picking #scrLearn{padding-bottom:96px}
   <!-- v36：游戏乐园。四张玩法卡＋一张「随便玩」直接摆在这一页，不再弹面板；
        没选玩法的时候把下面整块（搜索 / 册次 / 字格）收起来，第一屏只有玩法。 -->
   <div id="gamePick" class="game-pick" hidden>
+    <!-- v52：选项个数。摆在玩法卡**上面**：它是「开始玩之前」的设定，
+         放到七张卡下面等于要滚到底才找得到（原来是那么放的，截图一看就像页脚）。 -->
+    <div id="optnBarLearn" class="optn-bar learn" hidden></div>
     <div class="sg-grid game-grid">
       <button class="sg-btn gb" data-gp="bubble" type="button">
         <span class="sg-ico bub"></span><span class="sg-nm">戳泡泡</span><span class="sg-d">泡泡飘上来，戳掉这个字</span>
@@ -1774,6 +1858,9 @@ body.picking #scrLearn{padding-bottom:96px}
   </div>
   <nav id="typeTabs" class="type-tabs"></nav>
   <div id="typeProg" class="type-prog" hidden></div>
+  <!-- v52：4 / 6 / 8 三档选项个数。放在题型条下面、抽练条上面：
+       是「开这道题之前」的设定，不是题目的一部分。 -->
+  <div id="optnBar" class="optn-bar" hidden></div>
   <div id="drillBar" class="drill-bar" hidden></div>
   <div id="stage" class="stage"></div>
   <div class="help-bar">
@@ -1789,7 +1876,7 @@ body.picking #scrLearn{padding-bottom:96px}
   <div class="tea-top">
     <h2>老师端</h2>
     <span id="teaSync" class="sync">已同步</span>
-    <span id="appVer" class="app-ver">v51</span>
+    <span id="appVer" class="app-ver">v52</span>
     <button id="btnExitTeacher" class="ghost-btn" type="button">退出</button>
   </div>
   <div class="tea-tabs">
@@ -2078,6 +2165,8 @@ body.picking #scrLearn{padding-bottom:96px}
     <span id="pickHint" class="pb-hint">点字卡就能选上，可以选好几个</span>
   </div>
   <div class="pb-acts">
+    <button id="pickClear" class="pb-clear" type="button"
+            title="全部取消勾选" aria-label="全部取消勾选">清空</button>
     <button id="pickCancel" class="pb-cancel" type="button">取消</button>
     <button id="pickStart" class="pb-start" type="button" disabled>开始练习</button>
   </div>
@@ -3670,7 +3759,7 @@ var LS_FORM = 'wb2_teacher_form';
 var LS_LAST = 'wb2_last_student';
 /* 版本号：老师端顶部会显示，用来一句话确认「你打开的是不是新版」。
    用户报「还是老样子」时，先看他屏幕角上的版本号，比猜快得多。发版时改这里。 */
-var APP_VER = 'v51';
+var APP_VER = 'v52';
 
 var TYPE_ORDER = ['听音找字', '找一样的字', '认读跟读', '图字配对', '看拼音写字', '拼词语',
                   '汉字听写', '词语听写', '描红汉字'];
@@ -3830,8 +3919,10 @@ function esc(s){
 /* 结算页「把这几个字再看看」（v45）：把这一局 / 这一轮错过的字单独列出来。
    只列字 + 拼音，不报「错了几个」——老师要的是「下次练哪几个」，孩子看到的是
    一排可以再念一遍的字。list 里放字对象（带 .w / .p），重复的自动去重。
-   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。 */
-function wrongBodyHTML(list, label){
+   返回的是 .wrong-box 里面的内容；没有字就返回空串，调用方据此决定要不要包一层。
+   v52：多一个 extra 参数，把「只练这几个字」这类按钮挂在同一块里 ——
+   错字本和本轮错字用的是同一个组件，不另做一套长得像的。 */
+function wrongBodyHTML(list, label, extra){
   if (!list || !list.length) return '';
   var seen = {}, i, c, chips = '', n = 0;
   for (i = 0; i < list.length && n < 12; i++){
@@ -3844,7 +3935,7 @@ function wrongBodyHTML(list, label){
   }
   if (!n) return '';
   return '<div class="wrong-t">' + esc(label) + CLOSE('div') +
-    '<div class="wrong-chs">' + chips + CLOSE('div');
+    '<div class="wrong-chs">' + chips + CLOSE('div') + (extra || '');
 }
 function arr(v){ return Object.prototype.toString.call(v) === '[object Array]' ? v : (v ? [v] : []); }
 function firstImage(v){
@@ -4376,6 +4467,181 @@ function soloMark(key, day){
   a.push(day);
   try { localStorage.setItem(LS_SOLO, JSON.stringify(o)); } catch (e) {}
 }
+/* --------------------- 复习计划（间隔重复，v52 / T-045） ---------------------
+   老师 2026-11-13：「为汉字练习增加类似遗忘曲线的出题逻辑，学生学会后间隔若干天
+   仍会重新进入该字的练习」，间隔在 1 / 3 / 7 / 15 天里选（老师选了这一档）。
+
+   做法只取 Leitner 最轻的一层：每个 学生|字 记一个 box（0~3）和下次到期日。
+     · 独立答对 → box +1，到期日 = 今天 + GAPS[box]，即 3 / 7 / 15 天（box 到顶仍是 15 天）；
+     · 答错或靠提示 → box 退一档（不低于 0），到期日 = 明天；
+     · 第一次独立答对 → 3 天后回来（box 从 0 走到 1），这就是「刚学会的字隔三天再看一眼」。
+   box 到顶之后仍然每 15 天回来一次，不设「毕业」：特需孩子忘得快，
+   「练完就永远不出现」正是老师这次要修的那件事。
+
+   和 wb2_solo_days_v1 / wb2_sess_v1 同口径：本机独立键，不进 STATE、不进云端
+   schema、不改 levelOf / syncActive —— 复习只决定「今天多排哪两个字」，
+   「掌没掌握」还是原来那一套判据。
+   ---------------------------------------------------------------------- */
+var LS_REVIEW = 'wb2_review_v1';
+var REVIEW_GAPS = [1, 3, 7, 15];
+var REVIEW_PER_DAY = 2;      /* 一轮最多插两个字复习：再多特需孩子坐不住 */
+var REVIEW = null;
+function reviewLoad(){
+  if (REVIEW) return REVIEW;
+  try { REVIEW = JSON.parse(localStorage.getItem(LS_REVIEW) || 'null') || {}; }
+  catch (e) { REVIEW = {}; }
+  return REVIEW;
+}
+function reviewSave(){
+  try { localStorage.setItem(LS_REVIEW, JSON.stringify(reviewLoad())); } catch (e) {}
+}
+/* 「今天 + n 天」，按本地日算。不调 p5.js 的 dayKey：那个函数在另一个分片里，
+   这里自带一份格式化，跨分片调用少一层依赖。 */
+function dayAdd(n){
+  var d = new Date();
+  d.setDate(d.getDate() + (n || 0));
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function reviewGet(key){
+  return key ? (reviewLoad()[key] || null) : null;
+}
+function reviewMark(key, right){
+  if (!key) return;
+  var o = reviewLoad(), r = o[key] || (o[key] = { box: 0, due: '', n: 0, last: '' });
+  var b = (typeof r.box === 'number') ? r.box : 0;
+  if (right){
+    /* 第 1 次独立答对 → 1 天后；第 2 次 → 3 天；第 3 次 → 7 天；之后每次都 15 天。
+       box 记的是「下一个间隔用第几档」，所以先取现在的 box 定到期日，再 +1。 */
+    b = Math.max(0, Math.min(REVIEW_GAPS.length - 1, b));
+    r.due = dayAdd(REVIEW_GAPS[b]);
+    r.box = Math.min(REVIEW_GAPS.length - 1, b + 1);
+  } else {
+    b = Math.max(0, b - 1);
+    r.box = b;
+    r.due = dayAdd(1);
+  }
+  r.n = (r.n || 0) + 1;
+  r.last = todayKey();
+  reviewSave();
+}
+/* 到期了没有：YYYY-MM-DD 定长，字符串比大小就是日期比大小 */
+function reviewDue(key, day){
+  var r = reviewGet(key);
+  if (!r || !r.due) return false;
+  return r.due <= (day || todayKey());
+}
+/* 这个学生字表里今天到期该复习的字（汉字数组）。今天刚排过的不再排，
+   否则一天里反复出同一个字，孩子会觉得「怎么老是这个」。 */
+function reviewDueChars(stu){
+  var out = [], list = charsOf(stu), day = todayKey(), i, r;
+  if (!stu) return out;
+  for (i = 0; i < list.length; i++){
+    r = reviewGet(logKey(stu.name, list[i].w));
+    if (!r || !r.due || r.due > day) continue;
+    if (r.last === day) continue;
+    out.push(list[i].w);
+  }
+  return out;
+}
+
+/* --------------------- 错字本（v52 / T-045） ---------------------
+   老师要的「第二项」，也是以前最明显的断点：结算页把这一轮错过的字列一遍就完了，
+   下一轮重新随机，孩子上次没认出来的字可能一个月都不再出现。
+
+   现在答错就进本子（记错几次、最近一次），**独立答对就出本子** —— 这才是闭环。
+   存 学生|字 → { n, first, last }，只记汉字字符串，字数小、字库更新也不会恢复出旧对象。
+   本机键，不进 STATE / 云端 schema；但会进导出备份（见 p6.js 的 exportBackup），
+   换电脑时不能把「孩子还在哪些字上卡着」丢掉。
+   ------------------------------------------------------------------ */
+var LS_WRONG = 'wb2_wrong_v1';
+var WRONG = null;
+function wrongLoad(){
+  if (WRONG) return WRONG;
+  try { WRONG = JSON.parse(localStorage.getItem(LS_WRONG) || 'null') || {}; }
+  catch (e) { WRONG = {}; }
+  return WRONG;
+}
+function wrongSave(){
+  try { localStorage.setItem(LS_WRONG, JSON.stringify(wrongLoad())); } catch (e) {}
+}
+function wrongBookMark(key){
+  if (!key) return;
+  var o = wrongLoad(), r = o[key] || (o[key] = { n: 0, first: '', last: '' });
+  var day = todayKey();
+  r.n = (r.n || 0) + 1;
+  if (!r.first) r.first = day;
+  r.last = day;
+  wrongSave();
+}
+function wrongBookClear(key){
+  if (!key) return;
+  var o = wrongLoad();
+  if (!o[key]) return;
+  delete o[key];
+  wrongSave();
+}
+/* 这个学生错字本里的条目，错得多的、最近错的排前面 —— 老师下次想练的就是这几个 */
+function wrongBookEntries(stu){
+  var o = wrongLoad(), pre = String((stu && stu.name) || '') + '|', out = [], k;
+  if (!stu || !stu.name) return out;
+  for (k in o){
+    if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+    if (k.indexOf(pre) !== 0) continue;
+    out.push({ key: k, w: k.slice(pre.length),
+               n: (o[k] && o[k].n) || 1, last: (o[k] && o[k].last) || '' });
+  }
+  out.sort(function(a, b){
+    if (b.n !== a.n) return b.n - a.n;
+    return a.last < b.last ? 1 : (a.last > b.last ? -1 : 0);
+  });
+  return out;
+}
+/* 给结算页用：字对象数组（带拼音），最多 12 个 —— 和「本轮错字」同一个上限 */
+function wrongBookList(stu){
+  var ents = wrongBookEntries(stu), m = charMap(), out = [], i, c;
+  for (i = 0; i < ents.length && out.length < 12; i++){
+    c = m[ents[i].w];
+    /* 字库里已经没有这个字了也照样列出来：孩子错过的字不该因为字库换代就消失 */
+    out.push(c || { w: ents[i].w, p: '' });
+  }
+  return out;
+}
+
+/* --------------------- 选项档位 4 / 6 / 8（v52 / T-046） ---------------------
+   老师 2026-11-13：「目前学生选项只有四个，希望支持可调控的 4/6/8 三档难度，
+   主要应用于练习乐园和『听音找字』这类找相同题目」。
+
+   只影响「给几个选项」的题型：听音找字 / 找一样的字 / 图字配对 / 看拼音写字，
+   以及乐园里的四款找字游戏。拼词语与三个手写题型完全不碰。
+   ⚠ 字表太小凑不出那么多不同的字时，按实际能给的数量出，**不拿重复字充数**：
+     两个一样的字并排出现在选项里，孩子一眼就看出是题坏了。
+   -------------------------------------------------------------------- */
+var LS_OPTN = 'wb2_optn_v1';
+var OPTN_SET = [4, 6, 8];
+var OPTN = 0;
+function optnLoad(){
+  if (OPTN) return OPTN;
+  var n = 0;
+  try { n = parseInt(localStorage.getItem(LS_OPTN) || '', 10); } catch (e) { n = 0; }
+  if (OPTN_SET.indexOf(n) < 0) n = 4;
+  OPTN = n;
+  return OPTN;
+}
+function optnSet(n){
+  n = parseInt(n, 10);
+  if (OPTN_SET.indexOf(n) < 0) return optnLoad();
+  OPTN = n;
+  try { localStorage.setItem(LS_OPTN, String(n)); } catch (e) {}
+  return OPTN;
+}
+/* 网格类名跟「实际给了几个」走，不跟档位走：档位 8 但字表只凑出 5 个，
+   就该按 6 列的样式摆，而不是留三个空位。 */
+function optnCls(n){
+  if (n <= 4) return 'four';
+  if (n <= 6) return 'n6';
+  return 'n8';
+}
+
 function levelOf(r){
   if (!r || !r.n) return '待学';
   if (r.wrong >= 3 && r.alone === 0) return '需巩固';
@@ -6056,6 +6322,36 @@ function renderTypeTabs(){
   var stage = $('stage');
   if (stage) stage.setAttribute('data-sp-bindable', 'database');
   if (stage) stage.setAttribute('data-sp-database-id', DATABASE_ID);
+  paintOptnBars();
+}
+/* --------------------- 选项难度切换（v52 / T-046） ---------------------
+   老师 2026-11-13：「希望支持可调控的 4/6/8 三档难度…并增加相应的难度切换按钮」。
+   练习页放在题型条下面，乐园放在玩法卡下面 —— 都是「开始之前」一定看得见的地方。
+   一个值管两处：老师调一次，学生那边立刻生效（一台电脑一个班，不按人分开设）。
+   调档不打断正在做的那道题（它已经摆好了），从下一题起生效，提示语里说清楚。
+   -------------------------------------------------------------------- */
+function optnBarHTML(){
+  var cur = optnLoad(), i, out = '', n;
+  for (i = 0; i < OPTN_SET.length; i++){
+    n = OPTN_SET[i];
+    out += '<button type="button" class="ob-btn' + (n === cur ? ' on' : '') +
+      '" data-optn="' + n + '">' + n + ' 个' + CLOSE('button');
+  }
+  return '<span class="ob-lb">选项个数</span><span class="ob-segs">' + out + CLOSE('span');
+}
+function paintOptnBars(){
+  var ids = ['optnBar', 'optnBarLearn'], i, el;
+  for (i = 0; i < ids.length; i++){
+    el = $(ids[i]);
+    if (!el) continue;
+    setHTML(el, optnBarHTML());
+    el.hidden = false;
+  }
+}
+function optnChanged(n){
+  var v = optnSet(n);
+  paintOptnBars();
+  toast('以后每道题给 ' + v + ' 个选项' + (v === 4 ? '' : '（字表太小时会少给几个）'));
 }
 function renderNoType(){
   setHTML($('stage'), '<div class="empty-tip">这位同学还没有分配练习题型。请老师点右上角「老师」（连点两下）进去勾选题型。</div>');
@@ -6085,6 +6381,10 @@ function preMode(on){
     /* 开题后就不在主页了，把主页的隐藏规则一起撤掉 */
     play.classList.remove('is-home');
   }
+  /* v52：选项个数是「开始做题之前」的设定，主页 / 今日字卡这两屏不摆它 ——
+     孩子在那两屏要看的只有「今天练哪几个字」和那个大按钮，
+     多一行控件就多一个可以乱点的地方。开题之后才出现。 */
+  if ($('optnBar')) $('optnBar').hidden = !!on;
 }
 /* 组词栏可能是「大人、太阳」，取第一个当卡片上的示例词 */
 function firstWordOf(c){
@@ -6092,7 +6392,7 @@ function firstWordOf(c){
   return s ? s.trim() : '';
 }
 function todayChars(stu){
-  var pool = charsOf(stu), map = {}, i, out = [], act;
+  var pool = charsOf(stu), map = {}, i, out = [], act, due;
   /* 老师临时指定的抽练：以老师选的为准，不看在学名单 */
   if (QUIZ_FOCUS && QUIZ_FOCUS.length){
     for (i = 0; i < pool.length; i++){
@@ -6105,6 +6405,16 @@ function todayChars(stu){
   act = stuActive(stu);
   for (i = 0; i < pool.length; i++) map[pool[i].w] = pool[i];
   for (i = 0; i < act.length; i++){ if (map[act[i]]) out.push(map[act[i]]); }
+  /* v52：到期的复习字接在后面（最多 REVIEW_PER_DAY 个）。
+     间隔重复全靠这一步 —— 已掌握的字会被 syncActive 移出在学名单，
+     不在这里补回来，它们就真的「练完再也不出现」了，正是老师提的那个问题。
+     排在在学字后面是刻意的：先过今天的新字，再做回顾；
+     上限 2 个也是刻意的：一轮多两个字可以，多五个特需孩子就坐不住了。 */
+  due = reviewDueChars(stu);
+  for (i = 0; i < due.length && i < REVIEW_PER_DAY; i++){
+    if (!map[due[i]] || out.indexOf(map[due[i]]) >= 0) continue;
+    out.push(map[due[i]]);
+  }
   return out;
 }
 function preReadN(){
@@ -6233,6 +6543,10 @@ function renderStuHome(){
   if (!stu || !stage) return;
   var p = stuProfile(stu), list = todayChars(stu), stars = starsOf(p.rate), dy = streakOf(stu);
   var lv = {}, chips = '', i, c, m, cls, starHTML = '';
+  /* v52：今天这几个字里有几个是「隔几天回来复习」的（间隔重复排进来的） */
+  var dueList = reviewDueChars(stu), dueMap = {}, dueN = 0;
+  for (i = 0; i < dueList.length; i++) dueMap[dueList[i]] = 1;
+  for (i = 0; i < list.length; i++){ if (dueMap[list[i].w]) dueN++; }
   STU_HOME.name = stu.name;
   STU_HOME.list = list;
   /* 换人才重置字卡的勾选；同一个人从主页进出不该把「读过了」清掉 */
@@ -6289,6 +6603,8 @@ function renderStuHome(){
         (chips ? '<div class="home-chips">' + chips + CLOSE('div')
                : '<p class="home-note">这一刻没有排进「在学」的字，请老师看一下字表。</p>') +
         '<p class="home-note">每学会 20% 多亮一颗星</p>' +
+        (dueN ? '<p class="home-note due">其中 ' + dueN +
+          ' 个是回头复习的 —— 学会的字隔 1 / 3 / 7 / 15 天再看一眼，才忘不掉</p>' : '') +
       CLOSE('div') +
       '<div class="home-foot">' +
         '<button type="button" class="home-go" id="homeGo">开始今天的学习</button>' +
@@ -6339,12 +6655,18 @@ function renderPreStudy(){
 
   prof = stuProfile(stu);
   for (i = 0; i < prof.items.length; i++) lv[prof.items[i].w] = prof.items[i].lv;
+  /* v52：哪些字是「今天该复习」的（间隔重复排进来的），字卡上单独说一句，
+     孩子才知道这两个不是新字、是回头看一眼。 */
+  var dueList = reviewDueChars(stu), dueMap = {}, dueN = 0;
+  for (i = 0; i < dueList.length; i++) dueMap[dueList[i]] = 1;
+  for (i = 0; i < list.length; i++){ if (dueMap[list[i].w]) dueN++; }
   for (i = 0; i < list.length; i++){
     c = list[i];
     m = lv[c.w] || '待学';
     if (m === '已掌握') masters++;
     cls = m === '已掌握' ? 'm' : (m === '练习中' ? 'd' : (m === '需巩固' ? 't' : 'o'));
     cards += '<button type="button" class="pre-card' + (PRE.read[c.w] ? ' read' : '') +
+        (dueMap[c.w] ? ' due' : '') +
         '" data-pre="' + esc(c.w) + '">' +
       '<span class="pre-idx">' + (i + 1) + CLOSE('span') +
       '<span class="pre-st ' + cls + '">' + esc(m) + CLOSE('span') +
@@ -6357,10 +6679,12 @@ function renderPreStudy(){
 
   setHTML(stage,
     '<div class="pre-wrap">' +
+      resumeBarHTML() +
       '<div class="pre-head">' +
         '<h2>今天的字</h2>' +
         '<span class="pre-cnt">共 ' + list.length + ' 个' +
-          (masters ? ' · 已掌握 ' + masters : '') + CLOSE('span') +
+          (masters ? ' · 已掌握 ' + masters : '') +
+          (dueN ? ' · 要复习 ' + dueN : '') + CLOSE('span') +
       CLOSE('div') +
       '<div class="pre-grid">' + cards + CLOSE('div') +
       '<div class="pre-foot">' +
@@ -6464,14 +6788,19 @@ function pickDistract(pool, n, target, wide, avoidSame){
 }
 function buildQuestions(pool, n, stu, focusPool, type){
   /* focusPool 只在「抽练」时给：目标字从抽练名单里取，干扰项始终从整张字表取
-     （否则只有 3 个字时凑不出 4 个选项，孩子会看到重复的字） */
+     （否则只选 3 个字时凑不出 4 个选项，孩子会看到重复的字） */
   var targets = pickTargets(focusPool || pool, n, stu), qs = [], i, j, t, opts, d;
   var t0 = type || STATE.curType;
   var avoid = !!SAME_SOUND_TYPES[t0];
   var wide = avoid ? allCharsOn() : null;
+  /* v52：干扰项个数跟选项档位走（4 → 3 个、6 → 5 个、8 → 7 个）。
+     以前是写死的 3，所以永远只有四个选项。
+     字表里凑不出这么多不同的字时，pickDistract / pickN 给多少算多少，
+     不拿重复字充数 —— 两个一样的字挨着摆，这道题就废了。 */
+  var want = Math.max(1, optnLoad() - 1);
   for (i = 0; i < targets.length; i++){
     t = targets[i];
-    d = avoid ? pickDistract(pool, 3, t, wide, true) : pickN(pool, 3, [t]);
+    d = avoid ? pickDistract(pool, want, t, wide, true) : pickN(pool, want, [t]);
     opts = [t];
     for (j = 0; j < d.length; j++) opts.push(d[j]);
     opts = shuffleArr(opts);
@@ -6638,6 +6967,9 @@ function startQuiz(type){
   renderTypeTabs();
   renderTypeProg();
   preMode(false);            /* 开题了，老师辅助按钮放回来 */
+  /* v52：开新一轮就把上一轮的存档作废（不管这一轮能不能存），
+     否则旧存档留着，下次进字卡会问「要不要接着练上一轮」，点进去是另一个题型。 */
+  resumeClear();
   var pool = charsOf(stu), i;
   var focus = QUIZ_FOCUS;      /* 一次性消费：重进就回到整张字表 */
   QUIZ_FOCUS = null;
@@ -6729,6 +7061,7 @@ function startQuiz(type){
     $('qNow').textContent = '0'; $('qTotal').textContent = '0';
     return;
   }
+  resumeSave();     /* v52：这一轮能存（有目标字、有选项）就先存一份，中途走了能接着练 */
   $('qTotal').textContent = String(STATE.quiz.qs.length);
   if (isDrill){
     var ws = [];
@@ -6818,7 +7151,10 @@ function renderStage(){
   }
 
   for (i = 0; i < q.opts.length; i++){ opts += optCardHTML(q.opts[i]); }
-  setHTML(stage, head + body + '<div class="opts four">' + opts + CLOSE('div'));
+  /* v52：列数跟「这一题实际给了几个选项」走（4 / 6 / 8），档位调大但字表不够时
+     自动退到能摆得下的那一档，不留空格子 */
+  setHTML(stage, head + body + '<div class="opts ' + optnCls(q.opts.length) + '">' +
+    opts + CLOSE('div'));
   resetQState();
   bindStage();
   syncHelpBar();
@@ -7237,6 +7573,9 @@ function logWriteMiss(){
   r.dirty = true;
   flushLogs();
   STATE.quiz.wrongLogged = true;
+  /* v52：和点选题型同一口径 —— 没写好就进错字本、复习计划退回一档 */
+  wrongBookMark(r.key);
+  reviewMark(r.key, false);
   if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
     STATE.quiz.wrongChars.push(q.target);
   }
@@ -7551,6 +7890,9 @@ function missOption(ch){
     r.dirty = true;
     flushLogs();
     STATE.quiz.wrongLogged = true;
+    /* v52：进错字本（独立答对才出本子），复习计划退回一档、明天再来 */
+    wrongBookMark(r.key);
+    reviewMark(r.key, false);
     /* v45：把这一题的目标字记进「这一轮错过的字」，结算页（听音找字）要列出来 */
     if (STATE.quiz.wrongChars && STATE.quiz.wrongChars.indexOf(q.target) < 0){
       STATE.quiz.wrongChars.push(q.target);
@@ -7583,6 +7925,16 @@ function gradeAnswer(right){
   r.n++;
   if (STATE.quiz.promptUsed) r.hinted++;
   else { r.alone++; soloMark(r.key, todayKey()); }   /* v50：只有独立答对才记日期 */
+  /* v52：复习计划与错字本。
+     · 提示后答对（含描红的「辅助完成」）不算自己认出来 → 复习计划退回一档、明天再来；
+     · 一次就点对才推进间隔，并把这个字移出错字本 —— 「练对了就出本子」是闭环的关键，
+       否则本子只会越来越长，老师再也不会打开它。 */
+  if (STATE.quiz.promptUsed){
+    reviewMark(r.key, false);
+  } else {
+    reviewMark(r.key, true);
+    if (!STATE.quiz.wrongLogged) wrongBookClear(r.key);
+  }
   /* 试过才答对：本次练习记一笔，结算页报「其中 N 题是试了再答对的」。
      不落库 —— 云端日志 schema 没有这一列，写进去也会被同步覆盖成 0（比不写更糟）。 */
   if (STATE.quiz.wrongLogged) STATE.quiz.retried = (STATE.quiz.retried || 0) + 1;
@@ -7637,9 +7989,13 @@ function useHint(){
   sfxPop();
   var q = curQ();
   var all = document.querySelectorAll('#stage .opt'), i, el, hidden = 0;
-  for (i = 0; i < all.length; i++){
+  /* v52：选项变多以后「去掉两个」等于没提示（8 个里还剩 5 个可点）。
+     改成「删到只剩目标 + 一个干扰」：4 个选项时仍然是原来的 2 个，
+     6 / 8 档时删 4 / 6 个，提示强度各个档位一致 —— 都是二选一。 */
+  var kill = Math.max(2, all.length - 2);
+  for (i = 0; i < all.length && hidden < kill; i++){
     el = all[i];
-    if (el.getAttribute('data-c') !== q.target.w && hidden < 2){ el.classList.add('dim'); hidden++; }
+    if (el.getAttribute('data-c') !== q.target.w){ el.classList.add('dim'); hidden++; }
   }
   readTarget();
   toast('已给提示：去掉两个错的，再听一次读音');
@@ -7651,9 +8007,124 @@ function skipQuestion(){
 function nextQuestion(){
   if (!STATE.quiz) return;
   STATE.quiz.i++;
-  if (STATE.quiz.i >= STATE.quiz.qs.length){ renderSummary(); return; }
+  /* v52：每翻一题就把进度存一次 —— 中途被叫走（下课、换人、切屏）回来还能接着练 */
+  if (STATE.quiz.i >= STATE.quiz.qs.length){ resumeClear(); renderSummary(); return; }
+  resumeSave();
   renderStage();
 }
+
+/* --------------------- 上一轮没做完（v52 / T-047） ---------------------
+   老师 2026-11-13：「第三项增加提示询问功能（中途离开 / 续练时先问）」。
+   在这之前 STATE.quiz 完全不落盘：孩子练到第 5 题被叫去吃饭、回来点自己的照片，
+   整轮就没了，也不知道刚才练到哪儿。
+
+   现在把这一轮存进本机一个键，下次进「今日字卡」先问一句「上一轮还有 3 题没练完，
+   接着练吗」，两个按钮：接着练 / 重新开始。**不静默续上** —— 静默续上会让孩子
+   在毫不知情的情况下回到半路的题，比丢了好不到哪去；也不静默丢弃，那是这次的病根。
+
+   只存汉字字符串，回来时按 charMap() 重新查字对象：
+   落字对象进 localStorage 会把整张字表连同引用一起存进去，字库更新后还原出旧对象，
+   字卡上就会出现已经不存在的字（和 v49 选字记忆同一个理由）。
+   ------------------------------------------------------------------ */
+var LS_RESUME = 'wb2_resume_v1';
+
+function resumeSave(){
+  var z = STATE.quiz, stu = STATE.cur, out = [], wc = [], i, j, q, o;
+  if (!z || !stu || !z.qs || !z.qs.length) return;
+  if (!(z.i >= 0) || z.i >= z.qs.length) return;
+  for (i = 0; i < z.qs.length; i++){
+    q = z.qs[i];
+    /* 拼词语（{words,tiles}）和三个手写题型（{target,text}，没有 opts）结构不一样，
+       不硬塞进这套格式里 —— 它们重来时整轮重出题，比还原一个半截的拼词局干净。 */
+    if (!q || !q.target || !q.target.w || !q.opts || !q.opts.length) return;
+    o = [];
+    for (j = 0; j < q.opts.length; j++) o.push(q.opts[j].w);
+    out.push({ t: q.target.w, o: o });
+  }
+  for (i = 0; i < (z.wrongChars || []).length; i++){
+    if (z.wrongChars[i] && z.wrongChars[i].w) wc.push(z.wrongChars[i].w);
+  }
+  try {
+    localStorage.setItem(LS_RESUME, JSON.stringify({
+      v: 1, stu: stu.name, type: z.type || '', i: z.i,
+      right: z.right || 0, prompts: z.prompts || 0, retried: z.retried || 0,
+      wc: wc, qs: out, day: todayKey(), ts: Date.now()
+    }));
+  } catch (e) {}
+}
+function resumeClear(){
+  try { localStorage.removeItem(LS_RESUME); } catch (e) {}
+}
+/* 读回来：字表 / 字库变过的字直接跳过；跳过之后剩下的题目不够当前位置，就当没有存档 */
+function resumeLoad(stu){
+  var o = null, m, qs = [], wc = [], i, j, q, t, opts, seen;
+  if (!stu || !stu.name) return null;
+  try { o = JSON.parse(localStorage.getItem(LS_RESUME) || 'null'); } catch (e) { return null; }
+  if (!o || o.v !== 1 || o.stu !== stu.name || !o.qs || !o.qs.length) return null;
+  if (!(o.i >= 0) || o.i >= o.qs.length) return null;
+  m = charMap();
+  for (i = 0; i < o.qs.length; i++){
+    q = o.qs[i];
+    t = q && q.t ? m[q.t] : null;
+    if (!t) continue;
+    opts = []; seen = {};
+    for (j = 0; j < (q.o || []).length; j++){
+      if (!m[q.o[j]] || seen[q.o[j]]) continue;
+      seen[q.o[j]] = 1;
+      opts.push(m[q.o[j]]);
+    }
+    if (!opts.length) continue;
+    qs.push({ target: t, opts: opts });
+  }
+  if (qs.length <= o.i) return null;
+  for (i = 0; i < (o.wc || []).length; i++){
+    if (m[o.wc[i]]) wc.push(m[o.wc[i]]);
+  }
+  return { stu: o.stu, type: o.type || '', i: o.i, right: o.right || 0,
+           prompts: o.prompts || 0, retried: o.retried || 0,
+           wc: wc, qs: qs, day: o.day || '' };
+}
+function resumeLeft(stu){
+  var r = resumeLoad(stu);
+  return r ? (r.qs.length - r.i) : 0;
+}
+/* 今日字卡顶上那一块。返回空串就表示没有半截的轮次，字卡页保持原样。 */
+function resumeBarHTML(){
+  var r = resumeLoad(STATE.cur), left;
+  if (!r) return '';
+  left = r.qs.length - r.i;
+  return '<div class="resume-bar">' +
+      '<span class="rb-t">上一轮「' + esc(r.type || '练习') + '」还有 <b>' + left +
+        '</b> 题没练完，接着练吗？' + CLOSE('span') +
+      '<span class="rb-acts">' +
+        '<button type="button" class="rb-go" id="btnResumeGo">接着练</button>' +
+        '<button type="button" class="rb-no" id="btnResumeNo">重新开始</button>' +
+      CLOSE('span') +
+    CLOSE('div');
+}
+/* 接着练：把存档还原成 STATE.quiz，直接回到那道题上，不重新出题 */
+function resumeGo(){
+  var stu = STATE.cur, r = resumeLoad(stu);
+  if (!r){ resumeClear(); toast('这一轮已经找不回来了，重新开始吧'); renderPreStudy(); return; }
+  if (r.type) STATE.curType = r.type;
+  STATE.quiz = { type: r.type, qs: r.qs, i: r.i, right: r.right, prompts: r.prompts,
+                 answered: false, promptUsed: 0, missed: 0, wrongLogged: false,
+                 retried: r.retried, wrongChars: r.wc };
+  preMode(false);
+  var play = $('scrPlay');
+  if (play && play.classList) play.classList.remove('is-home');
+  renderTypeTabs();
+  renderTypeProg();
+  renderDrillBar(null);
+  $('qTotal').textContent = String(r.qs.length);
+  renderStage();
+}
+function resumeDrop(){
+  resumeClear();
+  toast('好，这一轮重新开始');
+  renderPreStudy();
+}
+
 function renderSummary(){
   var z = STATE.quiz, done = z.i, right = z.right, denom = done, i;
   /* 拼词语一组 3 个词，正确率要按「词」算：8 个词拼对 6 个 = 75%，
@@ -7679,6 +8150,8 @@ function renderSummary(){
      全部做完时不管这轮正确率多少都给庆祝音 —— 今天该练的都练完了，这件事本身值得夸。 */
   var stu = STATE.cur;
   sessMark(z.type);
+  /* v52：这一轮已经走到结算页，存档作废 —— 不然后面进字卡还会问「要不要接着练」 */
+  resumeClear();
   var nextT = sessNext(stu), allDone = !nextT, typeN = sessTypes(stu).length;
   /* v51：全部题型练完仍值得夸，但不能把「错了好几个」也夸成太棒了 ——
      大字完成提示（.done-hero）和庆祝音是给「今天练完了」，这一轮的鼓励语只看正确率。 */
@@ -7714,6 +8187,18 @@ function renderSummary(){
   }
   /* v45：听音找字这一轮错过的字，单独列一遍给老师（其它题型先不开，见 p4.js 的 WRONG_LIST_TYPES） */
   var wrongBody = WRONG_LIST_TYPES[z.type] ? wrongBodyHTML(z.wrongChars, '这几个字没听出来，再看看') : '';
+  /* v52：错字本。上面那块只说「这一轮」，这块说「这个孩子还卡在哪些字上」——
+     以前错过的、到现在还没独立认对的，一直在本子里，练对了自动移出。
+     这一轮已经列在上面的字不重复列（同一屏上把同样的字摆两遍，孩子会以为程序出错）。 */
+  var bookAll = stu ? wrongBookList(stu) : [];
+  var listed = {}, restBook = [], k;
+  for (i = 0; i < (z.wrongChars || []).length; i++){ listed[z.wrongChars[i].w] = 1; }
+  for (i = 0; i < bookAll.length; i++){ if (!listed[bookAll[i].w]) restBook.push(bookAll[i]); }
+  var bookBody = restBook.length
+    ? wrongBodyHTML(restBook, '错字本里还有这几个，练对了会自动移出',
+        '<button type="button" class="wb-again" id="btnBookDrill">只练错字本这 ' +
+          bookAll.length + ' 个字</button>')
+    : '';
   var html = '<div class="q-head"><div class="q-ask">这一轮练完了</div></div>' +
     /* 全部做完时加一块大字提示，但**正确率照样留着** —— 只排了一个题型的学生，
        第一次做完就等于「全部完成」，不能因此让他看不到分数（v26 第一版踩过）。 */
@@ -7729,6 +8214,7 @@ function renderSummary(){
     (z.retried ? '<div class="prog-note" style="text-align:center;margin-top:8px">其中 ' +
       z.retried + ' 题是试了再答对的，不计入正确率</div>' : '') +
     (wrongBody ? '<div class="wrong-box">' + wrongBody + CLOSE('div') : '') +
+    (bookBody ? '<div class="wrong-box book">' + bookBody + CLOSE('div') : '') +
     '<div class="sum-actions">' + btns + CLOSE('div');
   $('qNow').textContent = String(done);
   setHTML($('stage'), html);
@@ -7741,6 +8227,16 @@ function renderSummary(){
     startQuiz(nextT);
   });
   if (c) c.addEventListener('click', function(){ renderStuHome(); });
+  /* 「只练错字本这几个字」：走和老师端「抽他练这些字」同一条路 —— QUIZ_FOCUS 一次性，
+     startQuiz 里消费掉，顶部会自动亮出「本次只练这 N 个字」 */
+  var bd = $('btnBookDrill');
+  if (bd) bd.addEventListener('click', function(){
+    var list = [], j;
+    for (j = 0; j < bookAll.length; j++) list.push(bookAll[j].w);
+    if (!list.length){ toast('错字本是空的'); return; }
+    QUIZ_FOCUS = list;
+    startQuiz(z.type);
+  });
   syncHelpBar();
 }
 /* ------------------------- 笔顺与描写（v27，T-023） -------------------------
@@ -9290,12 +9786,26 @@ function seedLibrary(){
   step();
 }
 
-/* ------------------------- 备份（本机数据的安全带） ------------------------- */
+/* ------------------------- 备份（本机数据的安全带） -------------------------
+   v52 修了一个真 bug：以前只导 students / chars / words / logs，本机那几张
+   独立表全漏了。最要命的是 wb2_solo_days_v1 —— 换台电脑导进来，
+   levelOf() 走「本机一个日期都没有 → 沿用旧口径」那一支，
+   所有 alone>=3 的字当场变成「已掌握」，等于把学生的进度凭空拔高一截。
+   复习计划和错字本是同一类数据（都在本机、都影响下次练什么），一起带上。
+   -------------------------------------------------------------------------- */
 function exportBackup(){
   var data = JSON.stringify({
-    v: 1, ts: new Date().toISOString(),
+    v: 2, ts: new Date().toISOString(),
     students: STATE.students, chars: STATE.chars,
-    words: STATE.words, logs: STATE.logs
+    words: STATE.words, logs: STATE.logs,
+    /* v52：四样本机独立表 */
+    solo: soloLoad(),          /* 跨天掌握：哪天独立答对过 */
+    review: reviewLoad(),      /* 复习计划：每个字的下次到期日 */
+    wrong: wrongLoad(),        /* 错字本 */
+    readPick: (function(){
+      try { return JSON.parse(localStorage.getItem(LS_READ_PICK) || 'null') || []; }
+      catch (e) { return []; }
+    })()
   }, null, 2);
   try {
     var blob = new Blob([data], { type: 'application/json' });
@@ -9326,6 +9836,23 @@ function importBackup(file){
       STATE.words = arr(o.words);
       STATE.logs = (o.logs && typeof o.logs === 'object') ? o.logs : {};
       repairCharWords();          /* 旧备份可能不带「组词」栏，导完按内置字表补回 */
+      /* v52：本机独立表。老备份里没有这几个字段，缺就保持本机的原样 ——
+         不能因为「文件里没有」就把本机的错字本清空。 */
+      if (o.solo && typeof o.solo === 'object'){
+        SOLO = o.solo;
+        try { localStorage.setItem(LS_SOLO, JSON.stringify(o.solo)); } catch (e) {}
+      }
+      if (o.review && typeof o.review === 'object'){
+        REVIEW = o.review;
+        try { localStorage.setItem(LS_REVIEW, JSON.stringify(o.review)); } catch (e) {}
+      }
+      if (o.wrong && typeof o.wrong === 'object'){
+        WRONG = o.wrong;
+        try { localStorage.setItem(LS_WRONG, JSON.stringify(o.wrong)); } catch (e) {}
+      }
+      if (isArr(o.readPick)){
+        try { localStorage.setItem(LS_READ_PICK, JSON.stringify(o.readPick)); } catch (e) {}
+      }
       saveSnap();
       resolve(true);
     };
@@ -9479,6 +10006,16 @@ function wireEvents(){
     if (pcard){ preSay(pcard.getAttribute('data-pre')); return; }
     var pgo = el.closest ? el.closest('#preGo') : null;
     if (pgo){ preStart(); return; }
+    /* v52：工具条上的两组小控件，也都得排在 .opt 之前 ——
+       字卡页 / 乐园页里 STATE.quiz 是 null，走 .opt 分支会报错。
+       ① 选项个数 4 / 6 / 8：练习页和乐园各一份，一个值管两处；
+       ② 上一轮没做完：接着练 / 重新开始，只在字卡页出现。 */
+    var ob = el.closest ? el.closest('[data-optn]') : null;
+    if (ob){ optnChanged(parseInt(ob.getAttribute('data-optn'), 10)); return; }
+    var rgo = el.closest ? el.closest('#btnResumeGo') : null;
+    if (rgo){ resumeGo(); return; }
+    var rno = el.closest ? el.closest('#btnResumeNo') : null;
+    if (rno){ resumeDrop(); return; }
     /* 手写题型（v25）：写好了 / 写对了 / 没写好 / 擦掉 / 再听。
        用 data-wg-act 而不是 data-wg —— 方框自己带 data-wg（序号），
        混用一个属性会让点方框也走进来。这也要排在 .opt 之前。 */
@@ -10013,6 +10550,8 @@ function renderLearn(){
      其余时候不占位置。 */
   $('learnCount').hidden = !LEARN.q;
   $('learnCount').textContent = LEARN.q ? ('搜到 ' + list.length + ' 个字') : '';
+  /* v52：选项个数控件长在玩法卡下面，换模式 / 换年级都要跟着重画一次 */
+  if (typeof paintOptnBars === 'function') paintOptnBars();
 }
 
 /* ============================ 学字卡 ============================ */
@@ -10145,22 +10684,30 @@ function quitGame(back){
 /* ============================ 出题 ============================ */
 function distractorPool(target){
   var same = [], other = [], i, c;
+  /* v52：「同组优先」这条要按档位算 —— 以前写死 3，是因为只能给 4 个选项。
+     档位 8 时如果一组只有 4 个字就只用同组，等于档位白调了。 */
+  var need = Math.max(1, optnLoad() - 1);
   for (i = 0; i < STATE.chars.length; i++){
     c = STATE.chars[i];
     if (!c.on || !c.w || c.w === target.w) continue;
     if (c.g === target.g) same.push(c); else other.push(c);
   }
-  if (same.length >= 3) return same;
+  if (same.length >= need) return same;
   return same.concat(other);
 }
 function gameOpts(t){
-  var pool = distractorPool(t), picks = shuffleArr(pool).slice(0, 3), out = [], i;
-  out.push(t);
-  for (i = 0; i < picks.length; i++) out.push(picks[i]);
-  /* 字库里字太少时，用重复的兜底项撑满四个位置 */
-  while (out.length < 4 && pool.length){
-    out.push(pool[Math.floor(Math.random() * pool.length)]);
+  /* v52：干扰项个数跟选项档位走（4/6/8 → 3/5/7 个干扰项）。
+     先去重再去抽：以前字库小的时候会用重复字把 4 个位置撑满，
+     两个一模一样的字并排摆，孩子一眼就看出题坏了 —— 现在宁可少给几个。 */
+  var pool = distractorPool(t), picks, out = [t], i, seen = {}, uniq = [];
+  var want = Math.max(1, optnLoad() - 1);
+  for (i = 0; i < pool.length; i++){
+    if (!pool[i] || !pool[i].w || pool[i].w === t.w || seen[pool[i].w]) continue;
+    seen[pool[i].w] = 1;
+    uniq.push(pool[i]);
   }
+  picks = shuffleArr(uniq).slice(0, want);
+  for (i = 0; i < picks.length; i++) out.push(picks[i]);
   return shuffleArr(out);
 }
 function gameQuestion(){
@@ -10302,7 +10849,8 @@ function heartSVG(){
 
 /* ============================ 四款场景 ============================ */
 function bubbleScene(opts){
-  var html = '<div class="bub-wrap">', i;
+  /* v52：网格类跟实际给了几个选项走（four / n6 / n8），样式在 p1.html */
+  var html = '<div class="bub-wrap ' + optnCls(opts.length) + '">', i;
   for (i = 0; i < opts.length; i++){
     html += '<div class="g-cell"><button type="button" class="g-item bubble" data-w="' +
       esc(opts[i].w) + '" style="animation-delay:' + (i * 0.42).toFixed(2) + 's">' +
@@ -10361,8 +10909,21 @@ function fishSVG(i){
     CLOSE('g') +
     CLOSE('svg');
 }
+/* 鱼摆在哪：4 条沿用 v8 定的老位置（老师已经看惯了，一个像素都不挪）；
+   6 / 8 档是 v52 加的，仍走「2 列」（鱼是横的，三列会挤成一条缝），
+   5 / 7 条是「档位调大但字库不够」时的中间态，也得摆得下。
+   每项 = [左边距 %, 上边距 %, 横向抖动幅度 %]，抖动保留原来的手感，
+   否则鱼会像排队站好的贴纸。 */
+function fishSlots(n){
+  if (n <= 4) return [[3, 4, 6], [47, 27.5, 8], [3, 51, 6], [47, 74.5, 8]];
+  if (n === 5) return [[3, 4, 6], [47, 24, 8], [3, 44, 6], [47, 64, 8], [3, 80, 6]];
+  if (n === 6) return [[3, 2, 5], [47, 2, 6], [3, 35, 5], [47, 35, 6], [3, 68, 5], [47, 68, 6]];
+  if (n === 7) return [[3, 1, 5], [47, 1, 6], [3, 26, 5], [47, 26, 6], [3, 51, 5], [47, 51, 6], [3, 76, 5]];
+  return [[3, 1, 5], [47, 1, 6], [3, 26, 5], [47, 26, 6],
+          [3, 51, 5], [47, 51, 6], [3, 76, 5], [47, 76, 6]];
+}
 function fishScene(opts){
-  var html = '<div class="fish-wrap">';
+  var html = '<div class="fish-wrap ' + optnCls(opts.length) + '">';
   var i, top, left;
   /* 水下光柱 + 上浮气泡，让背景不是一块死板的蓝 */
   html += '<span class="sea-light"></span><span class="sea-light b"></span>';
@@ -10378,9 +10939,10 @@ function fishScene(opts){
     '<path class="rod-string" d="M112 29 Q122 58 116 86" stroke="#F4F0E4" stroke-width="2" fill="none" opacity=".92"/>' +
     '<circle class="rod-bob" cx="116" cy="88" r="4.2" fill="#E8A317"/>' +
     CLOSE('svg');
-  for (i = 0; i < 4 && i < opts.length; i++){
-    top = 4 + i * 23.5;
-    left = (i % 2 === 0) ? 3 + Math.random() * 6 : 47 + Math.random() * 8;
+  var slots = fishSlots(opts.length);
+  for (i = 0; i < slots.length && i < opts.length; i++){
+    top = slots[i][1];
+    left = slots[i][0] + Math.random() * slots[i][2];
     html += '<button type="button" class="g-item fish" data-w="' + esc(opts[i].w) +
       '" style="top:' + top.toFixed(1) + '%;left:' + left.toFixed(1) + '%;animation-delay:' +
       (i * 0.45).toFixed(2) + 's">' + fishSVG(i) +
@@ -10623,7 +11185,8 @@ function treeSVG(){
    草地留在场这一层（宽屏时草地要铺满整条地平线），篮子跟着舞台走（"放在树旁边"）。 */
 function fruitScene(opts){
   var html = '<div class="grass"></div>' +
-    '<div class="tree-stage" id="treeStage">' + treeSVG() + '<div class="fruit-wrap">';
+    '<div class="tree-stage" id="treeStage">' + treeSVG() +
+    '<div class="fruit-wrap ' + optnCls(opts.length) + '">';
   var i;
   for (i = 0; i < opts.length; i++){
     html += '<div class="g-cell"><button type="button" class="g-item fruit" data-w="' +
@@ -10660,7 +11223,7 @@ function feedScene(q, opts){
   var html = '<div class="feed-row">' +
     '<div class="feed-animal" id="feedAnimal">' + animalSVG() +
     '<div class="feed-say">喂我「' + esc(q.w) + '」</div>' + CLOSE('div') +
-    '<div class="feed-plates">';
+    '<div class="feed-plates ' + optnCls(opts.length) + '">';
   var i;
   for (i = 0; i < opts.length; i++){
     html += '<button type="button" class="g-item plate" data-w="' + esc(opts[i].w) + '">' +
@@ -11120,15 +11683,20 @@ function playAny(){
    ======================================================================== */
 /* v49 早读选字记忆（老师 2026-11-09：「早读模式我希望保持记忆功能，即记住上一次
    勾选的汉字，这样很多不需要重复勾选」）。
-   ① 只记早读：别的玩法每次重新挑字是刻意的，别顺手一起记。
-   ② 只存汉字字符串：STATE.chars 里的字对象是引用，落进 localStorage 会连带整张字表，
-      字库更新后还会恢复出旧对象；按 w 回查，查不到的字直接跳过（字表变了也不会出怪字）。
-   ③ 独立 localStorage 键，不进 STATE、不进云端 schema、不进导出导入（和 wb2_sess_v1 同口径）。
-   ④ 只在老师点「开始早读」时写：勾了又取消不算一次选择，程序化调 startRead 也不算。 */
-var LS_READ_PICK = 'wb2_read_pick_v1';
-function readPickLoad(){
+   v52 扩到全部玩法（老师 2026-11-13：「全部玩法接选字记忆」）：泡泡 / 钓鱼 / 摘果子 /
+   喂小动物 / 听写也记住上一次开始用的那批字。早读继续用自己的键 —— v49 已经发到
+   线上，换键等于让老师辛苦勾的那批字清零，没有任何好处。
+   三条老口径一个字没改：
+   ① 只存汉字字符串：STATE.chars 里的字对象是引用，落进 localStorage 会连带整张字表，
+      字库更新后还会恢复出旧对象；按 w 回查，查不到的字直接跳过。
+   ② 独立 localStorage 键，不进 STATE、不进云端 schema。
+   ③ 只在点「开始」时写：勾了又取消不算一次选择，程序化调 startRead / startGame 也不算。 */
+var LS_READ_PICK = 'wb2_read_pick_v1';   /* 早读专用 */
+var LS_PICK = 'wb2_pick_v1';             /* v52：其余五种玩法共用一份 */
+function pickMemKey(kind){ return kind === 'read' ? LS_READ_PICK : LS_PICK; }
+function pickMemLoad(key){
   var raw, out = [], i, j, w;
-  try { raw = JSON.parse(localStorage.getItem(LS_READ_PICK) || 'null'); } catch (e) { return out; }
+  try { raw = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return out; }
   if (!Array.isArray(raw)) return out;
   for (i = 0; i < raw.length; i++){
     w = raw[i];
@@ -11139,10 +11707,31 @@ function readPickLoad(){
   }
   return out;
 }
-function readPickSave(chars){
+function pickMemSave(key, chars){
   var a = [], i;
   for (i = 0; i < (chars || []).length; i++) if (chars[i] && chars[i].w) a.push(chars[i].w);
-  try { localStorage.setItem(LS_READ_PICK, JSON.stringify(a)); } catch (e) {}
+  try { localStorage.setItem(key, JSON.stringify(a)); } catch (e) {}
+}
+function readPickLoad(){ return pickMemLoad(LS_READ_PICK); }
+function readPickSave(chars){ pickMemSave(LS_READ_PICK, chars); }
+/* v52：一键取消勾选（老师 2026-11-13：「在选字界面增加一键取消勾选的按钮，方便重新选字」）。
+   只清当前这一轮的勾选，**不动本机记的那份**：
+   勾选是「正在编辑」的状态，记忆是「上一次真正开始用的那批字」，不是一回事 ——
+   取消完点「取消」退出，下次进来还该是上次开始的那一批，否则这个记忆就是假的。 */
+function pickClear(){
+  if (!PICK.on || !PICK.list.length) return;
+  PICK.list = [];
+  PICK.restored = false;
+  var grid = $('charGrid');
+  var all = grid ? grid.querySelectorAll('.ch-card.sel') : [];
+  var i;
+  for (i = 0; i < all.length; i++){
+    all[i].classList.remove('sel');
+    all[i].setAttribute('aria-pressed', 'false');
+  }
+  renderPickBar();
+  sfxTap();
+  toast('都取消了，重新点几个字吧');
 }
 function pickLabel(kind){
   return kind === 'any' ? '随便玩' : (GAME_NAMES[kind] || '游戏');
@@ -11172,9 +11761,9 @@ function pickBegin(kind){
   if (!GAME_NAMES[kind]) return;
   PICK.on = true;
   PICK.kind = kind;
-  /* 只有早读带回上次的勾选；别的玩法仍然从空开始 */
-  PICK.list = (kind === 'read') ? readPickLoad() : [];
-  PICK.restored = (kind === 'read' && PICK.list.length > 0);
+  /* v52：六种玩法都带回上次勾的字（原来只有早读）。字表变小、字库里没有的字自动跳过 */
+  PICK.list = pickMemLoad(pickMemKey(kind));
+  PICK.restored = PICK.list.length > 0;
   document.body.classList.add('picking');
   $('pickBar').hidden = false;
   renderLearn();          /* 顺带收起玩法卡、顶部换成「钓鱼 · 换一个玩法」 */
@@ -11190,8 +11779,10 @@ function renderPickBar(){
   var n = PICK.list.length, nm = pickLabel(PICK.kind);
   if ($('pickNum')) $('pickNum').textContent = n ? (nm + ' · 已选 ' + n + ' 个字') : (nm + ' · 还没选字');
   if ($('pickHint')) $('pickHint').textContent = PICK.restored
-    ? ('已勾上上次早读的 ' + n + ' 个字，可增减，点右边直接开始')
+    ? ('已勾上上次玩的 ' + n + ' 个字，可增减，点右边直接开始')
     : (n ? '再点一下能取消，换册次还能接着挑' : '点字卡就能选上，可以选好几个');
+  /* v52：一个都没选时「全部取消」没有意义，禁掉比点一下弹提示干净 */
+  if ($('pickClear')) $('pickClear').disabled = !n;
   if ($('pickStart')){
     $('pickStart').disabled = !n;
     $('pickStart').textContent = n ? (pickVerb(PICK.kind) + '（' + n + '）') : pickVerb(PICK.kind);
@@ -11207,7 +11798,8 @@ function pickToggle(c){
 function pickStart(){
   if (!PICK.list.length){ toast('先点几个字，再开始'); return; }
   var kind = PICK.kind, chars = PICK.list.slice(0);
-  if (kind === 'read') readPickSave(chars);   /* 只写这一种玩法，且只写字符串 */
+  /* v52：六种玩法都记住这一批（只写字符串，且只在真正开始时写）。 */
+  pickMemSave(pickMemKey(kind), chars);
   pickEnd();
   renderLearn();          /* 先退出选字态：下一局回来时字卡不该还带着勾 */
   /* v47：早读走自己的屏（发牌带读），不进游戏引擎 */
@@ -11250,6 +11842,8 @@ function wireLearn(){
      这里只绑「换一个玩法」和底部条两个按钮。 */
   $('gnChange').addEventListener('click', pickCancel);
   $('pickCancel').addEventListener('click', pickCancel);
+  /* v52：一键取消勾选。放在「取消」左边，但它是「清一下重来」，不是退出。 */
+  if ($('pickClear')) $('pickClear').addEventListener('click', pickClear);
   $('pickStart').addEventListener('click', pickStart);
   $('gameQuit').addEventListener('click', function(){ quitGame(true); });
   /* v47：早读屏三个按钮。暂停/继续是同一个键（老师上课中途要能停一下讲两句） */

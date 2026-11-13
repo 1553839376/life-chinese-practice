@@ -1090,12 +1090,26 @@ function seedLibrary(){
   step();
 }
 
-/* ------------------------- 备份（本机数据的安全带） ------------------------- */
+/* ------------------------- 备份（本机数据的安全带） -------------------------
+   v52 修了一个真 bug：以前只导 students / chars / words / logs，本机那几张
+   独立表全漏了。最要命的是 wb2_solo_days_v1 —— 换台电脑导进来，
+   levelOf() 走「本机一个日期都没有 → 沿用旧口径」那一支，
+   所有 alone>=3 的字当场变成「已掌握」，等于把学生的进度凭空拔高一截。
+   复习计划和错字本是同一类数据（都在本机、都影响下次练什么），一起带上。
+   -------------------------------------------------------------------------- */
 function exportBackup(){
   var data = JSON.stringify({
-    v: 1, ts: new Date().toISOString(),
+    v: 2, ts: new Date().toISOString(),
     students: STATE.students, chars: STATE.chars,
-    words: STATE.words, logs: STATE.logs
+    words: STATE.words, logs: STATE.logs,
+    /* v52：四样本机独立表 */
+    solo: soloLoad(),          /* 跨天掌握：哪天独立答对过 */
+    review: reviewLoad(),      /* 复习计划：每个字的下次到期日 */
+    wrong: wrongLoad(),        /* 错字本 */
+    readPick: (function(){
+      try { return JSON.parse(localStorage.getItem(LS_READ_PICK) || 'null') || []; }
+      catch (e) { return []; }
+    })()
   }, null, 2);
   try {
     var blob = new Blob([data], { type: 'application/json' });
@@ -1126,6 +1140,23 @@ function importBackup(file){
       STATE.words = arr(o.words);
       STATE.logs = (o.logs && typeof o.logs === 'object') ? o.logs : {};
       repairCharWords();          /* 旧备份可能不带「组词」栏，导完按内置字表补回 */
+      /* v52：本机独立表。老备份里没有这几个字段，缺就保持本机的原样 ——
+         不能因为「文件里没有」就把本机的错字本清空。 */
+      if (o.solo && typeof o.solo === 'object'){
+        SOLO = o.solo;
+        try { localStorage.setItem(LS_SOLO, JSON.stringify(o.solo)); } catch (e) {}
+      }
+      if (o.review && typeof o.review === 'object'){
+        REVIEW = o.review;
+        try { localStorage.setItem(LS_REVIEW, JSON.stringify(o.review)); } catch (e) {}
+      }
+      if (o.wrong && typeof o.wrong === 'object'){
+        WRONG = o.wrong;
+        try { localStorage.setItem(LS_WRONG, JSON.stringify(o.wrong)); } catch (e) {}
+      }
+      if (isArr(o.readPick)){
+        try { localStorage.setItem(LS_READ_PICK, JSON.stringify(o.readPick)); } catch (e) {}
+      }
       saveSnap();
       resolve(true);
     };
@@ -1279,6 +1310,16 @@ function wireEvents(){
     if (pcard){ preSay(pcard.getAttribute('data-pre')); return; }
     var pgo = el.closest ? el.closest('#preGo') : null;
     if (pgo){ preStart(); return; }
+    /* v52：工具条上的两组小控件，也都得排在 .opt 之前 ——
+       字卡页 / 乐园页里 STATE.quiz 是 null，走 .opt 分支会报错。
+       ① 选项个数 4 / 6 / 8：练习页和乐园各一份，一个值管两处；
+       ② 上一轮没做完：接着练 / 重新开始，只在字卡页出现。 */
+    var ob = el.closest ? el.closest('[data-optn]') : null;
+    if (ob){ optnChanged(parseInt(ob.getAttribute('data-optn'), 10)); return; }
+    var rgo = el.closest ? el.closest('#btnResumeGo') : null;
+    if (rgo){ resumeGo(); return; }
+    var rno = el.closest ? el.closest('#btnResumeNo') : null;
+    if (rno){ resumeDrop(); return; }
     /* 手写题型（v25）：写好了 / 写对了 / 没写好 / 擦掉 / 再听。
        用 data-wg-act 而不是 data-wg —— 方框自己带 data-wg（序号），
        混用一个属性会让点方框也走进来。这也要排在 .opt 之前。 */

@@ -229,6 +229,13 @@ input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
   border-radius:10px;padding:8px 12px;display:inline-block}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .opts.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* v52：选项 4 / 6 / 8 三档。6 个排 3 列（2 行）、8 个排 4 列（2 行）——
+   行数不变，所以场高不会因为调难度变一倍，孩子不用滚动就能看全。
+   字随格子变小：8 格外加最窄的教室平板也不会挤成两行。 */
+.opts.n6{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.opts.n8{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.opts.n6 .opt{font-size:48px;min-height:108px;border-radius:18px}
+.opts.n8 .opt{font-size:40px;min-height:96px;border-radius:16px}
 .opt{background:#fff;border:3px solid var(--line2);border-radius:20px;
   min-height:132px;display:flex;align-items:center;justify-content:center;
   font-size:62px;font-weight:700;letter-spacing:.04em;color:var(--ink);
@@ -743,6 +750,43 @@ tr.tr-builtin td{background:#FBFAF3}
   padding:1px 9px;font-size:20px;color:var(--ink)}
 .drill-bar button{margin-left:auto;border:1.5px solid var(--amber-line);background:#fff;
   border-radius:9px;padding:6px 12px;font-size:13px;font-weight:800;color:var(--amber);min-height:36px}
+
+/* v52：选项个数 4 / 6 / 8。三段并排的小胶囊，当前档实心 —— 不是开关（开关只有两态），
+   所以不许用 toggle 样式，也不要带滑块，孩子会以为可以拖。 */
+.optn-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 12px;padding:2px 0;font-size:13px;font-weight:800;color:var(--ink3)}
+.optn-bar .ob-lb{letter-spacing:.04em}
+.optn-bar .ob-segs{display:inline-flex;gap:6px}
+.optn-bar .ob-btn{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);
+  border-radius:11px;padding:6px 14px;font-size:14px;font-weight:800;min-height:38px}
+.optn-bar .ob-btn.on{border-color:#2C9F58;background:var(--green-bg);color:var(--green);
+  box-shadow:inset 0 0 0 1px rgba(44,159,88,.25)}
+.optn-bar.learn{margin:0 0 16px;padding:9px 14px;background:#F6F1E3;
+  border:1.5px solid #E6DEC9;border-radius:13px}
+
+/* v52：上一轮没做完。问一句、给两个按钮，不静默续上也不静默丢掉。 */
+.resume-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--blue-bg);border:1.5px solid var(--blue-line);border-radius:14px;
+  padding:11px 15px;margin:0 0 14px;font-size:15px;font-weight:700;color:var(--ink2)}
+.resume-bar .rb-t b{font-size:19px;color:var(--blue);margin:0 2px}
+.resume-bar .rb-acts{display:flex;gap:8px;margin-left:auto}
+.resume-bar .rb-go{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
+  border-radius:11px;padding:8px 18px;font-size:15px;font-weight:800;min-height:42px;
+  box-shadow:0 3px 0 #25824A}
+.resume-bar .rb-no{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);
+  border-radius:11px;padding:8px 15px;font-size:15px;font-weight:800;min-height:42px}
+.resume-bar .rb-go:active,.resume-bar .rb-no:active{transform:translateY(2px);
+  box-shadow:none}
+
+/* v52：错字本里「只练这几个字」——跟抽练条同一个动作，样式也贴近它 */
+.wb-again{margin-top:8px;border:1.5px solid var(--amber-line);background:#fff;
+  border-radius:10px;padding:8px 16px;font-size:14px;font-weight:800;
+  color:var(--amber);min-height:40px}
+.wrong-box.book .wrong-ch{opacity:.92}
+
+/* v52：今日字卡上「这个字是要复习的」——边框换暖色，标题栏另有一句总述 */
+.home-note.due{color:#8A6A1E;font-weight:800}
+.pre-card.due{border-color:#E2CE9A;background:linear-gradient(180deg,#FFFDF5,#FFF7E6)}
 .tips{font-size:14px;color:var(--ink3);margin:10px 2px 0;line-height:1.7}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;z-index:99;
   background:#20303C;color:#fff;border-radius:14px;padding:13px 22px;font-size:16px;font-weight:700;
@@ -883,6 +927,11 @@ tr.tr-builtin td{background:#FBFAF3}
 .pb-hint{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
 .pb-acts{display:flex;gap:9px;flex:none}
+/* v52：一键取消勾选。三个按钮并排时它最轻——它只是「清一下重来」，
+   不能和绿色的「开始练习」抢眼，也不能比「取消」更像退出去。 */
+.pb-clear{border:1.5px solid var(--line2);background:#fff;color:var(--ink3);border-radius:13px;
+  padding:0 13px;height:48px;font-size:14px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
+.pb-clear[disabled]{opacity:.45;box-shadow:none}
 .pb-cancel{border:1.5px solid var(--line2);background:#fff;color:var(--ink2);border-radius:13px;
   padding:0 16px;height:48px;font-size:15px;font-weight:800;box-shadow:0 3px 0 #E9E1CD}
 .pb-start{border:none;background:linear-gradient(180deg,#43C878,#2C9F58);color:#fff;
@@ -894,6 +943,12 @@ body.picking #scrLearn{padding-bottom:96px}
   .pb-hint{display:none}
   .pb-start{padding:0 16px}
   .learn-bar{gap:9px}
+  /* v52：三个按钮并排（全部取消 / 取消 / 开始），360 宽的屏上必须一起收一档，
+     否则「开始练习（5）」会被挤成两行 */
+  .pb-acts{gap:7px}
+  .pb-clear{padding:0 10px;font-size:13px}
+  .pb-cancel{padding:0 12px;font-size:14px}
+  .pb-start{padding:0 13px;font-size:15px}
 }
 
 /* ---------- 字卡网格 ---------- */
@@ -1296,9 +1351,13 @@ body.picking #scrLearn{padding-bottom:96px}
   border-bottom:10px solid #fff}
 .feed-plates{flex:0 1 430px;display:grid;grid-template-columns:1fr 1fr;
   grid-template-rows:1fr 1fr;gap:12px;place-items:center;min-width:0}
-/* 食盆：上宽下收的碗，碗沿有厚度。字必须压得住伪元素，否则会被碗盖住看不见 */
+/* 食盆：上宽下收的碗，碗沿有厚度。字必须压得住伪元素，否则会被碗盖住看不见。
+   v52 修：原来 padding-top 写死 16px，而碗只占下方 52% —— 宽屏上碗高 116px，
+   字就浮在碗沿上方、碗里空着（v52 的 8 个食盆截图里最明显）。
+   改成按百分比（相对碗宽）下推 38%，字就落进碗口里；窄屏 72px 的碗同样对得上，
+   因为字号和碗宽本来就是同一条曲线。 */
 .plate{position:relative;width:clamp(96px,11.8vw,130px);height:clamp(88px,10.6vw,116px);
-  display:flex;align-items:flex-start;justify-content:center;padding-top:16px;
+  display:flex;align-items:flex-start;justify-content:center;padding:38% 0 0;
   font-size:clamp(32px,4.1vw,44px);font-weight:700;color:#57360F}
 .plate-ch{position:relative;z-index:3;line-height:1;
   text-shadow:0 2px 0 rgba(255,255,255,.9)}
@@ -1320,6 +1379,28 @@ body.picking #scrLearn{padding-bottom:96px}
 @keyframes heartUp{0%{opacity:0;transform:translate(-50%,0) scale(.55)}
   24%{opacity:1;transform:translate(-50%,-18px) scale(1.12)}
   100%{opacity:0;transform:translate(-50%,-66px) scale(.9)}}
+
+/* ---------- v52：选项 6 / 8 个时，四个场景分别怎么摆 ----------
+   场高是固定的（height:clamp(320px,…,620px)、窄屏 80vw），所以调难度**不能加行**：
+   4 行泡泡、3 行食盆在 390 的屏上都会溢出。统一「列变多、行不变」——
+   泡泡 / 果子 / 食盆 6 个排 3 列、8 个排 4 列，都还是 2 行；
+   鱼是横的、一个 200×116，只能保持 2 列，6 条 3 行、8 条 4 行，
+   靠压高度（不是加宽场子）腾地方。原有的动效一个都没动：
+   泡泡照样漂、鱼照样摆尾划鳍、果子照样摇、食盆照样有碗沿。 */
+.bub-wrap.n6{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.bub-wrap.n8{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.bub-wrap.n6 .bubble,.bub-wrap.n8 .bubble{width:min(100%,120px);height:auto;aspect-ratio:1;
+  font-size:clamp(28px,3.6vw,42px)}
+.fish-wrap.n6 .fish{height:calc(33.33% - 10px);width:auto;aspect-ratio:200/116}
+.fish-wrap.n8 .fish{height:calc(25% - 8px);width:auto;aspect-ratio:200/116}
+.fish-wrap.n6 .fish-ch,.fish-wrap.n8 .fish-ch{font-size:clamp(24px,3vw,36px)}
+.fruit-wrap.n6{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.fruit-wrap.n8{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,1fr)}
+.fruit-wrap.n6 .fruit,.fruit-wrap.n8 .fruit{width:100%;max-width:118px;height:auto;aspect-ratio:1}
+.fruit-wrap.n6 .fruit-ch,.fruit-wrap.n8 .fruit-ch{font-size:clamp(22px,2.8vw,38px)}
+.feed-plates.n6{grid-template-columns:repeat(3,minmax(0,1fr))}
+.feed-plates.n8{grid-template-columns:repeat(4,minmax(0,1fr))}
+.feed-plates.n6 .plate,.feed-plates.n8 .plate{width:min(100%,116px)}
 
 /* 提示光圈 */
 .glow{animation:glowPulse 1s ease-in-out 2;position:relative;z-index:2}
