@@ -2,7 +2,7 @@
 
 面向培智 / 特需学生的认字练习平台。单文件 HTML，离线可用，数据留在本机。
 
-**线上**：https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll（线上 v51）　**当前版本**：v52
+**线上**：https://workbuddy.link/p/nU41kHmAoelqM2mGxWRFll（线上 v52）　**当前版本**：v52
 
 ---
 
